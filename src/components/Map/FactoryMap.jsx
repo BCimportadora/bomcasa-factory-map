@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet'
+import { MapContainer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
+import BaseTileLayer from './BaseTileLayer'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
@@ -36,11 +37,7 @@ function FlyToFactory({ target }) {
 export default function FactoryMap({ factories, onMapClick, flyToTarget, onEdit, onDelete, canManage }) {
   return (
     <MapContainer center={CHINA_CENTER} zoom={CHINA_ZOOM} className="h-full w-full">
-      <TileLayer
-        attribution='Tiles &copy; Esri &mdash; Esri, HERE, Garmin, FAO, NOAA, USGS'
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
-        maxZoom={19}
-      />
+      <BaseTileLayer />
       <ClickHandler onMapClick={onMapClick} />
       <FlyToFactory target={flyToTarget} />
       {factories.map((f) => (

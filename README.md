@@ -84,11 +84,32 @@ name,address,city,province,latitude,longitude,contact_person,phone,products,capa
 
 ## China map coordinates
 
-This app uses **Leaflet + Esri World Street Map tiles**, so factory coordinates are stored and displayed as standard **WGS-84** latitude/longitude — no conversion needed, and there's no map API key to manage. Esri's basemap was chosen over raw OpenStreetMap tiles because it renders place labels in English/Romanized script rather than Chinese characters; both are free, no-key tile sources.
+This app uses **Leaflet** with raster tiles, so factory coordinates are stored and displayed as standard **WGS-84** latitude/longitude — no conversion needed.
 
 If you later switch to **AMap (Gaode)** or **Baidu Maps**, note that both use the **GCJ-02** ("Mars Coordinate System") offset used within mainland China, not raw WGS-84 — you'd need to convert coordinates (WGS-84 → GCJ-02) before plotting them, and back again if re-exporting. `VITE_AMAP_KEY` is reserved in `.env.example` for that swap; the current codebase doesn't use it since it renders with Leaflet.
 
 Never use Google Maps for this project — it isn't reliably available inside mainland China.
+
+## Map labels (English street names)
+
+The basemap is selected in [`src/components/Map/BaseTileLayer.jsx`](src/components/Map/BaseTileLayer.jsx):
+
+- **With `VITE_MAPTILER_KEY` set** — MapTiler tiles are used. MapTiler can render OpenStreetMap's `name:en` tags, and coverage in Chinese cities is good (~94% of named roads in central Shanghai carry an English name), so streets appear as "Century Avenue", "Middle Jinling Road", etc.
+- **Without a key** — falls back to **CARTO Positron**, which needs no account but labels streets in Chinese.
+
+To enable English labels:
+
+1. Create a free account at [maptiler.com](https://www.maptiler.com) and copy your API key.
+2. In MapTiler Cloud, open a style (e.g. Streets), choose **Customize**, set the label **Language** to English, and publish it. Copy the resulting style id.
+3. Set both variables — locally in `.env`, and in your Vercel/Netlify project settings for production:
+   ```
+   VITE_MAPTILER_KEY=your-key
+   VITE_MAPTILER_STYLE=your-english-style-id
+   ```
+
+Note that a handful of minor roads have no `name:en` in OpenStreetMap and will still render in Chinese.
+
+Tile providers evaluated and rejected for this use case: raw **OpenStreetMap** and **Esri World Street Map** both label Chinese streets in Chinese, and Esri additionally serves no tiles above zoom 13 in mainland Chinese cities.
 
 ## Roles & permissions
 
