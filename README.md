@@ -5,7 +5,7 @@ A web app for managing and visualizing factory locations across China: an intera
 ## Tech stack
 
 - **Frontend**: React 18 + Vite + Tailwind CSS
-- **Map**: Leaflet + OpenStreetMap tiles (no API key required, WGS-84 coordinates)
+- **Map**: Leaflet + Esri World Street Map tiles (no API key required, WGS-84 coordinates, labels rendered in English)
 - **Backend/database**: Supabase (Postgres + Auth + Row Level Security)
 - **Deployment**: Vercel or Netlify (config included for both)
 
@@ -84,7 +84,7 @@ name,address,city,province,latitude,longitude,contact_person,phone,products,capa
 
 ## China map coordinates
 
-This app uses **Leaflet + OpenStreetMap**, so factory coordinates are stored and displayed as standard **WGS-84** latitude/longitude — no conversion needed, and there's no map API key to manage.
+This app uses **Leaflet + Esri World Street Map tiles**, so factory coordinates are stored and displayed as standard **WGS-84** latitude/longitude — no conversion needed, and there's no map API key to manage. Esri's basemap was chosen over raw OpenStreetMap tiles because it renders place labels in English/Romanized script rather than Chinese characters; both are free, no-key tile sources.
 
 If you later switch to **AMap (Gaode)** or **Baidu Maps**, note that both use the **GCJ-02** ("Mars Coordinate System") offset used within mainland China, not raw WGS-84 — you'd need to convert coordinates (WGS-84 → GCJ-02) before plotting them, and back again if re-exporting. `VITE_AMAP_KEY` is reserved in `.env.example` for that swap; the current codebase doesn't use it since it renders with Leaflet.
 
