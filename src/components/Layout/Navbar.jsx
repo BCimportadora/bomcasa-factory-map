@@ -1,6 +1,6 @@
 import { useAuth } from '../../context/AuthContext'
 import { LogOut } from 'lucide-react'
-import logo from '../../assets/logo.jpg'
+import logo from '../../assets/logo.png'
 
 export default function Navbar() {
   const { user, profile, signOut } = useAuth()
