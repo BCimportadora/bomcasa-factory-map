@@ -1,5 +1,6 @@
 import { useAuth } from '../../context/AuthContext'
-import { LogOut, Factory } from 'lucide-react'
+import { LogOut } from 'lucide-react'
+import logo from '../../assets/logo.jpg'
 
 export default function Navbar() {
   const { user, profile, signOut } = useAuth()
@@ -7,7 +8,7 @@ export default function Navbar() {
   return (
     <header className="flex h-14 flex-shrink-0 items-center justify-between border-b bg-white px-4 shadow-sm">
       <div className="flex items-center gap-2 font-semibold text-gray-800">
-        <Factory size={20} className="text-blue-600" />
+        <img src={logo} alt="Bomcasa logo" className="h-8 w-auto" />
         <span className="hidden sm:inline">Bomcasa Factory Map</span>
       </div>
       <div className="flex items-center gap-3 text-sm">
