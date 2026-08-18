@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n'
 import LanguageSwitcher from '../components/Layout/LanguageSwitcher'
@@ -104,6 +104,12 @@ export default function LoginPage() {
           <button type="submit" disabled={submitting} className="btn-primary w-full">
             {submitting ? t('auth.signingIn') : t('auth.signIn')}
           </button>
+
+          <p className="mt-4 text-center">
+            <Link to="/forgot-password" className="text-[13px] text-muted hover:text-ink">
+              {t('auth.forgotPassword')}
+            </Link>
+          </p>
         </form>
 
         <p className="mt-5 text-center text-[13px] leading-relaxed text-muted">

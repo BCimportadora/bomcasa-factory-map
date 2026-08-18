@@ -54,6 +54,23 @@ export function AuthProvider({ children }) {
   const signOut = useCallback(() => supabase.auth.signOut(), [])
 
   /**
+   * Send a password-reset email.
+   *
+   * The redirect must be on the allow-list in Supabase (Authentication → URL
+   * Configuration) or the link in the email will not come back to the app.
+   */
+  const sendPasswordReset = useCallback(
+    (email) =>
+      supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      }),
+    [],
+  )
+
+  /** Set a new password for the signed-in (or password-recovery) session. */
+  const updatePassword = useCallback((password) => supabase.auth.updateUser({ password }), [])
+
+  /**
    * Update the signed-in user's own profile.
    *
    * Only the fields a person is allowed to change are sent. `role` is never
@@ -94,10 +111,22 @@ export function AuthProvider({ children }) {
       profileComplete: isProfileComplete(profile),
       signIn,
       signOut,
+      sendPasswordReset,
+      updatePassword,
       updateOwnProfile,
       refreshProfile,
     }),
-    [user, profile, loading, signIn, signOut, updateOwnProfile, refreshProfile],
+    [
+      user,
+      profile,
+      loading,
+      signIn,
+      signOut,
+      sendPasswordReset,
+      updatePassword,
+      updateOwnProfile,
+      refreshProfile,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

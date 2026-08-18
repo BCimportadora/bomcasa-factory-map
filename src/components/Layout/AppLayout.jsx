@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { Factory, Users, Anchor, ShieldCheck, LogOut, Menu, X } from 'lucide-react'
+import { Factory, Users, Anchor, ShieldCheck, LogOut, Menu, X, Settings } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useI18n } from '../../i18n'
 import { initials, fullName, roleKey } from '../../lib/constants'
@@ -66,16 +66,29 @@ export default function AppLayout({ children }) {
         )}
       </nav>
 
-      <div className="space-y-3 border-t border-line p-3">
-        <LanguageSwitcher />
+      <div className="border-t border-line p-3">
+        <LanguageSwitcher className="mb-3" />
+
+        <NavLink
+          to="/account"
+          className={({ isActive }) => `nav-link mb-1 ${isActive ? 'nav-link-active' : ''}`}
+        >
+          <Settings size={18} strokeWidth={1.75} />
+          {t('nav.settings')}
+        </NavLink>
+
         <div className="flex items-center gap-3 rounded-xl px-2 py-1.5">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent/10 text-[12px] font-semibold text-accent">
-            {initials(profile)}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-medium text-ink">{fullName(profile) || '—'}</p>
-            <p className="truncate text-[12px] text-muted">{profile?.role ? t(roleKey(profile.role)) : ''}</p>
-          </div>
+          <NavLink to="/account" className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent/10 text-[12px] font-semibold text-accent">
+              {initials(profile)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-medium text-ink">{fullName(profile) || '—'}</p>
+              <p className="truncate text-[12px] text-muted">
+                {profile?.role ? t(roleKey(profile.role)) : ''}
+              </p>
+            </div>
+          </NavLink>
           <button
             type="button"
             onClick={signOut}
