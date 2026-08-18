@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { authRedirectParams, authRedirectError, isExpiredLink } from '../lib/authRedirect'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n'
 import PasswordFields, { validateNewPassword } from '../components/Auth/PasswordFields'
@@ -39,11 +40,45 @@ export default function ResetPasswordPage() {
       }
     })
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!active) return
-      setHasRecoverySession(Boolean(session))
-      setChecking(false)
-    })
+    async function establishSession() {
+      // Supabase reported the link itself as bad — no point probing further.
+      if (authRedirectError) {
+        if (active) setChecking(false)
+        return
+      }
+
+      const { data } = await supabase.auth.getSession()
+      if (data.session) {
+        if (active) {
+          setHasRecoverySession(true)
+          setChecking(false)
+        }
+        return
+      }
+
+      // Formats supabase-js does not consume on its own.
+      const { code, token_hash: tokenHash } = authRedirectParams
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (active) {
+          setHasRecoverySession(!error)
+          setChecking(false)
+        }
+        return
+      }
+      if (tokenHash) {
+        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+        if (active) {
+          setHasRecoverySession(!error)
+          setChecking(false)
+        }
+        return
+      }
+
+      if (active) setChecking(false)
+    }
+
+    establishSession()
 
     return () => {
       active = false
@@ -93,9 +128,16 @@ export default function ResetPasswordPage() {
         ) : !hasRecoverySession ? (
           <>
             <p className="alert-error">{t('auth.resetLinkInvalid')}</p>
+            {isExpiredLink && <p className="hint mt-3 leading-relaxed">{t('auth.resetLinkExpiredHint')}</p>}
+            {authRedirectError?.description && (
+              <p className="hint mt-2 break-words">
+                <span className="font-medium">{t('errors.details')}:</span>{' '}
+                {authRedirectError.description}
+              </p>
+            )}
             <p className="mt-5 text-center">
-              <Link to="/forgot-password" className="text-[13px] font-medium text-accent hover:underline">
-                {t('auth.forgotTitle')}
+              <Link to="/forgot-password" className="btn-primary w-full">
+                {t('auth.sendResetLink')}
               </Link>
             </p>
           </>

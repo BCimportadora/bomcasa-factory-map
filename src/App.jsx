@@ -9,6 +9,7 @@ import PeoplePage from './pages/PeoplePage'
 import PortsPage from './pages/PortsPage'
 import AdminAccountsPage from './pages/AdminAccountsPage'
 import ProtectedRoute from './components/Auth/ProtectedRoute'
+import RecoveryRedirect from './components/Auth/RecoveryRedirect'
 import AppLayout from './components/Layout/AppLayout'
 
 /**
@@ -22,6 +23,15 @@ const protectedPage = (element, { requireAdmin = false } = {}) => (
 )
 
 export default function App() {
+  return (
+    <>
+      <RecoveryRedirect />
+      <AppRoutes />
+    </>
+  )
+}
+
+function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />

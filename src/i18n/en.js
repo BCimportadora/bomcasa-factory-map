@@ -68,6 +68,8 @@ export default {
     passwordTooShort: 'Use at least 8 characters.',
     passwordsDoNotMatch: 'The passwords do not match.',
     resetLinkInvalid: 'This reset link is invalid or has expired. Request a new one.',
+    resetLinkExpiredHint:
+      'Reset links can only be used once and expire after one hour. Some email providers open links automatically to scan them, which uses the link up before you click it — requesting a new one and opening it straight away usually works.',
     resetError: 'We could not update your password. Please try again.',
     resetRateLimited: 'Too many attempts. Please wait a few minutes and try again.',
   },
@@ -246,6 +248,7 @@ export default {
     accessDeniedMessage: 'You do not have permission to view this page.',
     notFound: 'Page not found',
     notFoundMessage: 'The page you are looking for does not exist.',
+    details: 'Details',
     generic: 'Something went wrong.',
     network: 'We could not reach the server. Check your connection and try again.',
     backToApp: 'Back to the app',

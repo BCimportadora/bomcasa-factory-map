@@ -69,6 +69,8 @@ export default {
     passwordTooShort: 'Usa al menos 8 caracteres.',
     passwordsDoNotMatch: 'Las contraseñas no coinciden.',
     resetLinkInvalid: 'Este enlace no es válido o ha caducado. Solicita uno nuevo.',
+    resetLinkExpiredHint:
+      'Los enlaces de restablecimiento solo se pueden usar una vez y caducan al cabo de una hora. Algunos proveedores de correo abren los enlaces automáticamente para analizarlos, lo que consume el enlace antes de que lo abras. Solicita uno nuevo y ábrelo de inmediato.',
     resetError: 'No pudimos actualizar tu contraseña. Inténtalo de nuevo.',
     resetRateLimited: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.',
   },
@@ -247,6 +249,7 @@ export default {
     accessDeniedMessage: 'No tienes permiso para ver esta página.',
     notFound: 'Página no encontrada',
     notFoundMessage: 'La página que buscas no existe.',
+    details: 'Detalles',
     generic: 'Algo salió mal.',
     network: 'No pudimos conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.',
     backToApp: 'Volver a la aplicación',
