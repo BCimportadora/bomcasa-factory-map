@@ -1,168 +1,253 @@
-# Bomcasa Factory Map
+# Bomcasa Platform
 
-A web app for managing and visualizing factory locations across China: an interactive map, a searchable/filterable directory, role-based access control, and CSV import/export.
+An internal business platform for supplier and logistics management in China:
+a factory map, a China FOB port reference, a people directory, administrator
+account management, and a full English/Spanish interface.
 
 ## Tech stack
 
-- **Frontend**: React 18 + Vite + Tailwind CSS
-- **Map**: Leaflet + Esri World Street Map tiles (no API key required, WGS-84 coordinates, labels rendered in English)
-- **Backend/database**: Supabase (Postgres + Auth + Row Level Security)
-- **Deployment**: Vercel or Netlify (config included for both)
+- **Frontend**: React 18 + Vite + Tailwind CSS (JSX)
+- **Routing**: React Router v6
+- **Maps**: Leaflet + react-leaflet, with a MapTiler vector basemap rendered by MapLibre GL (English labels), falling back to CARTO raster tiles
+- **Backend**: Supabase — Postgres, Auth, row-level security, and one Edge Function
+- **Hosting**: Vercel (config also included for Netlify)
+
+There is no separate API server. The browser talks to Supabase directly, so
+**row-level security in Postgres is the security boundary**, with one Edge
+Function for the operation that needs elevated privileges.
+
+---
+
+## ⚠️ Required setup
+
+The application will not work correctly until **both** of these are done.
+
+### 1. Apply the database schema
+
+Open the Supabase SQL editor and run [`supabase/schema.sql`](supabase/schema.sql)
+in full. It is idempotent — safe to run on a fresh project or an existing one.
+
+It adds `first_name`, `last_name`, `department`, `language` and `updated_at` to
+`profiles`, replaces the RLS policies, and installs the privilege-escalation
+guard. Until it runs, the People and Administration pages will report a load
+error, because those columns do not exist yet.
+
+Then promote your own account to administrator:
+
+```sql
+update public.profiles set role = 'admin' where email = 'you@example.com';
+```
+
+This works from the SQL editor because the escalation guard only applies to
+requests made by a signed-in user.
+
+### 2. Turn off public sign-up  ← security critical
+
+In the Supabase dashboard: **Authentication → Sign In / Providers → Email**, and
+disable **"Allow new users to sign up"**.
+
+This is not optional and cannot be fixed in the frontend. The anon key is public
+in the deployed JavaScript, so while this setting is on, anyone can create an
+account by calling the sign-up endpoint directly, regardless of the fact that the
+app no longer has a sign-up screen. At the time of writing, this project reported
+`disable_signup: false` — meaning sign-up was open.
+
+### 3. Deploy the account-creation function
+
+Administrator account creation runs server-side, because creating a user
+requires the `service_role` key, which must never reach the browser.
+
+```bash
+supabase functions deploy admin-create-user
+```
+
+`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase
+automatically; no extra secrets to configure. Until the function is deployed,
+the Administration page explains that account creation is unavailable rather
+than failing silently — everything else keeps working.
+
+---
+
+## Environment variables
+
+```
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_MAPTILER_KEY=your-maptiler-key          # optional, enables English map labels
+VITE_MAPTILER_STYLE=your-english-style-id    # optional, see "Map labels" below
+```
+
+`VITE_*` variables are compiled into the browser bundle at **build time**, so
+after changing them in Vercel you must redeploy. They are all public values;
+the `service_role` key must never be added here.
+
+## Running locally
+
+```bash
+npm install
+```
+```bash
+npm run dev
+```
+
+Available commands: `npm run dev`, `npm run build`, `npm run preview`. The
+project has no test, lint or type-check setup.
+
+---
+
+## Roles and permissions
+
+| | Administrator | Business User |
+|---|---|---|
+| Sign in | ✅ | ✅ |
+| People directory | ✅ | ✅ |
+| FOB Ports | ✅ | ✅ |
+| Factories | all | only their own |
+| Create accounts | ✅ | ❌ |
+| Assign roles / departments | ✅ | ❌ |
+| Change own role | ❌ (only via SQL) | ❌ |
+
+Enforcement happens at three independent layers:
+
+1. **Navigation** — administrator entries are hidden from business users.
+2. **Routes** — `ProtectedRoute` blocks `/admin/*` for non-admins.
+3. **Database and Edge Function** — the real boundary.
+
+Layers 1 and 2 are convenience only. Everything they hide is independently
+enforced server-side, so editing frontend state, localStorage or the URL, or
+calling the API directly, gains nothing.
+
+### How privilege escalation is prevented
+
+A business user legitimately needs to update their own profile row, so RLS must
+permit it. Without a further guard they could simply run:
+
+```
+update profiles set role = 'admin' where id = <their own id>
+```
+
+A `before update` trigger (`enforce_profile_update_rules`) rejects any change to
+`role` unless the caller is already an administrator, and also pins `email` and
+`created_at`. `auth.uid()` is NULL for service-role and SQL-editor requests,
+which is how the first administrator is bootstrapped and how the Edge Function
+assigns roles.
+
+The Edge Function re-reads the caller's role from the database rather than
+trusting anything in the request, and returns 401/403 before touching any data.
+
+---
+
+## Features
+
+### Factories
+The original factory map, unchanged in behaviour: click the map to add a
+factory, edit and delete, search and filter by name/city/province/product, and
+CSV import/export. Business users see only factories they created; admins see
+all.
+
+### People (`/people`)
+Directory of everyone with access, showing name, department and role. Searchable
+and filterable. Only non-sensitive columns are selected — email is not requested
+for the ordinary directory view.
+
+### FOB Ports (`/ports`)
+The eight major Chinese export ports used for FOB shipping: Shanghai,
+Ningbo-Zhoushan, Shenzhen, Guangzhou, Qingdao, Tianjin, Xiamen and Hong Kong.
+Selecting a port shows its city, province, main terminals, UN/LOCODE,
+coordinates and a short factual description.
+
+Coordinates in [`src/lib/ports.js`](src/lib/ports.js) point at the container
+port area rather than the city centre, and were checked against geocoding for
+the relevant port district (Yangshan, Beilun, Yantian, Nansha, Qianwan, Xingang,
+Haicang, Kwai Chung). No business-specific logistics data is invented.
+
+### Administration → Manage accounts (`/admin/accounts`)
+Administrators only. Lists all accounts and creates new ones with email, first
+name, last name, department and role. The new user receives a generated
+temporary password, shown once, to be shared over a secure channel and changed
+after first sign-in.
+
+### Profile setup
+On first sign-in, a user without a completed profile is routed to `/setup` to
+provide first name, last name and department. Email comes from the
+authenticated session and is read-only; **role is displayed but not editable** —
+the database rejects role changes from non-admins regardless of what the client
+sends.
+
+---
+
+## Internationalisation
+
+English (default) and Spanish, implemented in [`src/i18n/`](src/i18n) with no
+extra dependency:
+
+- `en.js` / `es.js` — translations grouped by area (`common`, `nav`, `auth`, `profile`, `departments`, `roles`, `people`, `ports`, `factories`, `csv`, `admin`, `errors`)
+- `index.jsx` — provider exposing `t(key, values)` and `tCount(baseKey, n)`
+
+Components never branch on the current language; they call `t()`. Missing keys
+fall back to English and warn in development.
+
+The switcher is **text only** ("English | Español") and appears on the sign-in
+screen, the profile setup screen and in the sidebar. Changing it on the sign-in
+screen updates that screen immediately and the choice carries through sign-in.
+
+Preference is stored in `localStorage` and, once signed in, mirrored to
+`profiles.language` so it follows the user across devices. Language is a display
+preference only and never affects role, permissions or access.
+
+---
+
+## Map labels (English street names)
+
+The basemap is chosen in [`src/components/Map/BaseTileLayer.jsx`](src/components/Map/BaseTileLayer.jsx):
+
+- **With `VITE_MAPTILER_KEY` and `VITE_MAPTILER_STYLE`** — MapTiler vector tiles rendered by MapLibre GL. OpenStreetMap's `name:en` tags give English street names in Chinese cities (~94% coverage in central Shanghai).
+- **Without them** — CARTO Positron raster tiles: no account needed, but street names appear in Chinese.
+
+MapTiler serves raster tiles only for its own stock styles; a *custom* style —
+which is what carries the English label setting — is vector-only, which is why
+MapLibre is involved. MapLibre is loaded with a dynamic `import()` so its ~1 MB
+stays out of the initial bundle.
+
+`maplibre-gl` is pinned to **v5** deliberately. In v6 the tile-parsing worker is
+a separate `.mjs` loaded through `new URL(..., import.meta.url)`; Vite's
+pre-bundling rewrites that to a path the dev server does not serve, the request
+404s, and the map renders as an empty background **with no error logged**. v5
+inlines the worker. Do not upgrade without re-testing the map end to end.
+
+---
 
 ## Project structure
 
 ```
 src/
   components/
-    Auth/ProtectedRoute.jsx      redirects unauthenticated users to /login
-    Csv/CsvImportExport.jsx      import/export buttons + CSV parsing feedback
-    Factory/FactoryForm.jsx      create/edit form (validates lat/lng)
-    Factory/FactoryList.jsx      sidebar list of factories
-    Factory/SearchFilter.jsx     search box + province dropdown
-    Layout/Navbar.jsx            top bar with user email, role badge, sign out
-    Map/FactoryMap.jsx           Leaflet map, markers, click-to-add handler
-    common/Modal.jsx             generic modal used for the factory form
-  context/AuthContext.jsx        Supabase auth session + profile (role) state
-  hooks/useFactories.js          fetch/create/update/delete + realtime subscription
-  lib/csv.js                     CSV export/import helpers (PapaParse)
-  lib/supabaseClient.js          Supabase client, reads env vars
-  pages/LoginPage.jsx, SignupPage.jsx, MapPage.jsx
-supabase/schema.sql              tables, triggers, RLS policies
+    Admin/CreateAccountForm.jsx    admin-only account creation form
+    Auth/ProtectedRoute.jsx        auth + profile + admin route guard
+    Csv/CsvImportExport.jsx        factory CSV import/export
+    Factory/                       factory form, list, search & filter
+    Layout/AppLayout.jsx           sidebar shell + mobile drawer
+    Layout/LanguageSwitcher.jsx    text-only EN/ES selector
+    Layout/LanguageSync.jsx        mirrors language choice to the profile
+    Map/BaseTileLayer.jsx          basemap selection + fallback
+    Map/FactoryMap.jsx             factory markers
+    Map/PortMap.jsx                FOB port markers
+    common/Modal.jsx, FullScreenMessage.jsx
+  context/AuthContext.jsx          session, profile, role, profile updates
+  hooks/useFactories.js            factory CRUD + realtime
+  hooks/useProfiles.js             directory reads
+  i18n/                            en.js, es.js, provider
+  lib/constants.js                 departments, roles, profile helpers
+  lib/ports.js                     FOB port dataset
+  lib/csv.js, supabaseClient.js
+  pages/                           Login, ProfileSetup, Factories, People, Ports, AdminAccounts
+supabase/
+  schema.sql                       tables, RLS, triggers (idempotent)
+  functions/admin-create-user/     server-side account creation
 ```
-
-## Prerequisites
-
-- Node.js 18+
-- A free [Supabase](https://supabase.com) project
-
-## 1. Database setup
-
-1. Create a new Supabase project.
-2. Open the SQL editor and run the contents of [`supabase/schema.sql`](supabase/schema.sql). This creates:
-   - `profiles` — one row per user, with a `role` of `admin` or `business_user` (defaults to `business_user`, auto-created on signup via trigger).
-   - `factories` — the factory records, with a `created_by` column and `latitude`/`longitude` `check` constraints.
-   - Row Level Security policies so that `business_user` accounts only see/edit/delete rows they created, while `admin` accounts see/edit/delete everything.
-3. Promote your own account to admin after signing up once in the app:
-   ```sql
-   update public.profiles set role = 'admin' where email = 'you@example.com';
-   ```
-   New accounts cannot self-promote — this is intentional and must be done via the SQL editor (or the Supabase dashboard) by someone with database access.
-4. In Supabase → Project Settings → API, copy the **Project URL** and **anon public key**.
-
-## 2. App setup
-
-```bash
-npm install
-cp .env.example .env
-```
-
-Fill in `.env`:
-
-```
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-```
-
-Run locally:
-
-```bash
-npm run dev
-```
-
-Sign up in the app, then (optionally) promote yourself to admin using the SQL command above.
-
-## CSV import/export
-
-Export writes the currently filtered list to `factories.csv`. Import expects a header row with these columns (see [`sample-factories.csv`](sample-factories.csv) for an example):
-
-```
-name,address,city,province,latitude,longitude,contact_person,phone,products,capacity,notes
-```
-
-- `name`, `latitude`, `longitude` are required; rows missing them or with a non-numeric coordinate are skipped and reported.
-- Imported rows are created under the signed-in user's account (`created_by`), so RLS still applies — a `business_user` importing a CSV only ever creates rows they themselves own.
-
-## China map coordinates
-
-This app uses **Leaflet** with raster tiles, so factory coordinates are stored and displayed as standard **WGS-84** latitude/longitude — no conversion needed.
-
-If you later switch to **AMap (Gaode)** or **Baidu Maps**, note that both use the **GCJ-02** ("Mars Coordinate System") offset used within mainland China, not raw WGS-84 — you'd need to convert coordinates (WGS-84 → GCJ-02) before plotting them, and back again if re-exporting. `VITE_AMAP_KEY` is reserved in `.env.example` for that swap; the current codebase doesn't use it since it renders with Leaflet.
-
-Never use Google Maps for this project — it isn't reliably available inside mainland China.
-
-## Map labels (English street names)
-
-The basemap is selected in [`src/components/Map/BaseTileLayer.jsx`](src/components/Map/BaseTileLayer.jsx):
-
-- **With `VITE_MAPTILER_KEY` set** — MapTiler tiles are used. MapTiler can render OpenStreetMap's `name:en` tags, and coverage in Chinese cities is good (~94% of named roads in central Shanghai carry an English name), so streets appear as "Century Avenue", "Middle Jinling Road", etc.
-- **Without a key** — falls back to **CARTO Positron**, which needs no account but labels streets in Chinese.
-
-To enable English labels:
-
-1. Create a free account at [maptiler.com](https://www.maptiler.com) and copy your API key.
-2. In MapTiler Cloud, open a style (e.g. Streets), choose **Customize**, set the label **Language** to English, and publish it. Copy the resulting style id.
-3. Set both variables — locally in `.env`, and in your Vercel/Netlify project settings for production:
-   ```
-   VITE_MAPTILER_KEY=your-key
-   VITE_MAPTILER_STYLE=your-english-style-id
-   ```
-
-Note that a handful of minor roads have no `name:en` in OpenStreetMap and will still render in Chinese.
-
-### Why the basemap is rendered with MapLibre
-
-MapTiler serves pre-rendered **raster** tiles only for its own stock styles; a
-**custom** style (which is what carries the English label setting) returns HTTP 403
-on the raster endpoint and is available as **vector** tiles instead. So the basemap is
-drawn client-side by [MapLibre GL](https://maplibre.org), bridged into Leaflet with
-`@maplibre/maplibre-gl-leaflet`. All markers, popups and click-to-add behaviour remain
-plain Leaflet — only the basemap layer differs.
-
-MapLibre is ~1 MB, so it is loaded with a dynamic `import()` and Vite emits it as a
-separate chunk; it is fetched only when the map mounts, and never at all when the
-CARTO fallback is in use.
-
-`maplibre-gl` is pinned to **v5** on purpose. In v6 the tile-parsing worker is a
-separate `maplibre-gl-worker.mjs` file loaded through `new URL(..., import.meta.url)`;
-Vite's dependency pre-bundling rewrites that to a path the dev server does not serve,
-the request 404s, and the basemap renders as an empty background **with no error
-logged** — which makes it a slow bug to diagnose. v5 inlines the worker as a blob, so
-it is unaffected. Do not upgrade to v6 without re-testing the map end to end.
-
-If the basemap ever fails to initialise, `BaseTileLayer` catches it and falls back to
-the CARTO raster tiles, so a broken vector basemap can never leave a blank map.
-
-Because Vite inlines `VITE_*` variables at **build** time, the key must be present in
-the deployment environment *before* the build runs — adding it to Vercel afterwards
-requires a redeploy to take effect. A MapTiler key used from a browser is necessarily
-public; restrict it by allowed origin in the MapTiler dashboard.
-
-Tile providers evaluated and rejected for this use case: raw **OpenStreetMap** and **Esri World Street Map** both label Chinese streets in Chinese, and Esri additionally serves no tiles above zoom 13 in mainland Chinese cities.
-
-## Roles & permissions
-
-| Role | Can view | Can create | Can edit / delete |
-|---|---|---|---|
-| `admin` | all factories | yes | any factory |
-| `business_user` | only factories they created | yes | only their own factories |
-
-Enforcement happens at two levels:
-1. **UI** — edit/delete controls are hidden for factories a `business_user` doesn't own.
-2. **Database (RLS)** — Postgres row-level security policies in `schema.sql` enforce the same rules independent of the client, so the restriction holds even if the UI is bypassed.
 
 ## Deployment
 
-### Vercel
-1. Import the repo in Vercel (framework preset: Vite).
-2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as environment variables.
-3. Deploy. `vercel.json` handles SPA routing (all paths rewrite to `index.html`).
-
-### Netlify
-1. Import the repo (`netlify.toml` already sets build command `npm run build` and publish dir `dist`, plus the SPA redirect).
-2. Add the same two environment variables under Site settings → Environment variables.
-3. Deploy.
-
-## Notes
-
-- Realtime: the map/list auto-refresh when any factory row changes (insert/update/delete), via a Supabase Realtime subscription — useful when multiple users are editing concurrently.
-- Mobile: the sidebar collapses behind a menu button below the `md` breakpoint; the map and modals are fully usable on small screens.
+Push to `master`; Vercel builds and deploys automatically. Environment variables
+live in **Settings → Environment Variables** and require a redeploy to take
+effect, because Vite inlines them at build time.

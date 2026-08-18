@@ -1,19 +1,25 @@
+import { useI18n } from '../../i18n'
+
 export default function SearchFilter({ query, onQueryChange, province, onProvinceChange, provinces }) {
+  const { t } = useI18n()
+
   return (
-    <div className="space-y-2 border-b p-4">
+    <div className="space-y-2.5 border-b border-line p-4">
       <input
-        type="text"
-        placeholder="Search by name, city, product..."
+        type="search"
+        placeholder={t('factories.searchPlaceholder')}
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
-        className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        aria-label={t('common.search')}
+        className="input text-[14px]"
       />
       <select
         value={province}
         onChange={(e) => onProvinceChange(e.target.value)}
-        className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        aria-label={t('factories.province')}
+        className="select text-[14px]"
       >
-        <option value="">All provinces</option>
+        <option value="">{t('factories.allProvinces')}</option>
         {provinces.map((p) => (
           <option key={p} value={p}>
             {p}

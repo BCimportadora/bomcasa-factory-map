@@ -1,0 +1,55 @@
+import { useEffect } from 'react'
+import { MapContainer, CircleMarker, Tooltip, useMap } from 'react-leaflet'
+import BaseTileLayer from './BaseTileLayer'
+
+const CHINA_CENTER = [30.5, 118.0]
+const CHINA_ZOOM = 4
+
+function FlyToPort({ port }) {
+  const map = useMap()
+  useEffect(() => {
+    if (port) map.flyTo([port.latitude, port.longitude], 8, { duration: 0.8 })
+  }, [port, map])
+  return null
+}
+
+/**
+ * Ports are drawn as circle markers rather than pins: there are only a handful
+ * of them and the flat dot keeps the map calm and readable at country zoom.
+ */
+export default function PortMap({ ports, selectedPort, onSelect }) {
+  return (
+    <MapContainer
+      center={CHINA_CENTER}
+      zoom={CHINA_ZOOM}
+      scrollWheelZoom
+      className="h-full w-full"
+      style={{ background: '#fafafa' }}
+    >
+      <BaseTileLayer />
+      <FlyToPort port={selectedPort} />
+
+      {ports.map((port) => {
+        const isSelected = selectedPort?.id === port.id
+        return (
+          <CircleMarker
+            key={port.id}
+            center={[port.latitude, port.longitude]}
+            radius={isSelected ? 10 : 7}
+            pathOptions={{
+              color: '#ffffff',
+              weight: 2,
+              fillColor: isSelected ? '#0071e3' : '#171717',
+              fillOpacity: 1,
+            }}
+            eventHandlers={{ click: () => onSelect(port) }}
+          >
+            <Tooltip direction="top" offset={[0, -8]} opacity={1}>
+              <span className="text-[13px] font-medium">{port.name}</span>
+            </Tooltip>
+          </CircleMarker>
+        )
+      })}
+    </MapContainer>
+  )
+}

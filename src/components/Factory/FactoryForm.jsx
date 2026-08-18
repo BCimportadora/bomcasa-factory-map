@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useI18n } from '../../i18n'
 
 const emptyFactory = {
   name: '',
@@ -15,6 +16,7 @@ const emptyFactory = {
 }
 
 export default function FactoryForm({ initialValues, onSubmit, onCancel, submitting }) {
+  const { t } = useI18n()
   const [values, setValues] = useState({ ...emptyFactory, ...initialValues })
   const [formError, setFormError] = useState('')
 
@@ -28,73 +30,87 @@ export default function FactoryForm({ initialValues, onSubmit, onCancel, submitt
     setFormError('')
     const lat = parseFloat(values.latitude)
     const lng = parseFloat(values.longitude)
+
     if (!values.name.trim()) {
-      setFormError('Name is required.')
+      setFormError(t('factories.nameRequired'))
       return
     }
     if (Number.isNaN(lat) || lat < -90 || lat > 90) {
-      setFormError('Latitude must be a number between -90 and 90.')
+      setFormError(t('factories.latitudeInvalid'))
       return
     }
     if (Number.isNaN(lng) || lng < -180 || lng > 180) {
-      setFormError('Longitude must be a number between -180 and 180.')
+      setFormError(t('factories.longitudeInvalid'))
       return
     }
     onSubmit({ ...values, latitude: lat, longitude: lng })
   }
 
-  const field = (label, name, props = {}) => (
-    <label className="block text-sm">
-      <span className="mb-1 block font-medium text-gray-700">{label}</span>
+  const field = (name, labelKey, props = {}) => (
+    <div>
+      <label htmlFor={name} className="label">
+        {t(labelKey)}
+      </label>
       <input
+        id={name}
         name={name}
         value={values[name]}
         onChange={handleChange}
-        className="w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
+        className="input text-[14px]"
         {...props}
       />
-    </label>
+    </div>
   )
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      {formError && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>}
-      {field('Factory name *', 'name', { required: true })}
-      {field('Address', 'address')}
-      <div className="grid grid-cols-2 gap-3">
-        {field('City', 'city')}
-        {field('Province', 'province')}
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      {formError && (
+        <p role="alert" className="alert-error">
+          {formError}
+        </p>
+      )}
+
+      {field('name', 'factories.name', { required: true, autoFocus: true })}
+      {field('address', 'factories.address')}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {field('city', 'factories.city')}
+        {field('province', 'factories.province')}
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        {field('Latitude *', 'latitude', { required: true, inputMode: 'decimal' })}
-        {field('Longitude *', 'longitude', { required: true, inputMode: 'decimal' })}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {field('latitude', 'factories.latitude', { required: true, inputMode: 'decimal' })}
+        {field('longitude', 'factories.longitude', { required: true, inputMode: 'decimal' })}
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        {field('Contact person', 'contact_person')}
-        {field('Phone', 'phone')}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {field('contact_person', 'factories.contactPerson')}
+        {field('phone', 'factories.phone', { type: 'tel' })}
       </div>
-      {field('Products', 'products')}
-      {field('Capacity', 'capacity')}
-      <label className="block text-sm">
-        <span className="mb-1 block font-medium text-gray-700">Notes</span>
+
+      {field('products', 'factories.products')}
+      {field('capacity', 'factories.capacity')}
+
+      <div>
+        <label htmlFor="notes" className="label">
+          {t('factories.notes')}
+        </label>
         <textarea
+          id="notes"
           name="notes"
           value={values.notes}
           onChange={handleChange}
           rows={3}
-          className="w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
+          className="textarea text-[14px]"
         />
-      </label>
-      <div className="flex justify-end gap-2 pt-2">
-        <button type="button" onClick={onCancel} className="rounded px-4 py-2 text-gray-600 hover:bg-gray-100">
-          Cancel
+      </div>
+
+      <div className="flex justify-end gap-2 pt-1">
+        <button type="button" onClick={onCancel} className="btn-secondary">
+          {t('common.cancel')}
         </button>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {submitting ? 'Saving...' : 'Save factory'}
+        <button type="submit" disabled={submitting} className="btn-primary">
+          {submitting ? t('common.saving') : t('common.save')}
         </button>
       </div>
     </form>

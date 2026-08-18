@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { MapContainer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import BaseTileLayer from './BaseTileLayer'
+import { useI18n } from '../../i18n'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
@@ -35,6 +36,8 @@ function FlyToFactory({ target }) {
 }
 
 export default function FactoryMap({ factories, onMapClick, flyToTarget, onEdit, onDelete, canManage }) {
+  const { t } = useI18n()
+
   return (
     <MapContainer center={CHINA_CENTER} zoom={CHINA_ZOOM} className="h-full w-full">
       <BaseTileLayer />
@@ -43,31 +46,39 @@ export default function FactoryMap({ factories, onMapClick, flyToTarget, onEdit,
       {factories.map((f) => (
         <Marker key={f.id} position={[f.latitude, f.longitude]}>
           <Popup>
-            <div className="min-w-[180px] space-y-1">
-              <p className="font-semibold">{f.name}</p>
-              <p className="text-sm text-gray-600">{[f.city, f.province].filter(Boolean).join(', ')}</p>
+            <div className="min-w-[190px] space-y-1.5">
+              <p className="text-[14px] font-semibold text-ink">{f.name}</p>
+              <p className="text-[13px] text-muted">
+                {[f.city, f.province].filter(Boolean).join(', ')}
+              </p>
               {f.products && (
-                <p className="text-sm">
-                  <span className="font-medium">Products:</span> {f.products}
+                <p className="text-[13px]">
+                  <span className="font-medium">{t('factories.products')}:</span> {f.products}
                 </p>
               )}
               {f.contact_person && (
-                <p className="text-sm">
-                  <span className="font-medium">Contact:</span> {f.contact_person}
+                <p className="text-[13px]">
+                  <span className="font-medium">{t('factories.contactPerson')}:</span> {f.contact_person}
                 </p>
               )}
               {f.phone && (
-                <p className="text-sm">
-                  <span className="font-medium">Phone:</span> {f.phone}
+                <p className="text-[13px]">
+                  <span className="font-medium">{t('factories.phone')}:</span> {f.phone}
                 </p>
               )}
               {canManage(f) && (
-                <div className="flex gap-2 pt-1">
-                  <button onClick={() => onEdit(f)} className="text-sm text-blue-600 hover:underline">
-                    Edit
+                <div className="flex gap-3 pt-1">
+                  <button
+                    onClick={() => onEdit(f)}
+                    className="text-[13px] font-medium text-accent hover:underline"
+                  >
+                    {t('common.edit')}
                   </button>
-                  <button onClick={() => onDelete(f)} className="text-sm text-red-600 hover:underline">
-                    Delete
+                  <button
+                    onClick={() => onDelete(f)}
+                    className="text-[13px] font-medium text-danger hover:underline"
+                  >
+                    {t('common.delete')}
                   </button>
                 </div>
               )}

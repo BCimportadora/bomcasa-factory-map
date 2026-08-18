@@ -1,24 +1,30 @@
+import { useI18n } from '../../i18n'
+
 export default function FactoryList({ factories, onSelect, onEdit, onDelete, canManage }) {
+  const { t } = useI18n()
+
   if (factories.length === 0) {
-    return <p className="px-4 py-6 text-center text-sm text-gray-500">No factories found.</p>
+    return <p className="px-5 py-8 text-center text-[14px] text-muted">{t('factories.empty')}</p>
   }
 
   return (
-    <ul className="divide-y divide-gray-100">
+    <ul className="divide-y divide-line">
       {factories.map((f) => (
-        <li key={f.id} className="px-4 py-3 hover:bg-gray-50">
+        <li key={f.id} className="group px-4 py-3 transition-colors hover:bg-canvas">
           <button onClick={() => onSelect(f)} className="block w-full text-left">
-            <p className="font-medium text-gray-800">{f.name}</p>
-            <p className="text-sm text-gray-500">{[f.city, f.province].filter(Boolean).join(', ') || '—'}</p>
-            {f.products && <p className="truncate text-xs text-gray-400">{f.products}</p>}
+            <p className="truncate text-[14px] font-medium text-ink">{f.name}</p>
+            <p className="truncate text-[13px] text-muted">
+              {[f.city, f.province].filter(Boolean).join(', ') || t('common.none')}
+            </p>
+            {f.products && <p className="truncate text-[12px] text-muted/80">{f.products}</p>}
           </button>
           {canManage(f) && (
-            <div className="mt-1 flex gap-3">
-              <button onClick={() => onEdit(f)} className="text-xs text-blue-600 hover:underline">
-                Edit
+            <div className="mt-1.5 flex gap-3 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+              <button onClick={() => onEdit(f)} className="text-[12px] font-medium text-accent hover:underline">
+                {t('common.edit')}
               </button>
-              <button onClick={() => onDelete(f)} className="text-xs text-red-600 hover:underline">
-                Delete
+              <button onClick={() => onDelete(f)} className="text-[12px] font-medium text-danger hover:underline">
+                {t('common.delete')}
               </button>
             </div>
           )}

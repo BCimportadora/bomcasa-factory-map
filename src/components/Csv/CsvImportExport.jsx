@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react'
+import { Download, Upload } from 'lucide-react'
 import { exportFactoriesToCsv, parseFactoriesCsv } from '../../lib/csv'
+import { useI18n } from '../../i18n'
 
 export default function CsvImportExport({ factories, onImport }) {
+  const { t } = useI18n()
   const fileInputRef = useRef(null)
   const [importing, setImporting] = useState(false)
   const [message, setMessage] = useState('')
@@ -15,12 +18,13 @@ export default function CsvImportExport({ factories, onImport }) {
       const { rows, errors } = await parseFactoriesCsv(file)
       const invalidRowNumbers = new Set(errors.map((err) => parseInt(err.match(/^Row (\d+):/)[1], 10)))
       const validRows = rows.filter((_, i) => !invalidRowNumbers.has(i + 2))
-      if (validRows.length > 0) {
-        await onImport(validRows)
-      }
-      setMessage(`Imported ${validRows.length} of ${rows.length} rows.` + (errors.length ? ` ${errors.length} skipped.` : ''))
+      if (validRows.length > 0) await onImport(validRows)
+
+      const summary = t('csv.importResult', { imported: validRows.length, total: rows.length })
+      const skipped = errors.length ? ` ${t('csv.importSkipped', { count: errors.length })}` : ''
+      setMessage(summary + skipped)
     } catch (err) {
-      setMessage(`Import failed: ${err.message}`)
+      setMessage(t('csv.importError', { message: err.message }))
     } finally {
       setImporting(false)
       e.target.value = ''
@@ -28,24 +32,28 @@ export default function CsvImportExport({ factories, onImport }) {
   }
 
   return (
-    <div className="space-y-2 border-b p-4">
+    <div className="space-y-2 border-b border-line p-4">
       <div className="flex gap-2">
         <button
+          type="button"
           onClick={() => exportFactoriesToCsv(factories)}
-          className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50"
+          className="btn-secondary btn-sm flex-1"
         >
-          Export CSV
+          <Download size={14} />
+          {t('csv.export')}
         </button>
         <button
+          type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={importing}
-          className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+          className="btn-secondary btn-sm flex-1"
         >
-          {importing ? 'Importing...' : 'Import CSV'}
+          <Upload size={14} />
+          {importing ? t('csv.importing') : t('csv.import')}
         </button>
         <input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileChange} className="hidden" />
       </div>
-      {message && <p className="text-xs text-gray-500">{message}</p>}
+      {message && <p className="hint">{message}</p>}
     </div>
   )
 }

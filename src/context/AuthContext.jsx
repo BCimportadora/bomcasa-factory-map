@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { isProfileComplete } from '../lib/constants'
 
 const AuthContext = createContext(null)
 
@@ -11,25 +12,26 @@ export function AuthProvider({ children }) {
   const loadProfile = useCallback(async (userId) => {
     if (!userId) {
       setProfile(null)
-      return
+      return null
     }
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
     if (error) {
       console.error('Failed to load profile:', error.message)
       setProfile(null)
-    } else {
-      setProfile(data)
+      return null
     }
+    setProfile(data)
+    return data
   }, [])
 
   useEffect(() => {
     let mounted = true
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!mounted) return
       setUser(session?.user ?? null)
-      if (session?.user) loadProfile(session.user.id)
-      setLoading(false)
+      if (session?.user) await loadProfile(session.user.id)
+      if (mounted) setLoading(false)
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -47,21 +49,56 @@ export function AuthProvider({ children }) {
     }
   }, [loadProfile])
 
-  const signIn = (email, password) => supabase.auth.signInWithPassword({ email, password })
+  const signIn = useCallback((email, password) => supabase.auth.signInWithPassword({ email, password }), [])
 
-  const signUp = (email, password) => supabase.auth.signUp({ email, password })
+  const signOut = useCallback(() => supabase.auth.signOut(), [])
 
-  const signOut = () => supabase.auth.signOut()
+  /**
+   * Update the signed-in user's own profile.
+   *
+   * Only the fields a person is allowed to change are sent. `role` is never
+   * included: the database also rejects role changes from non-admins, so this
+   * is defence in depth rather than the only guard.
+   */
+  const updateOwnProfile = useCallback(
+    async ({ first_name, last_name, department, language }) => {
+      if (!user) throw new Error('Not signed in')
+      const patch = {}
+      if (first_name !== undefined) patch.first_name = first_name.trim()
+      if (last_name !== undefined) patch.last_name = last_name.trim()
+      if (department !== undefined) patch.department = department
+      if (language !== undefined) patch.language = language
 
-  const value = {
-    user,
-    profile,
-    loading,
-    isAdmin: profile?.role === 'admin',
-    signIn,
-    signUp,
-    signOut,
-  }
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(patch)
+        .eq('id', user.id)
+        .select()
+        .single()
+
+      if (error) throw error
+      setProfile(data)
+      return data
+    },
+    [user],
+  )
+
+  const refreshProfile = useCallback(() => loadProfile(user?.id), [loadProfile, user])
+
+  const value = useMemo(
+    () => ({
+      user,
+      profile,
+      loading,
+      isAdmin: profile?.role === 'admin',
+      profileComplete: isProfileComplete(profile),
+      signIn,
+      signOut,
+      updateOwnProfile,
+      refreshProfile,
+    }),
+    [user, profile, loading, signIn, signOut, updateOwnProfile, refreshProfile],
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
