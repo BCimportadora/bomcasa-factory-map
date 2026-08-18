@@ -109,6 +109,24 @@ To enable English labels:
 
 Note that a handful of minor roads have no `name:en` in OpenStreetMap and will still render in Chinese.
 
+### Why the basemap is rendered with MapLibre
+
+MapTiler serves pre-rendered **raster** tiles only for its own stock styles; a
+**custom** style (which is what carries the English label setting) returns HTTP 403
+on the raster endpoint and is available as **vector** tiles instead. So the basemap is
+drawn client-side by [MapLibre GL](https://maplibre.org), bridged into Leaflet with
+`@maplibre/maplibre-gl-leaflet`. All markers, popups and click-to-add behaviour remain
+plain Leaflet — only the basemap layer differs.
+
+MapLibre is ~1 MB, so it is loaded with a dynamic `import()` and Vite emits it as a
+separate chunk; it is fetched only when the map mounts, and never at all when the
+CARTO fallback is in use.
+
+Because Vite inlines `VITE_*` variables at **build** time, the key must be present in
+the deployment environment *before* the build runs — adding it to Vercel afterwards
+requires a redeploy to take effect. A MapTiler key used from a browser is necessarily
+public; restrict it by allowed origin in the MapTiler dashboard.
+
 Tile providers evaluated and rejected for this use case: raw **OpenStreetMap** and **Esri World Street Map** both label Chinese streets in Chinese, and Esri additionally serves no tiles above zoom 13 in mainland Chinese cities.
 
 ## Roles & permissions
