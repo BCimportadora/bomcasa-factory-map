@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -38,6 +38,21 @@ function MapLibreLayer({ styleUrl, onFailure }) {
     let layer
     let cancelled = false
 
+    /**
+     * The Leaflet bridge resizes its own wrapper element when the map resizes
+     * but never calls resize() on the MapLibre map, and MapLibre only re-reads
+     * its container on an explicit resize or a window resize. Without this the
+     * GL canvas keeps its old width after the factory panel collapses, leaving
+     * a strip of the map undrawn. The rAF lets the bridge set the container
+     * size first, so MapLibre measures the new box.
+     */
+    const handleResize = () => {
+      requestAnimationFrame(() => {
+        const glMap = layer?.getMaplibreMap?.()
+        if (glMap) glMap.resize()
+      })
+    }
+
     async function addLayer() {
       try {
         // maplibre-gl v5 ships UMD, so Vite's interop puts the library on `default`;
@@ -56,6 +71,7 @@ function MapLibreLayer({ styleUrl, onFailure }) {
 
         layer = L.maplibreGL({ style: styleUrl, attribution: MAPTILER_ATTRIBUTION })
         layer.addTo(map)
+        map.on('resize', handleResize)
       } catch (err) {
         console.error('MapTiler basemap failed to load, falling back to CARTO tiles:', err)
         if (!cancelled) onFailure()
@@ -66,6 +82,7 @@ function MapLibreLayer({ styleUrl, onFailure }) {
 
     return () => {
       cancelled = true
+      map.off('resize', handleResize)
       if (layer) map.removeLayer(layer)
     }
   }, [map, styleUrl, onFailure])
@@ -84,9 +101,14 @@ function MapLibreLayer({ styleUrl, onFailure }) {
 export default function BaseTileLayer() {
   const [maptilerFailed, setMaptilerFailed] = useState(false)
 
+  // Stable identity: this is an effect dependency in MapLibreLayer, and an
+  // inline arrow would tear down and rebuild the whole GL map on every render
+  // of the surrounding page — including every time the factory panel toggles.
+  const handleFailure = useCallback(() => setMaptilerFailed(true), [])
+
   const useMaptiler = MAPTILER_KEY && MAPTILER_STYLE && !maptilerFailed
   if (!useMaptiler) return <CartoTileLayer />
 
   const styleUrl = `https://api.maptiler.com/maps/${MAPTILER_STYLE}/style.json?key=${MAPTILER_KEY}`
-  return <MapLibreLayer styleUrl={styleUrl} onFailure={() => setMaptilerFailed(true)} />
+  return <MapLibreLayer styleUrl={styleUrl} onFailure={handleFailure} />
 }

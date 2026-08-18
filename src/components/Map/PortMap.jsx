@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
-import { MapContainer, CircleMarker, Tooltip, useMap } from 'react-leaflet'
+import { MapContainer, CircleMarker, Tooltip, ZoomControl, useMap } from 'react-leaflet'
 import BaseTileLayer from './BaseTileLayer'
+import AutoResize from './AutoResize'
 
 const CHINA_CENTER = [30.5, 118.0]
 const CHINA_ZOOM = 4
@@ -25,8 +26,12 @@ export default function PortMap({ ports, selectedPort, onSelect }) {
       scrollWheelZoom
       className="h-full w-full"
       style={{ background: '#fafafa' }}
+      zoomControl={false}
     >
+      {/* Matches the factory map so the controls sit in the same place. */}
+      <ZoomControl position="topright" />
       <BaseTileLayer />
+      <AutoResize />
       <FlyToPort port={selectedPort} />
 
       {ports.map((port) => {

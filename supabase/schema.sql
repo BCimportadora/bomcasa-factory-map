@@ -181,11 +181,15 @@ create index if not exists factories_city_idx on public.factories(city);
 
 alter table public.factories enable row level security;
 
+-- Every signed-in user can read the whole factory list: the directory of
+-- suppliers is shared company knowledge. Creating and editing stay restricted
+-- to the owner (or an admin) by the policies below.
 drop policy if exists "Admins see all factories, business users see their own" on public.factories;
-create policy "Admins see all factories, business users see their own"
+drop policy if exists "Authenticated users can view all factories" on public.factories;
+create policy "Authenticated users can view all factories"
   on public.factories for select
   to authenticated
-  using (created_by = auth.uid() or public.is_admin());
+  using (true);
 
 drop policy if exists "Authenticated users insert their own factories" on public.factories;
 create policy "Authenticated users insert their own factories"

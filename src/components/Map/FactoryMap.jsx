@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
-import { MapContainer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet'
+import { MapContainer, Marker, Popup, ZoomControl, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import BaseTileLayer from './BaseTileLayer'
+import AutoResize from './AutoResize'
 import { useI18n } from '../../i18n'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
@@ -35,12 +36,30 @@ function FlyToFactory({ target }) {
   return null
 }
 
-export default function FactoryMap({ factories, onMapClick, flyToTarget, onEdit, onDelete, canManage }) {
+export default function FactoryMap({
+  factories,
+  onMapClick,
+  flyToTarget,
+  onEdit,
+  onDelete,
+  canManage,
+  /** Changes whenever the page resizes the map's box, e.g. the panel collapsing. */
+  layoutKey,
+}) {
   const { t } = useI18n()
 
   return (
-    <MapContainer center={CHINA_CENTER} zoom={CHINA_ZOOM} className="h-full w-full">
+    <MapContainer
+      center={CHINA_CENTER}
+      zoom={CHINA_ZOOM}
+      className="h-full w-full"
+      /* The default top-left zoom control would sit under the panel toggle, so
+         it is placed explicitly on the opposite side. */
+      zoomControl={false}
+    >
+      <ZoomControl position="topright" />
       <BaseTileLayer />
+      <AutoResize watch={layoutKey} />
       <ClickHandler onMapClick={onMapClick} />
       <FlyToFactory target={flyToTarget} />
       {factories.map((f) => (

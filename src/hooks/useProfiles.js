@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabaseClient'
  * readable; this select list additionally keeps data the UI does not need (such
  * as email) out of the client for ordinary directory use.
  */
-const DIRECTORY_COLUMNS = 'id, first_name, last_name, department, role, created_at'
+const DIRECTORY_COLUMNS = 'id, first_name, last_name, department, role, created_at, updated_at'
 
 export function useProfiles({ includeEmail = false } = {}) {
   const [profiles, setProfiles] = useState([])

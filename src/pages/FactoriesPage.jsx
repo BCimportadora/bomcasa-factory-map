@@ -94,52 +94,86 @@ export default function FactoriesPage() {
   }
 
   return (
-    <div className="relative flex h-full">
-      <aside
-        className={`absolute inset-y-0 left-0 z-[1100] flex w-80 max-w-[85vw] flex-col border-r border-line bg-surface transition-transform duration-200 md:relative md:w-80 md:max-w-none ${
-          panelOpen ? 'translate-x-0' : '-translate-x-full md:hidden'
-        }`}
-      >
-        <div className="border-b border-line px-5 pb-3 pt-5">
-          <h1 className="text-[17px] font-semibold tracking-[-0.01em] text-ink">{t('factories.title')}</h1>
-          <p className="mt-0.5 text-[13px] text-muted">
-            {loading ? t('common.loading') : tCount('factories.count', filteredFactories.length)}
-          </p>
-        </div>
-
-        <SearchFilter
-          query={query}
-          onQueryChange={setQuery}
-          province={province}
-          onProvinceChange={setProvince}
-          provinces={provinces}
+    <div className="relative flex h-full overflow-hidden">
+      {/* Backdrop for the small-screen overlay; absent on md+ where the panel
+          is part of the flex flow. */}
+      {panelOpen && (
+        <div
+          className="absolute inset-0 z-[1050] bg-ink/20 md:hidden"
+          onClick={() => setPanelOpen(false)}
+          role="presentation"
         />
-        <CsvImportExport factories={filteredFactories} onImport={handleCsvImport} />
+      )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {error && <p className="alert-error m-4">{t('factories.loadError')}</p>}
-          {loading ? (
-            <p className="px-5 py-8 text-center text-[14px] text-muted">{t('factories.loading')}</p>
-          ) : (
-            <FactoryList
-              factories={filteredFactories}
-              onSelect={setFlyTarget}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              canManage={canManage}
-            />
-          )}
+      <aside
+        /* Below md the panel floats over the map. From md it is a real flex
+           child, and a flex item's size comes from flex-basis rather than
+           width — so collapsing it to a zero basis is what actually hands the
+           space back to the map. min-w-0 stops the default min-width:auto
+           holding it open at its content width. AutoResize then re-measures
+           the map. */
+        className={`absolute inset-y-0 left-0 z-[1100] flex w-80 min-w-0 max-w-[85vw] flex-col overflow-hidden border-r border-line bg-surface transition-transform duration-200 md:relative md:max-w-none ${
+          panelOpen ? 'translate-x-0' : '-translate-x-full md:border-r-0'
+        }`}
+        /* The desktop size is set inline rather than with a utility class: as a
+           flex item the panel is sized by flex-basis, and an inline value cannot
+           be outranked by the `w-80` needed for the mobile overlay. Below md the
+           panel is absolutely positioned, where flex has no effect. */
+        style={{ flex: panelOpen ? '0 0 20rem' : '0 0 0px' }}
+        aria-hidden={!panelOpen}
+      >
+        {/* Fixed width so the contents do not reflow while the panel animates. */}
+        <div className="flex h-full w-80 max-w-[85vw] flex-col md:max-w-none">
+          <div className="border-b border-line px-5 pb-3 pt-5">
+            <h1 className="text-[17px] font-semibold tracking-[-0.01em] text-ink">
+              {t('factories.title')}
+            </h1>
+            <p className="mt-0.5 text-[13px] text-muted">
+              {loading ? t('common.loading') : tCount('factories.count', filteredFactories.length)}
+            </p>
+          </div>
+
+          <SearchFilter
+            query={query}
+            onQueryChange={setQuery}
+            province={province}
+            onProvinceChange={setProvince}
+            provinces={provinces}
+          />
+          <CsvImportExport factories={filteredFactories} onImport={handleCsvImport} />
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {error && <p className="alert-error m-4">{t('factories.loadError')}</p>}
+            {loading ? (
+              <p className="px-5 py-8 text-center text-[14px] text-muted">{t('factories.loading')}</p>
+            ) : (
+              <FactoryList
+                factories={filteredFactories}
+                onSelect={setFlyTarget}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                canManage={canManage}
+              />
+            )}
+          </div>
         </div>
       </aside>
 
       <main className="relative min-w-0 flex-1">
+        {/* Top-left is reserved for this control; the map's zoom buttons are
+            pinned to the top-right so the two can never collide. */}
         <button
           type="button"
           onClick={() => setPanelOpen((o) => !o)}
-          aria-label={panelOpen ? t('nav.closeMenu') : t('nav.openMenu')}
-          className="absolute left-3 top-3 z-[1101] rounded-xl border border-line bg-surface p-2 text-muted shadow-subtle transition-colors hover:text-ink"
+          aria-expanded={panelOpen}
+          aria-label={panelOpen ? t('factories.hidePanel') : t('factories.showPanel')}
+          title={panelOpen ? t('factories.hidePanel') : t('factories.showPanel')}
+          className="absolute left-3 top-3 z-[1101] flex items-center gap-2 rounded-xl border border-line bg-surface/95 px-2.5 py-2 text-muted shadow-subtle backdrop-blur transition-colors hover:text-ink"
         >
           {panelOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}
+          {!panelOpen && (
+            <span className="text-[13px] font-medium">{t('factories.showPanelShort')}</span>
+          )}
         </button>
 
         <FactoryMap
@@ -149,6 +183,7 @@ export default function FactoriesPage() {
           onEdit={handleEdit}
           onDelete={handleDelete}
           canManage={canManage}
+          layoutKey={panelOpen}
         />
 
         <p className="pointer-events-none absolute bottom-4 left-1/2 z-[500] -translate-x-1/2 whitespace-nowrap rounded-full bg-surface/90 px-3.5 py-1.5 text-[12px] text-muted shadow-subtle backdrop-blur">

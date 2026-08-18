@@ -175,6 +175,9 @@ export default {
     addTitle: 'Añadir fábrica',
     editTitle: 'Editar fábrica',
     clickMapHint: 'Haz clic en cualquier punto del mapa para añadir una fábrica',
+    hidePanel: 'Ocultar la lista de fábricas',
+    showPanel: 'Mostrar la lista de fábricas',
+    showPanelShort: 'Fábricas',
     name: 'Nombre de la fábrica',
     address: 'Dirección',
     city: 'Ciudad',
@@ -242,6 +245,27 @@ export default {
       'La creación de cuentas no está disponible: la función admin-create-user aún no se ha desplegado en Supabase. Consulta el README para ver los pasos de despliegue.',
     accountsTitle: 'Cuentas',
     accountsCount: '{{count}} cuenta(s)',
+
+    viewProfile: 'Ver perfil',
+    profileTitle: 'Perfil de usuario',
+    actionsTitle: 'Acciones',
+    createdAt: 'Cuenta creada',
+    updatedAt: 'Última actualización',
+
+    deleteUser: 'Eliminar usuario',
+    deleteUserTitle: '¿Eliminar usuario?',
+    deleteUserMessage:
+      'Esta acción eliminará la cuenta de forma permanente y la persona perderá el acceso de inmediato. No se puede deshacer.',
+    deleted: 'Se ha eliminado la cuenta de {{email}}.',
+    deleteError: 'No pudimos eliminar esta cuenta.',
+    cannotDeleteSelf: 'No puedes eliminar tu propia cuenta.',
+    userNotFound: 'Esa cuenta ya no existe.',
+
+    resetPassword: 'Restablecer contraseña',
+    resetPasswordTitle: '¿Restablecer la contraseña?',
+    resetPasswordMessage:
+      'Se generará una nueva contraseña temporal para este usuario. Su contraseña actual dejará de funcionar de inmediato.',
+    passwordReset: 'Se ha establecido una nueva contraseña temporal para {{email}}.',
   },
 
   errors: {

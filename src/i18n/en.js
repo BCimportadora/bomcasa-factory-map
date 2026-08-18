@@ -174,6 +174,9 @@ export default {
     addTitle: 'Add factory',
     editTitle: 'Edit factory',
     clickMapHint: 'Click anywhere on the map to add a factory',
+    hidePanel: 'Hide the factory list',
+    showPanel: 'Show the factory list',
+    showPanelShort: 'Factories',
     name: 'Factory name',
     address: 'Address',
     city: 'City',
@@ -241,6 +244,27 @@ export default {
       'Account creation is not available: the admin-create-user function has not been deployed to Supabase yet. See the README for deployment steps.',
     accountsTitle: 'Accounts',
     accountsCount: '{{count}} account(s)',
+
+    viewProfile: 'View profile',
+    profileTitle: 'User profile',
+    actionsTitle: 'Actions',
+    createdAt: 'Account created',
+    updatedAt: 'Last updated',
+
+    deleteUser: 'Delete user',
+    deleteUserTitle: 'Delete user?',
+    deleteUserMessage:
+      'This will permanently remove this account and the person will lose access immediately. This cannot be undone.',
+    deleted: 'The account for {{email}} has been deleted.',
+    deleteError: 'We could not delete this account.',
+    cannotDeleteSelf: 'You cannot delete your own account.',
+    userNotFound: 'That account no longer exists.',
+
+    resetPassword: 'Reset password',
+    resetPasswordTitle: 'Reset password?',
+    resetPasswordMessage:
+      'A new temporary password will be generated for this user. Their current password will stop working immediately.',
+    passwordReset: 'A new temporary password has been set for {{email}}.',
   },
 
   errors: {
