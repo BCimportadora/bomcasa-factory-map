@@ -122,6 +122,16 @@ MapLibre is ~1 MB, so it is loaded with a dynamic `import()` and Vite emits it a
 separate chunk; it is fetched only when the map mounts, and never at all when the
 CARTO fallback is in use.
 
+`maplibre-gl` is pinned to **v5** on purpose. In v6 the tile-parsing worker is a
+separate `maplibre-gl-worker.mjs` file loaded through `new URL(..., import.meta.url)`;
+Vite's dependency pre-bundling rewrites that to a path the dev server does not serve,
+the request 404s, and the basemap renders as an empty background **with no error
+logged** — which makes it a slow bug to diagnose. v5 inlines the worker as a blob, so
+it is unaffected. Do not upgrade to v6 without re-testing the map end to end.
+
+If the basemap ever fails to initialise, `BaseTileLayer` catches it and falls back to
+the CARTO raster tiles, so a broken vector basemap can never leave a blank map.
+
 Because Vite inlines `VITE_*` variables at **build** time, the key must be present in
 the deployment environment *before* the build runs — adding it to Vercel afterwards
 requires a redeploy to take effect. A MapTiler key used from a browser is necessarily
