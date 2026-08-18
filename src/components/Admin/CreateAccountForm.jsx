@@ -7,7 +7,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const EMPTY = { email: '', first_name: '', last_name: '', department: '', role: 'business_user' }
 
-/** Map the Edge Function's error codes onto translated messages. */
+/** Map an error code onto a translated message. */
 function errorKeyFor(code) {
   switch (code) {
     case 'email_taken':
@@ -16,9 +16,38 @@ function errorKeyFor(code) {
       return 'errors.accessDeniedMessage'
     case 'not_deployed':
       return 'admin.notConfigured'
+    case 'network':
+      return 'errors.network'
     default:
       return 'admin.createError'
   }
+}
+
+/**
+ * Work out what actually went wrong.
+ *
+ * The HTTP status is the most reliable signal, so it is checked first: when the
+ * function has not been deployed Supabase answers 404 with {"code":"NOT_FOUND"},
+ * which carries no `error` field of ours. The response is cloned before reading
+ * so the body stays available to callers.
+ */
+async function resolveErrorCode(error) {
+  const status = error?.context?.status
+
+  if (status === 404) return 'not_deployed'
+  if (status === 403) return 'forbidden'
+  if (status === 409) return 'email_taken'
+  // No context at all means the request never completed (offline, DNS, CORS).
+  if (!error?.context) return 'network'
+
+  try {
+    const body = await error.context.clone().json()
+    if (body?.error) return body.error
+    if (body?.code === 'NOT_FOUND') return 'not_deployed'
+  } catch {
+    // Non-JSON body; fall through to the generic message.
+  }
+  return 'create_failed'
 }
 
 export default function CreateAccountForm({ onCreated, onCancel }) {
@@ -61,16 +90,7 @@ export default function CreateAccountForm({ onCreated, onCancel }) {
       })
 
       if (error) {
-        // The function returns a JSON body with a machine-readable code.
-        let code = 'create_failed'
-        try {
-          const body = await error.context?.json?.()
-          if (body?.error) code = body.error
-        } catch {
-          // A missing/undeployed function has no JSON body to read.
-          if (error.message?.includes('Failed to send')) code = 'not_deployed'
-        }
-        setFormError(t(errorKeyFor(code)))
+        setFormError(t(errorKeyFor(await resolveErrorCode(error))))
         return
       }
 
