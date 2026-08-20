@@ -20,15 +20,75 @@ export default {
   },
 
   nav: {
-    factories: 'Fábricas',
-    people: 'Personas',
-    ports: 'Puertos FOB',
+    home: 'Menú principal',
     administration: 'Administración',
     manageAccounts: 'Gestionar cuentas',
     settings: 'Configuración',
-    menu: 'Menú',
     openMenu: 'Abrir menú',
     closeMenu: 'Cerrar menú',
+  },
+
+  home: {
+    greeting: 'Bienvenido de nuevo',
+    greetingNamed: 'Bienvenido de nuevo, {{name}}',
+    subtitle: 'Todo lo de la plataforma, en un solo lugar.',
+    comingSoon: 'Próximamente',
+  },
+
+  sections: {
+    groups: {
+      maps: 'Mapas',
+      orders: 'Pedidos',
+      innovations: 'Innovaciones',
+      workspace: 'Espacio de trabajo',
+    },
+
+    factories: {
+      name: 'Mapa de fábricas',
+      short: 'Fábricas',
+      description: 'Ubica proveedores en toda China, con contactos, productos y capacidad.',
+    },
+    ports: {
+      name: 'Puertos FOB',
+      short: 'Puertos FOB',
+      description: 'Los principales puertos de exportación de China, sus terminales y coordenadas.',
+    },
+    ordersTodo: {
+      name: 'Pedidos por hacer',
+      short: 'Por hacer',
+      description: 'Pedidos ya realizados a la fábrica y todavía en producción.',
+    },
+    ordersInTransit: {
+      name: 'Pedidos listos y en tránsito',
+      short: 'Listos y en tránsito',
+      description: 'Pedidos terminados a la espera de embarque y envíos ya en camino.',
+    },
+    innovationsDevelopment: {
+      name: 'Innovaciones en desarrollo',
+      short: 'En desarrollo',
+      description: 'Productos nuevos en diseño, muestreo o pruebas con una fábrica.',
+    },
+    innovationsReady: {
+      name: 'Innovaciones listas para pedir',
+      short: 'Listas para pedir',
+      description: 'Productos que superaron el desarrollo y ya se pueden pedir.',
+    },
+    people: {
+      name: 'Personas',
+      short: 'Personas',
+      description: 'El directorio del equipo: quién hace qué y cómo contactarlo.',
+    },
+    suggestions: {
+      name: 'Sugerencias para la web',
+      short: 'Sugerencias',
+      description: 'Ideas y peticiones sobre cómo debería funcionar esta plataforma.',
+    },
+
+    placeholder: {
+      title: 'Sección aún no disponible',
+      body: 'Esta sección está prevista pero todavía no se ha construido. Se completará pronto: no falta nada ni hay ningún error.',
+      back: 'Volver al menú principal',
+    },
   },
 
   auth: {

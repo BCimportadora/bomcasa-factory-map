@@ -102,7 +102,7 @@ project has no test, lint or type-check setup.
 | Sign in | ✅ | ✅ |
 | People directory | ✅ | ✅ |
 | FOB Ports | ✅ | ✅ |
-| Factories | all | only their own |
+| Factories | view all, edit all | view all, edit only their own |
 | Create accounts | ✅ | ❌ |
 | Assign roles / departments | ✅ | ❌ |
 | Change own role | ❌ (only via SQL) | ❌ |
@@ -139,11 +139,21 @@ trusting anything in the request, and returns 401/403 before touching any data.
 
 ## Features
 
-### Factories
-The original factory map, unchanged in behaviour: click the map to add a
-factory, edit and delete, search and filter by name/city/province/product, and
-CSV import/export. Business users see only factories they created; admins see
-all.
+### Main menu (`/`)
+The first screen after signing in. Every section of the platform is shown as a
+tile — including the ones still being built, which are marked "Coming soon" and
+open a placeholder rather than a broken page.
+
+Sections are declared once in [`src/lib/sections.js`](src/lib/sections.js); the
+menu and the sidebar both render from that list, and routes for unbuilt sections
+are generated from it, so adding a section means editing one file plus the two
+translation bundles.
+
+### Factories (`/factories`)
+The factory map: click the map to add a factory, edit and delete, search and
+filter by name/city/province/product, and CSV import/export. Everyone can see
+every factory; business users can only edit and delete the ones they created,
+while admins can edit any.
 
 ### People (`/people`)
 Directory of everyone with access, showing name, department and role. Searchable
@@ -238,8 +248,11 @@ src/
   hooks/useProfiles.js             directory reads
   i18n/                            en.js, es.js, provider
   lib/constants.js                 departments, roles, profile helpers
+  lib/sections.js                  the app's sections — menu, sidebar and routes
   lib/ports.js                     FOB port dataset
   lib/csv.js, supabaseClient.js
+  pages/HomePage.jsx               the main menu
+  pages/SectionPlaceholder.jsx     stand-in for sections not built yet
   pages/                           Login, ProfileSetup, Factories, People, Ports, AdminAccounts
 supabase/
   schema.sql                       tables, RLS, triggers (idempotent)

@@ -20,15 +20,75 @@ export default {
   },
 
   nav: {
-    factories: 'Factories',
-    people: 'People',
-    ports: 'FOB Ports',
+    home: 'Main menu',
     administration: 'Administration',
     manageAccounts: 'Manage accounts',
     settings: 'Settings',
-    menu: 'Menu',
     openMenu: 'Open menu',
     closeMenu: 'Close menu',
+  },
+
+  home: {
+    greeting: 'Welcome back',
+    greetingNamed: 'Welcome back, {{name}}',
+    subtitle: 'Everything on the platform, in one place.',
+    comingSoon: 'Coming soon',
+  },
+
+  sections: {
+    groups: {
+      maps: 'Maps',
+      orders: 'Orders',
+      innovations: 'Innovations',
+      workspace: 'Workspace',
+    },
+
+    factories: {
+      name: 'Factory map',
+      short: 'Factories',
+      description: 'Locate suppliers across China, with contacts, products and capacity.',
+    },
+    ports: {
+      name: 'FOB ports',
+      short: 'FOB ports',
+      description: 'The main Chinese export ports, their terminals and coordinates.',
+    },
+    ordersTodo: {
+      name: 'Orders to do',
+      short: 'To do',
+      description: 'Orders placed with the factory and still being produced.',
+    },
+    ordersInTransit: {
+      name: 'Orders ready & in transit',
+      short: 'Ready & in transit',
+      description: 'Finished orders waiting to ship and shipments already on the water.',
+    },
+    innovationsDevelopment: {
+      name: 'Innovations in development',
+      short: 'In development',
+      description: 'New products being designed, sampled or tested with a factory.',
+    },
+    innovationsReady: {
+      name: 'Innovations ready to order',
+      short: 'Ready to order',
+      description: 'Products that have passed development and can be ordered now.',
+    },
+    people: {
+      name: 'People',
+      short: 'People',
+      description: 'The team directory: who does what and how to reach them.',
+    },
+    suggestions: {
+      name: 'Website suggestions',
+      short: 'Suggestions',
+      description: 'Ideas and requests for how this platform should work.',
+    },
+
+    placeholder: {
+      title: 'Section not available yet',
+      body: 'This section is planned but has not been built yet. It will be filled in soon — nothing is missing or broken.',
+      back: 'Back to the main menu',
+    },
   },
 
   auth: {

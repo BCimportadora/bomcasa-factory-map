@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
-import { Factory, Users, Anchor, ShieldCheck, LogOut, Menu, X, Settings } from 'lucide-react'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+import { LayoutGrid, ShieldCheck, LogOut, Menu, X, Settings } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useI18n } from '../../i18n'
 import { initials, fullName, roleKey } from '../../lib/constants'
+import { sectionGroupKey, sectionShortNameKey, sectionsByGroup } from '../../lib/sections'
 import LanguageSwitcher from './LanguageSwitcher'
 import LanguageSync from './LanguageSync'
 import logo from '../../assets/logo.png'
@@ -12,49 +13,59 @@ import logo from '../../assets/logo.png'
  * Application shell: a persistent sidebar on large screens, a slide-over drawer
  * on small ones. Admin-only entries are hidden here for clarity, but the routes
  * and the database enforce the same rules independently.
+ *
+ * The section links come from lib/sections.js — the same list the main menu
+ * renders — so the two can never disagree about what the app contains.
  */
 export default function AppLayout({ children }) {
   const { profile, isAdmin, signOut } = useAuth()
   const { t } = useI18n()
   const location = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const groups = sectionsByGroup()
 
   // Close the mobile drawer whenever the route changes.
   useEffect(() => {
     setDrawerOpen(false)
   }, [location.pathname])
 
-  const links = [
-    { to: '/', label: t('nav.factories'), icon: Factory, end: true },
-    { to: '/people', label: t('nav.people'), icon: Users },
-    { to: '/ports', label: t('nav.ports'), icon: Anchor },
-  ]
-
   const sidebar = (
     <div className="flex h-full flex-col bg-surface">
-      <div className="flex h-16 items-center gap-2.5 px-5">
+      <Link to="/" className="flex h-16 items-center gap-2.5 px-5">
         <img src={logo} alt="" className="h-7 w-auto" />
         <span className="text-[15px] font-semibold tracking-[-0.01em]">{t('common.appName')}</span>
-      </div>
+      </Link>
 
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2">
-        {links.map(({ to, label, icon: Icon, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            className={({ isActive }) => `nav-link ${isActive ? 'nav-link-active' : ''}`}
-          >
-            <Icon size={18} strokeWidth={1.75} />
-            {label}
-          </NavLink>
+      <nav className="flex-1 overflow-y-auto px-3 pb-2">
+        <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? 'nav-link-active' : ''}`}>
+          <LayoutGrid size={18} strokeWidth={1.75} />
+          {t('nav.home')}
+        </NavLink>
+
+        {groups.map(({ group, sections }) => (
+          <div key={group}>
+            <p className="nav-group-label">{t(sectionGroupKey(group))}</p>
+            <div className="space-y-0.5">
+              {sections.map((section) => {
+                const Icon = section.icon
+                return (
+                  <NavLink
+                    key={section.id}
+                    to={section.path}
+                    className={({ isActive }) => `nav-link ${isActive ? 'nav-link-active' : ''}`}
+                  >
+                    <Icon size={18} strokeWidth={1.75} className="flex-shrink-0" />
+                    <span className="truncate">{t(sectionShortNameKey(section.id))}</span>
+                  </NavLink>
+                )
+              })}
+            </div>
+          </div>
         ))}
 
         {isAdmin && (
-          <div className="pt-5">
-            <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
-              {t('nav.administration')}
-            </p>
+          <div>
+            <p className="nav-group-label">{t('nav.administration')}</p>
             <NavLink
               to="/admin/accounts"
               className={({ isActive }) => `nav-link ${isActive ? 'nav-link-active' : ''}`}
@@ -134,8 +145,10 @@ export default function AppLayout({ children }) {
           >
             {drawerOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <img src={logo} alt="" className="h-6 w-auto" />
-          <span className="text-[15px] font-semibold">{t('common.appName')}</span>
+          <Link to="/" className="flex min-w-0 items-center gap-3">
+            <img src={logo} alt="" className="h-6 w-auto" />
+            <span className="truncate text-[15px] font-semibold">{t('common.appName')}</span>
+          </Link>
         </header>
 
         <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
