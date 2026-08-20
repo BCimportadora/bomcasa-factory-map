@@ -141,8 +141,8 @@ trusting anything in the request, and returns 401/403 before touching any data.
 ## Features
 
 ### Appearance (night mode)
-Light, Dark, or System — chosen from the sidebar or Settings, and stored per
-device in `localStorage` under `bomcasa.theme`. "System" follows the operating
+Light, Dark, or System — chosen in Settings (`/account`) and stored per device
+in `localStorage` under `bomcasa.theme`. "System" follows the operating
 system's appearance setting and reacts live when it changes. Like language, this
 is a display preference and has no bearing on role, permissions or access.
 
@@ -292,7 +292,7 @@ src/
     Factory/                       factory form, list, search & filter
     Layout/AppLayout.jsx           sidebar shell + mobile drawer
     Layout/LanguageSwitcher.jsx    text-only EN/ES selector
-    Layout/ThemeSwitcher.jsx       light / dark / system selector
+    Layout/ThemeSwitcher.jsx       light / dark / system selector (Settings only)
     Layout/LanguageSync.jsx        mirrors language choice to the profile
     Map/BaseTileLayer.jsx          basemap selection + fallback
     Map/FactoryMap.jsx             factory markers

@@ -6,7 +6,6 @@ import { useI18n } from '../../i18n'
 import { initials, fullName, roleKey } from '../../lib/constants'
 import { sectionGroupKey, sectionShortNameKey, sectionsByGroup } from '../../lib/sections'
 import LanguageSwitcher from './LanguageSwitcher'
-import ThemeSwitcher from './ThemeSwitcher'
 import LanguageSync from './LanguageSync'
 import logo from '../../assets/logo.png'
 
@@ -79,7 +78,6 @@ export default function AppLayout({ children }) {
       </nav>
 
       <div className="border-t border-line p-3">
-        <ThemeSwitcher className="mb-2" />
         <LanguageSwitcher className="mb-3" />
 
         <NavLink
