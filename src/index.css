@@ -7,13 +7,76 @@
    stays calm; spacing and radii are consistent across every surface.
 --------------------------------------------------------------------------- */
 @layer base {
+  /*
+   * Every colour in the interface resolves through these variables (see
+   * tailwind.config.js), so night mode is this one block redefined. Values are
+   * space-separated RGB channels rather than hex, which is what lets Tailwind's
+   * opacity utilities — bg-surface/90, bg-accent/10 — keep working.
+   */
   :root {
-    --surface: 255 255 255;
-    --surface-muted: 250 250 250;
-    --border: 229 229 231;
-    --text: 23 23 23;
-    --text-muted: 113 113 122;
-    --accent: 0 113 227;
+    --c-canvas: 250 250 250;
+    --c-surface: 255 255 255;
+    --c-line: 229 229 231;
+    --c-ink: 23 23 23;
+    --c-muted: 113 113 122;
+    --c-accent: 0 113 227;
+    --c-accent-hover: 0 98 196;
+    --c-danger: 215 0 21;
+    --c-success: 29 158 94;
+    --c-success-strong: 19 122 71;
+
+    /* Modal and drawer backdrops. This is deliberately not derived from
+       the ink token: ink inverts to near-white in night mode, and a pale scrim over a
+       dark page lightens exactly what it is meant to push back. */
+    --scrim: 0 0 0 / 0.2;
+    --scrim-strong: 0 0 0 / 0.25;
+
+    /* Solid red for destructive buttons, which carry white text. --c-danger
+       itself has to stay legible as *text*, which pulls it lighter in night
+       mode and leaves it too pale to sit under white. */
+    --c-danger-strong: 215 0 21;
+
+    --shadow-subtle: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.06);
+    --shadow-panel: 0 4px 24px rgb(0 0 0 / 0.06);
+    --shadow-overlay: 0 12px 48px rgb(0 0 0 / 0.16);
+
+    /* Tells the browser to draw scrollbars, form controls and the like to
+       match — without it a dark page keeps light native widgets. */
+    color-scheme: light;
+  }
+
+  /*
+   * Night mode. The palette lifts surfaces above the canvas rather than
+   * inverting the light one: pure white on pure black is harsh to read, and a
+   * flat single tone loses the sense of depth the cards rely on.
+   *
+   * The accent gets *lighter* on hover here, which is why the Tailwind name is
+   * accent-dark but the variable is accent-hover.
+   */
+  :root.dark {
+    --c-canvas: 17 17 19;
+    --c-surface: 28 28 31;
+    --c-line: 48 48 53;
+    --c-ink: 243 243 246;
+    --c-muted: 154 154 163;
+    --c-accent: 10 132 255;
+    --c-accent-hover: 56 152 255;
+    --c-danger: 255 105 97;
+    --c-success: 48 209 88;
+    --c-success-strong: 124 226 150;
+
+    /* A dark page needs a heavier scrim to read as "behind" the dialog. */
+    --scrim: 0 0 0 / 0.55;
+    --scrim-strong: 0 0 0 / 0.6;
+
+    --c-danger-strong: 211 47 47;
+
+    /* Shadows have to work much harder against a dark background. */
+    --shadow-subtle: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
+    --shadow-panel: 0 4px 24px rgb(0 0 0 / 0.5);
+    --shadow-overlay: 0 12px 48px rgb(0 0 0 / 0.7);
+
+    color-scheme: dark;
   }
 
   html,
@@ -32,7 +95,7 @@
 
   /* Keyboard focus stays visible everywhere; pointer clicks stay quiet. */
   :focus-visible {
-    @apply outline-none ring-2 ring-accent/40 ring-offset-1 ring-offset-white;
+    @apply outline-none ring-2 ring-accent/40 ring-offset-1 ring-offset-surface;
   }
 }
 
@@ -85,7 +148,8 @@
   }
 
   .btn-danger {
-    @apply btn bg-danger text-white hover:brightness-95 active:scale-[0.99];
+    @apply btn text-white hover:brightness-95 active:scale-[0.99];
+    background-color: rgb(var(--c-danger-strong));
   }
 
   .btn-sm {
@@ -135,6 +199,14 @@
 
   .nav-link-active {
     @apply bg-accent/10 text-accent hover:bg-accent/10 hover:text-accent;
+  }
+
+  .scrim {
+    background-color: rgb(var(--scrim));
+  }
+
+  .scrim-strong {
+    background-color: rgb(var(--scrim-strong));
   }
 
   .nav-group-label {
@@ -189,40 +261,94 @@
 }
 
 /* Leaflet needs an explicit size, and its default chrome is restyled to match
-   the rest of the interface. */
+   the rest of the interface. Everything below reads the same tokens as the app,
+   so the map chrome follows the theme without a second set of dark rules —
+   Leaflet's own stylesheet hardcodes white popups and light controls. */
 .leaflet-container {
   height: 100%;
   width: 100%;
   font-family: inherit;
-  background: rgb(var(--surface-muted));
+  background: rgb(var(--c-canvas));
 }
 
 .leaflet-control-zoom {
   border: none !important;
   border-radius: 12px !important;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08) !important;
+  box-shadow: var(--shadow-subtle) !important;
 }
 
 .leaflet-control-zoom a {
   border: none !important;
-  color: rgb(var(--text)) !important;
-  background: rgb(var(--surface)) !important;
+  color: rgb(var(--c-ink)) !important;
+  background: rgb(var(--c-surface)) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: rgb(var(--c-canvas)) !important;
+}
+
+.leaflet-control-zoom a.leaflet-disabled {
+  color: rgb(var(--c-muted) / 0.5) !important;
+  background: rgb(var(--c-surface)) !important;
 }
 
 .leaflet-control-attribution {
-  background: rgb(255 255 255 / 0.8) !important;
+  background: rgb(var(--c-surface) / 0.8) !important;
   border-radius: 8px 0 0 0;
   font-size: 10px !important;
-  color: rgb(var(--text-muted)) !important;
+  color: rgb(var(--c-muted)) !important;
+}
+
+.leaflet-control-attribution a {
+  color: rgb(var(--c-muted)) !important;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: rgb(var(--c-surface)) !important;
+  color: rgb(var(--c-ink)) !important;
 }
 
 .leaflet-popup-content-wrapper {
   border-radius: 14px !important;
-  box-shadow: 0 8px 30px rgb(0 0 0 / 0.12) !important;
+  box-shadow: var(--shadow-panel) !important;
 }
 
 .leaflet-popup-content {
   margin: 14px 16px !important;
   font-family: inherit;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  color: rgb(var(--c-muted)) !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: rgb(var(--c-ink)) !important;
+}
+
+.leaflet-tooltip {
+  background: rgb(var(--c-surface)) !important;
+  border: 1px solid rgb(var(--c-line)) !important;
+  border-radius: 8px !important;
+  color: rgb(var(--c-ink)) !important;
+  box-shadow: var(--shadow-subtle) !important;
+}
+
+/* The tooltip arrow is a CSS triangle, so its colour lives on a border edge. */
+.leaflet-tooltip-top::before {
+  border-top-color: rgb(var(--c-surface)) !important;
+}
+
+.leaflet-tooltip-bottom::before {
+  border-bottom-color: rgb(var(--c-surface)) !important;
+}
+
+.leaflet-tooltip-left::before {
+  border-left-color: rgb(var(--c-surface)) !important;
+}
+
+.leaflet-tooltip-right::before {
+  border-right-color: rgb(var(--c-surface)) !important;
 }

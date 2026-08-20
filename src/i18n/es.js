@@ -28,6 +28,13 @@ export default {
     closeMenu: 'Cerrar menú',
   },
 
+  theme: {
+    label: 'Apariencia',
+    light: 'Claro',
+    dark: 'Oscuro',
+    system: 'Sistema',
+  },
+
   home: {
     greeting: 'Bienvenido de nuevo',
     greetingNamed: 'Bienvenido de nuevo, {{name}}',
@@ -137,7 +144,7 @@ export default {
 
   account: {
     title: 'Configuración de la cuenta',
-    subtitle: 'Gestiona tus datos, el idioma y tu contraseña.',
+    subtitle: 'Gestiona tus datos, la apariencia, el idioma y tu contraseña.',
     detailsTitle: 'Tus datos',
     detailsSubtitle: 'Esto es lo que ven tus colegas en el directorio.',
     email: 'Correo electrónico',
@@ -146,6 +153,8 @@ export default {
     saveChanges: 'Guardar cambios',
     saved: 'Se han guardado tus cambios.',
     saveError: 'No pudimos guardar tus cambios. Inténtalo de nuevo.',
+    appearanceTitle: 'Apariencia',
+    appearanceSubtitle: 'Elige una interfaz clara u oscura, o sigue la de tu dispositivo.',
     languageTitle: 'Idioma',
     languageSubtitle: 'Elige el idioma de la interfaz.',
     passwordTitle: 'Contraseña',

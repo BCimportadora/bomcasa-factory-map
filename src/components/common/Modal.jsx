@@ -19,7 +19,7 @@ export default function Modal({ title, onClose, children }) {
 
   return (
     <div
-      className="fixed inset-0 z-[4000] flex items-end justify-center bg-ink/25 p-0 backdrop-blur-[2px] sm:items-center sm:p-5"
+      className="fixed inset-0 z-[4000] flex items-end justify-center scrim-strong p-0 backdrop-blur-[2px] sm:items-center sm:p-5"
       onClick={onClose}
       role="presentation"
     >

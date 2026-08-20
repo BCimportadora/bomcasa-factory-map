@@ -4,6 +4,7 @@ import { useI18n } from '../i18n'
 import { DEPARTMENTS, departmentKey, roleKey } from '../lib/constants'
 import PasswordFields, { validateNewPassword } from '../components/Auth/PasswordFields'
 import LanguageSwitcher from '../components/Layout/LanguageSwitcher'
+import ThemeSwitcher from '../components/Layout/ThemeSwitcher'
 
 function Section({ title, subtitle, children }) {
   return (
@@ -220,6 +221,10 @@ export default function AccountPage() {
         <div className="space-y-5">
           <Section title={t('account.detailsTitle')} subtitle={t('account.detailsSubtitle')}>
             <DetailsForm />
+          </Section>
+
+          <Section title={t('account.appearanceTitle')} subtitle={t('account.appearanceSubtitle')}>
+            <ThemeSwitcher className="max-w-sm" />
           </Section>
 
           <Section title={t('account.languageTitle')} subtitle={t('account.languageSubtitle')}>

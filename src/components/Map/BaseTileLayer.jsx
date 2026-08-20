@@ -2,18 +2,33 @@ import { useCallback, useEffect, useState } from 'react'
 import { TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import { useTheme } from '../../context/ThemeContext'
 
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY
 const MAPTILER_STYLE = import.meta.env.VITE_MAPTILER_STYLE
 
+/**
+ * Optional companion to VITE_MAPTILER_STYLE for night mode.
+ *
+ * If it is not set the light style is kept in dark mode, which is deliberate:
+ * the custom style is what carries the English labels, and a dark stock style
+ * would put Chinese street names back on the map. A bright basemap is a smaller
+ * regression than an unreadable one. See README, "Map labels".
+ */
+const MAPTILER_STYLE_DARK = import.meta.env.VITE_MAPTILER_STYLE_DARK
+
 const MAPTILER_ATTRIBUTION =
   '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 
-function CartoTileLayer() {
+function CartoTileLayer({ dark }) {
   return (
     <TileLayer
+      /* Remount rather than mutate: swapping the URL of a live tile layer
+         leaves the already-fetched light tiles on screen until they happen to
+         be evicted. */
+      key={dark ? 'dark' : 'light'}
       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-      url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+      url={`https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`}
       subdomains="abcd"
       maxZoom={20}
     />
@@ -99,6 +114,7 @@ function MapLibreLayer({ styleUrl, onFailure }) {
  * no account but labels streets in the local language.
  */
 export default function BaseTileLayer() {
+  const { isDark } = useTheme()
   const [maptilerFailed, setMaptilerFailed] = useState(false)
 
   // Stable identity: this is an effect dependency in MapLibreLayer, and an
@@ -106,9 +122,13 @@ export default function BaseTileLayer() {
   // of the surrounding page — including every time the factory panel toggles.
   const handleFailure = useCallback(() => setMaptilerFailed(true), [])
 
-  const useMaptiler = MAPTILER_KEY && MAPTILER_STYLE && !maptilerFailed
-  if (!useMaptiler) return <CartoTileLayer />
+  // The CARTO fallback has a dark counterpart built in, so night mode gives a
+  // dark basemap with no configuration; MapTiler only does when a dark style id
+  // has been set.
+  const styleId = isDark && MAPTILER_STYLE_DARK ? MAPTILER_STYLE_DARK : MAPTILER_STYLE
+  const useMaptiler = MAPTILER_KEY && styleId && !maptilerFailed
+  if (!useMaptiler) return <CartoTileLayer dark={isDark} />
 
-  const styleUrl = `https://api.maptiler.com/maps/${MAPTILER_STYLE}/style.json?key=${MAPTILER_KEY}`
+  const styleUrl = `https://api.maptiler.com/maps/${styleId}/style.json?key=${MAPTILER_KEY}`
   return <MapLibreLayer styleUrl={styleUrl} onFailure={handleFailure} />
 }

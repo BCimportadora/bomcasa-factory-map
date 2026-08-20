@@ -75,6 +75,7 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 VITE_MAPTILER_KEY=your-maptiler-key          # optional, enables English map labels
 VITE_MAPTILER_STYLE=your-english-style-id    # optional, see "Map labels" below
+VITE_MAPTILER_STYLE_DARK=your-dark-style-id  # optional, dark basemap for night mode
 ```
 
 `VITE_*` variables are compiled into the browser bundle at **build time**, so
@@ -138,6 +139,22 @@ trusting anything in the request, and returns 401/403 before touching any data.
 ---
 
 ## Features
+
+### Appearance (night mode)
+Light, Dark, or System — chosen from the sidebar or Settings, and stored per
+device in `localStorage` under `bomcasa.theme`. "System" follows the operating
+system's appearance setting and reacts live when it changes. Like language, this
+is a display preference and has no bearing on role, permissions or access.
+
+The palette is one block of CSS variables in
+[`src/index.css`](src/index.css) redefined under `:root.dark` — see "Colour
+tokens" below. An inline script in `index.html` applies the stored choice before
+the bundle loads, so night mode does not begin with a flash of white.
+
+The basemap follows the theme where it can: the CARTO fallback has a dark
+counterpart built in, and MapTiler switches to `VITE_MAPTILER_STYLE_DARK` if you
+set one. Without that variable the light basemap is kept in night mode — see
+"Map labels".
 
 ### Main menu (`/`)
 The first screen after signing in. Every section of the platform is shown as a
@@ -207,12 +224,49 @@ preference only and never affects role, permissions or access.
 
 ---
 
+## Colour tokens
+
+Every colour in the interface resolves through a CSS variable. `tailwind.config.js`
+declares each colour as `rgb(var(--c-name) / <alpha-value>)`, and the values live
+in two blocks at the top of [`src/index.css`](src/index.css): `:root` for light
+and `:root.dark` for night mode. Tailwind runs in `darkMode: 'class'`, and the
+class is set on `<html>`.
+
+The practical consequence: **write `bg-surface`, never `bg-white` and never a
+`dark:` variant.** Both themes then come out of the same class, and the opacity
+utilities (`bg-surface/90`, `bg-accent/10`) keep working because of the
+`<alpha-value>` placeholder.
+
+Three tokens carry a deliberate wrinkle:
+
+- `accent-dark` is the *hover* colour for accent buttons. It gets darker in light
+  mode and lighter in night mode, which is why the variable behind it is called
+  `--c-accent-hover`.
+- `--c-danger` has to stay legible as text, which pulls it light in night mode
+  and leaves it too pale to sit under the white label of a destructive button.
+  `.btn-danger` therefore uses `--c-danger-strong`.
+- `--scrim` is not derived from `--c-ink`: ink inverts to near-white, and a pale
+  backdrop lightens exactly what it is supposed to push back.
+
+Leaflet draws vector markers with real colour values rather than classes, so
+[`src/lib/mapColors.js`](src/lib/mapColors.js) mirrors three of the tokens in
+JavaScript. Change one of those tokens and you must change both files.
+
+---
+
 ## Map labels (English street names)
 
 The basemap is chosen in [`src/components/Map/BaseTileLayer.jsx`](src/components/Map/BaseTileLayer.jsx):
 
 - **With `VITE_MAPTILER_KEY` and `VITE_MAPTILER_STYLE`** — MapTiler vector tiles rendered by MapLibre GL. OpenStreetMap's `name:en` tags give English street names in Chinese cities (~94% coverage in central Shanghai).
-- **Without them** — CARTO Positron raster tiles: no account needed, but street names appear in Chinese.
+- **Without them** — CARTO Positron raster tiles: no account needed, but street names appear in Chinese. In night mode this becomes CARTO Dark Matter.
+
+In night mode MapTiler uses `VITE_MAPTILER_STYLE_DARK` when it is set, and
+otherwise keeps the light style. That is deliberate: the custom style is the
+only thing supplying English labels, and falling back to a stock dark style
+would put Chinese street names back on the map. To get a dark basemap *and*
+English labels, duplicate your style in MapTiler, switch it to a dark base, and
+put its id in `VITE_MAPTILER_STYLE_DARK`.
 
 MapTiler serves raster tiles only for its own stock styles; a *custom* style —
 which is what carries the English label setting — is vector-only, which is why
@@ -238,6 +292,7 @@ src/
     Factory/                       factory form, list, search & filter
     Layout/AppLayout.jsx           sidebar shell + mobile drawer
     Layout/LanguageSwitcher.jsx    text-only EN/ES selector
+    Layout/ThemeSwitcher.jsx       light / dark / system selector
     Layout/LanguageSync.jsx        mirrors language choice to the profile
     Map/BaseTileLayer.jsx          basemap selection + fallback
     Map/FactoryMap.jsx             factory markers
@@ -247,7 +302,9 @@ src/
   hooks/useFactories.js            factory CRUD + realtime
   hooks/useProfiles.js             directory reads
   i18n/                            en.js, es.js, provider
-  lib/constants.js                 departments, roles, profile helpers
+  context/ThemeContext.jsx         light / dark / system, persisted per device
+  lib/constants.js                 departments, roles, themes, profile helpers
+  lib/mapColors.js                 marker colours Leaflet needs as literal values
   lib/sections.js                  the app's sections — menu, sidebar and routes
   lib/ports.js                     FOB port dataset
   lib/csv.js, supabaseClient.js

@@ -39,6 +39,28 @@ top-left. They overlapped when zoom was left at its default.
 `BaseTileLayer` did, which tore down and rebuilt the entire GL map on every render
 of the surrounding page, including every panel toggle.
 
+**Colours are CSS variables, not Tailwind literals.** `tailwind.config.js` maps
+every colour name onto `rgb(var(--c-*) / <alpha-value>)`, with the values in
+`:root` and `:root.dark` at the top of `src/index.css`. So `bg-surface` already
+works in both themes: adding a `dark:` variant or a literal `bg-white` breaks
+night mode silently in one spot. Three things duplicate those values and must be
+changed together with them — `src/lib/mapColors.js` (Leaflet takes colour values,
+not classes, and reading them back from the DOM gives the *previous* theme,
+because the class is applied in a provider effect that runs after its
+descendants), `BROWSER_CHROME` in `src/context/ThemeContext.jsx`, and the inline
+script in `index.html`.
+
+**That inline script in `index.html` is not optional.** It applies the stored
+theme before the bundle parses. Without it every load in night mode starts with
+a full-screen flash of white. It also has to agree with `ThemeContext` on the
+storage key and on treating anything that is not `'light'` as "follow the system".
+
+**Leaflet's own stylesheet hardcodes light chrome** — white popups, white
+controls, white tooltips. `src/index.css` overrides those with `!important` and
+the shared tokens, so they follow the theme. The MapLibre *basemap* is separate:
+it only goes dark if `VITE_MAPTILER_STYLE_DARK` is set, because a stock dark
+style would lose the English labels the custom style exists to provide.
+
 ## Security model
 
 RLS is the security boundary — the browser talks to Postgres directly, so there is

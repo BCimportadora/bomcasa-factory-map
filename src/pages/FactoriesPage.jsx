@@ -99,7 +99,7 @@ export default function FactoriesPage() {
           is part of the flex flow. */}
       {panelOpen && (
         <div
-          className="absolute inset-0 z-[1050] bg-ink/20 md:hidden"
+          className="absolute inset-0 z-[1050] scrim md:hidden"
           onClick={() => setPanelOpen(false)}
           role="presentation"
         />

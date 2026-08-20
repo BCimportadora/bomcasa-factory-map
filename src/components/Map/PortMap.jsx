@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { MapContainer, CircleMarker, Tooltip, ZoomControl, useMap } from 'react-leaflet'
 import BaseTileLayer from './BaseTileLayer'
 import AutoResize from './AutoResize'
+import { useTheme } from '../../context/ThemeContext'
+import { mapColors } from '../../lib/mapColors'
 
 const CHINA_CENTER = [30.5, 118.0]
 const CHINA_ZOOM = 4
@@ -19,13 +21,15 @@ function FlyToPort({ port }) {
  * of them and the flat dot keeps the map calm and readable at country zoom.
  */
 export default function PortMap({ ports, selectedPort, onSelect }) {
+  const { resolvedTheme } = useTheme()
+  const colors = mapColors(resolvedTheme)
+
   return (
     <MapContainer
       center={CHINA_CENTER}
       zoom={CHINA_ZOOM}
       scrollWheelZoom
       className="h-full w-full"
-      style={{ background: '#fafafa' }}
       zoomControl={false}
     >
       {/* Matches the factory map so the controls sit in the same place. */}
@@ -42,9 +46,9 @@ export default function PortMap({ ports, selectedPort, onSelect }) {
             center={[port.latitude, port.longitude]}
             radius={isSelected ? 10 : 7}
             pathOptions={{
-              color: '#ffffff',
+              color: colors.markerStroke,
               weight: 2,
-              fillColor: isSelected ? '#0071e3' : '#171717',
+              fillColor: isSelected ? colors.markerSelected : colors.markerBase,
               fillOpacity: 1,
             }}
             eventHandlers={{ click: () => onSelect(port) }}

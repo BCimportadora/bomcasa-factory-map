@@ -1,28 +1,42 @@
+/**
+ * Colours are declared as CSS variables rather than literal hex values so the
+ * whole interface can switch to a dark palette by redefining the variables on
+ * `html.dark` — see the token blocks at the top of src/index.css. Without this
+ * every `bg-surface` / `text-ink` in the app would need a `dark:` twin.
+ *
+ * The `<alpha-value>` placeholder is what keeps opacity utilities working, so
+ * `bg-surface/90` and `bg-accent/10` still behave.
+ */
+const token = (name) => `rgb(var(${name}) / <alpha-value>)`
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        canvas: '#fafafa',
-        surface: '#ffffff',
-        line: '#e5e5e7',
-        ink: '#171717',
-        muted: '#71717a',
+        canvas: token('--c-canvas'),
+        surface: token('--c-surface'),
+        line: token('--c-line'),
+        ink: token('--c-ink'),
+        muted: token('--c-muted'),
         accent: {
-          DEFAULT: '#0071e3',
-          dark: '#0062c4',
+          DEFAULT: token('--c-accent'),
+          /* The hover state for accent buttons: darker in light mode, lighter
+             in dark mode, so the name describes its role rather than its hue. */
+          dark: token('--c-accent-hover'),
         },
-        danger: '#d70015',
+        danger: token('--c-danger'),
         success: {
-          DEFAULT: '#1d9e5e',
-          dark: '#137a47',
+          DEFAULT: token('--c-success'),
+          dark: token('--c-success-strong'),
         },
       },
       boxShadow: {
-        subtle: '0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.06)',
-        panel: '0 4px 24px rgb(0 0 0 / 0.06)',
-        overlay: '0 12px 48px rgb(0 0 0 / 0.16)',
+        subtle: 'var(--shadow-subtle)',
+        panel: 'var(--shadow-panel)',
+        overlay: 'var(--shadow-overlay)',
       },
       maxWidth: {
         content: '78rem',

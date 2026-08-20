@@ -6,6 +6,7 @@ import { useI18n } from '../../i18n'
 import { initials, fullName, roleKey } from '../../lib/constants'
 import { sectionGroupKey, sectionShortNameKey, sectionsByGroup } from '../../lib/sections'
 import LanguageSwitcher from './LanguageSwitcher'
+import ThemeSwitcher from './ThemeSwitcher'
 import LanguageSync from './LanguageSync'
 import logo from '../../assets/logo.png'
 
@@ -78,6 +79,7 @@ export default function AppLayout({ children }) {
       </nav>
 
       <div className="border-t border-line p-3">
+        <ThemeSwitcher className="mb-2" />
         <LanguageSwitcher className="mb-3" />
 
         <NavLink
@@ -125,7 +127,7 @@ export default function AppLayout({ children }) {
       {drawerOpen && (
         <div className="fixed inset-0 z-[3000] lg:hidden">
           <div
-            className="absolute inset-0 bg-ink/20 backdrop-blur-[2px]"
+            className="absolute inset-0 scrim backdrop-blur-[2px]"
             onClick={() => setDrawerOpen(false)}
           />
           <div className="absolute inset-y-0 left-0 w-64 max-w-[82vw] border-r border-line shadow-overlay">

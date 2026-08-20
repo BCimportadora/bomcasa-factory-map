@@ -3,8 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#fafafa" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <title>Bomcasa Factory Map</title>
+    <script>
+      /*
+       * Apply the saved appearance before the first paint. React sets this
+       * class too (src/context/ThemeContext.jsx), but only once the bundle has
+       * parsed and mounted — by which point a dark-mode user has already been
+       * shown a full-screen flash of white. The storage key and the fallback
+       * must stay in step with that file.
+       */
+      ;(function () {
+        try {
+          var stored = localStorage.getItem('bomcasa.theme')
+          var dark =
+            stored === 'dark' ||
+            (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          if (dark) {
+            document.documentElement.classList.add('dark')
+            document.querySelector('meta[name="theme-color"]').content = '#111113'
+          }
+        } catch (e) {
+          /* no stored preference available; the light default stands */
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -28,6 +28,13 @@ export default {
     closeMenu: 'Close menu',
   },
 
+  theme: {
+    label: 'Appearance',
+    light: 'Light',
+    dark: 'Dark',
+    system: 'System',
+  },
+
   home: {
     greeting: 'Welcome back',
     greetingNamed: 'Welcome back, {{name}}',
@@ -136,7 +143,7 @@ export default {
 
   account: {
     title: 'Account settings',
-    subtitle: 'Manage your details, language and password.',
+    subtitle: 'Manage your details, appearance, language and password.',
     detailsTitle: 'Your details',
     detailsSubtitle: 'This is what colleagues see in the directory.',
     email: 'Email',
@@ -145,6 +152,8 @@ export default {
     saveChanges: 'Save changes',
     saved: 'Your changes have been saved.',
     saveError: 'We could not save your changes. Please try again.',
+    appearanceTitle: 'Appearance',
+    appearanceSubtitle: 'Choose a light or dark interface, or follow your device.',
     languageTitle: 'Language',
     languageSubtitle: 'Choose the language for the interface.',
     passwordTitle: 'Password',

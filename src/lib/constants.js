@@ -7,8 +7,14 @@ export const ROLES = ['admin', 'business_user']
 
 export const LANGUAGES = ['en', 'es']
 
+/** Display themes. 'system' follows the operating system's appearance setting. */
+export const THEMES = ['light', 'dark', 'system']
+
 /** Translation key for a department value, e.g. 'sales' -> 'departments.sales' */
 export const departmentKey = (value) => `departments.${value}`
+
+/** Translation key for a theme value, e.g. 'dark' -> 'theme.dark' */
+export const themeKey = (value) => `theme.${value}`
 
 /** Translation key for a role value, e.g. 'admin' -> 'roles.admin' */
 export const roleKey = (value) => `roles.${value}`

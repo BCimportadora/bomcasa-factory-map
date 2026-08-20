@@ -27,7 +27,7 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[5000] flex items-end justify-center bg-ink/25 p-0 backdrop-blur-[2px] sm:items-center sm:p-5"
+      className="fixed inset-0 z-[5000] flex items-end justify-center scrim-strong p-0 backdrop-blur-[2px] sm:items-center sm:p-5"
       onClick={() => !busy && onCancel()}
       role="presentation"
     >
