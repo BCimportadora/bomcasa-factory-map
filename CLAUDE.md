@@ -1,0 +1,90 @@
+# Working notes for this project
+
+Setup and feature documentation lives in [README.md](README.md). This file records
+the things that are **not** obvious from reading the code — decisions that look
+arbitrary until you know why, and traps that have already cost real debugging time.
+
+## Where things live
+
+- Live site: `https://bomcasa-factory-map.vercel.app` (Vercel, deploys on push to `master`)
+- Supabase project ref: `dapcuibwcauxbfwjjpbb`
+- No test, lint or type-check setup. The only check is `npm run build`.
+
+## Invariants — do not change without re-testing end to end
+
+**`maplibre-gl` is pinned to v5 on purpose.** In v6 the tile-parsing worker is a
+separate `.mjs` loaded via `new URL(..., import.meta.url)`. Vite's dependency
+pre-bundling rewrites that to a path the dev server never serves, the request
+404s, and the basemap renders as an empty background **with no error logged** —
+which makes it a slow, silent failure to diagnose. v5 inlines the worker.
+
+**The factory panel collapses via `flex-basis`, not `width`.** From `md` the panel
+is a flex item, so its size comes from flex-basis; `width` utilities lose to the
+`w-80` the mobile overlay needs, and a flex item's default `min-width: auto` pins
+it open at its content width (hence `min-w-0`). The desktop size is set inline in
+`FactoriesPage.jsx` because inline styles cannot be outranked by the cascade.
+Three Tailwind attempts silently failed here before that.
+
+**The Leaflet ↔ MapLibre bridge never calls `resize()` on the GL map.** It resizes
+its own wrapper div and stops there, and MapLibre only re-measures its container
+when asked. `AutoResize.jsx` does that explicitly. It also does the work inside a
+`requestAnimationFrame` scheduled after the bridge's own, so the wrapper has its
+new size first.
+
+**Map controls have fixed corners.** Zoom is pinned top-right (`zoomControl={false}`
+plus an explicit `<ZoomControl position="topright" />`); the panel toggle owns
+top-left. They overlapped when zoom was left at its default.
+
+**Never pass an inline arrow as an effect dependency into a map layer.**
+`BaseTileLayer` did, which tore down and rebuilt the entire GL map on every render
+of the surrounding page, including every panel toggle.
+
+## Security model
+
+RLS is the security boundary — the browser talks to Postgres directly, so there is
+no API layer to enforce anything.
+
+- A `before update` trigger on `profiles` rejects role changes from non-admins.
+  Without it any signed-in user could `update profiles set role='admin'` on their
+  own row, because RLS legitimately lets them edit that row.
+- `auth.uid()` is NULL for service-role and SQL-editor requests. That is how the
+  first admin is bootstrapped and how the Edge Functions assign roles.
+- Admin operations live in Edge Functions and re-read the caller's role from the
+  database via `_shared/adminGuard.ts`. Nothing in the request influences the
+  decision. Route guards and hidden menu items are convenience only.
+- **Public sign-up is disabled in the Supabase dashboard.** Removing the sign-up
+  UI does not achieve this — the anon key is public in the bundle, so the endpoint
+  stays reachable. Do not re-enable it.
+- The `service_role` key must never appear in a `VITE_` variable. `VITE_*` is
+  compiled into the browser bundle.
+
+## Deployment gotchas
+
+- `VITE_*` variables are inlined at **build time**. Changing one in Vercel requires
+  a redeploy; the running deployment cannot pick it up.
+- Commits must be authored with the email on the GitHub account that owns the repo,
+  or Vercel's Hobby plan blocks the deploy as an outside collaborator.
+- `supabase/schema.sql` is idempotent — re-run it in full after any schema change
+  rather than writing incremental migrations.
+- Edge Functions need `npx supabase functions deploy` after any change under
+  `supabase/functions/`. The "Docker is not running" warning is harmless; Docker is
+  only needed to serve functions locally.
+
+## Auth and email
+
+- MapTiler serves raster tiles only for its **stock** styles. The custom
+  English-label style is vector-only (raster returns 403), which is the reason
+  MapLibre is in the stack at all rather than plain Leaflet raster tiles.
+- Password reset depends on Supabase **Site URL** and the redirect allowlist. If a
+  redirect is not allowlisted, Supabase silently falls back to Site URL.
+- The built-in Supabase mailer allows roughly **2 emails per hour** and often lands
+  in spam. A signed-in user should change their password in Settings instead, which
+  involves no email. Configure custom SMTP before relying on reset for a team.
+
+## Verifying UI changes
+
+The in-app preview pane does not composite frames, so `requestAnimationFrame`,
+`ResizeObserver` and screenshots are unreliable there — a `ResizeObserver` was
+measured firing zero times across a real container resize. Layout measurements
+(`getBoundingClientRect`) are trustworthy; anything driven by the render loop is
+not. **Verify map rendering in a real browser.**
