@@ -141,10 +141,20 @@ trusting anything in the request, and returns 401/403 before touching any data.
 ## Features
 
 ### Appearance (night mode)
-Light, Dark, or System — chosen in Settings (`/account`) and stored per device
-in `localStorage` under `bomcasa.theme`. "System" follows the operating
-system's appearance setting and reacts live when it changes. Like language, this
-is a display preference and has no bearing on role, permissions or access.
+Light, Dark, or System — chosen in Settings (`/account`) and saved to the
+person's profile, so it travels with them to any device. "System" follows the
+operating system's appearance setting and reacts live when it changes, including
+when the change was made while the browser was in the background.
+
+Signed out, the interface always follows the device: the sign-in screen belongs
+to nobody in particular, so it should not still be wearing the colours of
+whoever used the browser last. [`ThemeSync`](src/components/Layout/ThemeSync.jsx)
+holds both halves of that rule.
+
+`localStorage.bomcasa.theme` is a cache, not the source of truth. It exists so
+the inline script in `index.html` can paint the right colours before the bundle
+has parsed; the profile decides. Like language, this is a display preference and
+has no bearing on role, permissions or access.
 
 The palette is one block of CSS variables in
 [`src/index.css`](src/index.css) redefined under `:root.dark` — see "Colour
@@ -294,6 +304,7 @@ src/
     Layout/LanguageSwitcher.jsx    text-only EN/ES selector
     Layout/ThemeSwitcher.jsx       light / dark / system selector (Settings only)
     Layout/LanguageSync.jsx        mirrors language choice to the profile
+    Layout/ThemeSync.jsx           mirrors appearance to the profile; device when signed out
     Map/BaseTileLayer.jsx          basemap selection + fallback
     Map/FactoryMap.jsx             factory markers
     Map/PortMap.jsx                FOB port markers
@@ -302,7 +313,7 @@ src/
   hooks/useFactories.js            factory CRUD + realtime
   hooks/useProfiles.js             directory reads
   i18n/                            en.js, es.js, provider
-  context/ThemeContext.jsx         light / dark / system, persisted per device
+  context/ThemeContext.jsx         holds and applies light / dark / system
   lib/constants.js                 departments, roles, themes, profile helpers
   lib/mapColors.js                 marker colours Leaflet needs as literal values
   lib/sections.js                  the app's sections — menu, sidebar and routes

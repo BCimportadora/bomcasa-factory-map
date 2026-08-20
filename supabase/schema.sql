@@ -21,6 +21,9 @@ alter table public.profiles add column if not exists first_name text;
 alter table public.profiles add column if not exists last_name text;
 alter table public.profiles add column if not exists department text;
 alter table public.profiles add column if not exists language text not null default 'en';
+-- Appearance preference. 'system' follows the device, and is the default so a
+-- new account inherits whatever the machine is already set to.
+alter table public.profiles add column if not exists theme text not null default 'system';
 alter table public.profiles add column if not exists updated_at timestamptz not null default now();
 
 do $$
@@ -32,6 +35,10 @@ begin
   if not exists (select 1 from pg_constraint where conname = 'profiles_language_check') then
     alter table public.profiles add constraint profiles_language_check
       check (language in ('en', 'es'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'profiles_theme_check') then
+    alter table public.profiles add constraint profiles_theme_check
+      check (theme in ('light', 'dark', 'system'));
   end if;
 end $$;
 

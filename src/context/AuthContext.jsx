@@ -78,13 +78,14 @@ export function AuthProvider({ children }) {
    * is defence in depth rather than the only guard.
    */
   const updateOwnProfile = useCallback(
-    async ({ first_name, last_name, department, language }) => {
+    async ({ first_name, last_name, department, language, theme }) => {
       if (!user) throw new Error('Not signed in')
       const patch = {}
       if (first_name !== undefined) patch.first_name = first_name.trim()
       if (last_name !== undefined) patch.last_name = last_name.trim()
       if (department !== undefined) patch.department = department
       if (language !== undefined) patch.language = language
+      if (theme !== undefined) patch.theme = theme
 
       const { data, error } = await supabase
         .from('profiles')

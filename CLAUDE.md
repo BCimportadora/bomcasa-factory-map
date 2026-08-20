@@ -50,10 +50,26 @@ because the class is applied in a provider effect that runs after its
 descendants), `BROWSER_CHROME` in `src/context/ThemeContext.jsx`, and the inline
 script in `index.html`.
 
-**That inline script in `index.html` is not optional.** It applies the stored
+**That inline script in `index.html` is not optional.** It applies the cached
 theme before the bundle parses. Without it every load in night mode starts with
 a full-screen flash of white. It also has to agree with `ThemeContext` on the
 storage key and on treating anything that is not `'light'` as "follow the system".
+
+**The profile owns the appearance setting; localStorage only caches it.**
+`ThemeSync` adopts `profile.theme` on sign-in and writes changes back, and
+resets to `'system'` when nobody is signed in so the sign-in screen follows the
+device. It sits at the application root, not in `AppLayout`, because the
+signed-out half of that rule never renders the layout — and it must ignore the
+window where `user` is null only because the session is still resolving, or
+every reload throws the preference away.
+
+**The `prefers-color-scheme` listener alone is not enough.** Changing the
+appearance means leaving the browser for the system settings, and a hidden tab
+has its events throttled, so the change can arrive late or not at all — which
+reads as the theme being stuck. `ThemeContext` also re-reads the query on
+`visibilitychange` and `focus`. (If the theme still will not follow, check
+Chrome's own Appearance setting: with Mode set to Light or Dark rather than
+Device, `prefers-color-scheme` never changes and no application code can help.)
 
 **Leaflet's own stylesheet hardcodes light chrome** — white popups, white
 controls, white tooltips. `src/index.css` overrides those with `!important` and

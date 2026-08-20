@@ -33,10 +33,14 @@ const matchDark = () =>
 /**
  * Appearance: light, dark, or following the operating system.
  *
- * This is a per-device display preference and is stored in localStorage rather
- * than on the profile — night mode is about the room you are sitting in, not
- * about who you are, and a phone at night and a desk in daylight want different
- * answers. Like language, it has no bearing on role, permissions or access.
+ * This provider only holds and applies the setting. Deciding *which* setting is
+ * in force belongs to ThemeSync, which adopts the signed-in person's saved
+ * preference and drops back to 'system' when nobody is signed in.
+ *
+ * localStorage is a cache rather than the source of truth: it exists so the
+ * inline script in index.html can paint the right colours before this file has
+ * even been parsed. Like language, the setting has no bearing on role,
+ * permissions or access.
  */
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(readStoredTheme)
@@ -47,10 +51,26 @@ export function ThemeProvider({ children }) {
     const query = matchDark()
     if (!query) return
 
-    const handleChange = (event) => setSystemDark(event.matches)
-    setSystemDark(query.matches)
-    query.addEventListener('change', handleChange)
-    return () => query.removeEventListener('change', handleChange)
+    // Reads the query fresh each time rather than trusting an event payload,
+    // so the same handler serves all three triggers below.
+    const sync = () => setSystemDark(query.matches)
+
+    sync()
+    query.addEventListener('change', sync)
+
+    // Changing the appearance means leaving the browser for the system
+    // settings, and a hidden tab has its timers and events throttled — the
+    // change can arrive late or coalesced, which looks exactly like the theme
+    // being stuck. Re-reading when the page is looked at again makes the
+    // switch deterministic on the way back.
+    document.addEventListener('visibilitychange', sync)
+    window.addEventListener('focus', sync)
+
+    return () => {
+      query.removeEventListener('change', sync)
+      document.removeEventListener('visibilitychange', sync)
+      window.removeEventListener('focus', sync)
+    }
   }, [])
 
   const resolvedTheme = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme

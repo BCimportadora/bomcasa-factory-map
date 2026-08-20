@@ -12,6 +12,7 @@ import AdminAccountsPage from './pages/AdminAccountsPage'
 import SectionPlaceholder from './pages/SectionPlaceholder'
 import ProtectedRoute from './components/Auth/ProtectedRoute'
 import RecoveryRedirect from './components/Auth/RecoveryRedirect'
+import ThemeSync from './components/Layout/ThemeSync'
 import AppLayout from './components/Layout/AppLayout'
 import { SECTIONS } from './lib/sections'
 
@@ -29,6 +30,9 @@ export default function App() {
   return (
     <>
       <RecoveryRedirect />
+      {/* Sits outside the routes: it has to see the signed-out state, which
+          never renders the application layout. */}
+      <ThemeSync />
       <AppRoutes />
     </>
   )
