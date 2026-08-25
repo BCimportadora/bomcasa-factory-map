@@ -330,6 +330,12 @@
   color: rgb(var(--c-ink)) !important;
 }
 
+/* An office or warehouse pin. Desaturating Leaflet's own blue marker keeps the
+   familiar shape while making clear it is not a plant. */
+.marker-muted {
+  filter: grayscale(1) brightness(1.1);
+}
+
 /* Numbered stop on a distance measurement. Built by L.divIcon in
    FactoryMap, which is outside React's tree, so it is styled here rather than
    with utility classes. */

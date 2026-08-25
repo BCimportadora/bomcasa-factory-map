@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useI18n } from '../../i18n'
+import { LOCATION_TYPES, locationTypeKey } from '../../lib/constants'
 
 /**
  * Deliberately loose. The point is to catch a typed mistake, not to police what
@@ -15,6 +16,7 @@ const emptyFactory = {
   province: '',
   latitude: '',
   longitude: '',
+  location_type: 'factory',
   contact_person: '',
   phone: '',
   email: '',
@@ -101,6 +103,26 @@ export default function FactoryForm({ initialValues, onSubmit, onCancel, submitt
       </div>
 
       {field('email', 'factories.email', { type: 'email', inputMode: 'email' })}
+
+      <div>
+        <label htmlFor="location_type" className="label">
+          {t('factories.locationType')}
+        </label>
+        <select
+          id="location_type"
+          name="location_type"
+          value={values.location_type}
+          onChange={handleChange}
+          className="select text-[14px]"
+        >
+          {LOCATION_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {t(locationTypeKey(type))}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1.5 hint">{t('factories.locationTypeHint')}</p>
+      </div>
 
       {field('products', 'factories.products')}
       {field('capacity', 'factories.capacity')}

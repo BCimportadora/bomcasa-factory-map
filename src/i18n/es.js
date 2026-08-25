@@ -186,6 +186,12 @@ export default {
     accounting: 'Contabilidad',
   },
 
+  locationTypes: {
+    factory: 'Fábrica',
+    office: 'Oficina',
+    warehouse: 'Almacén',
+  },
+
   roles: {
     admin: 'Administrador',
     business_user: 'Usuario empresarial',
@@ -261,6 +267,8 @@ export default {
     contactPerson: 'Persona de contacto',
     phone: 'Teléfono',
     email: 'Correo electrónico',
+    locationType: 'Esta ubicación es',
+    locationTypeHint: 'Algunos proveedores solo publican una oficina comercial, no la planta.',
     products: 'Productos',
     capacity: 'Capacidad',
     notes: 'Notas',

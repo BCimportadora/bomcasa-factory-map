@@ -1,4 +1,5 @@
 import Papa from 'papaparse'
+import { isValidLocationType } from './constants'
 
 const EXPORT_COLUMNS = [
   'name',
@@ -7,6 +8,7 @@ const EXPORT_COLUMNS = [
   'province',
   'latitude',
   'longitude',
+  'location_type',
   'contact_person',
   'phone',
   'email',
@@ -62,6 +64,12 @@ export function parseFactoriesCsv(file) {
             longitude: lng,
             contact_person: row.contact_person?.trim() ?? '',
             phone: row.phone?.trim() ?? '',
+            // An unrecognised or missing value falls back to 'factory' rather
+            // than failing the row: the database check would reject anything
+            // else, and a typo in one cell should not lose the whole record.
+            location_type: isValidLocationType(row.location_type?.trim())
+              ? row.location_type.trim()
+              : 'factory',
             email: row.email?.trim() ?? '',
             products: row.products?.trim() ?? '',
             capacity: row.capacity?.trim() ?? '',

@@ -185,6 +185,12 @@ export default {
     accounting: 'Accounting',
   },
 
+  locationTypes: {
+    factory: 'Factory',
+    office: 'Office',
+    warehouse: 'Warehouse',
+  },
+
   roles: {
     admin: 'Administrator',
     business_user: 'Business User',
@@ -260,6 +266,8 @@ export default {
     contactPerson: 'Contact person',
     phone: 'Phone',
     email: 'Email',
+    locationType: 'This location is',
+    locationTypeHint: 'Some suppliers publish only a sales office, not the plant itself.',
     products: 'Products',
     capacity: 'Capacity',
     notes: 'Notes',

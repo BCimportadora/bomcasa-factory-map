@@ -1,4 +1,5 @@
 import { useI18n } from '../../i18n'
+import { locationTypeKey } from '../../lib/constants'
 
 export default function FactoryList({ factories, onSelect, onEdit, onDelete, canManage }) {
   const { t } = useI18n()
@@ -12,7 +13,16 @@ export default function FactoryList({ factories, onSelect, onEdit, onDelete, can
       {factories.map((f) => (
         <li key={f.id} className="group px-4 py-3 transition-colors hover:bg-canvas">
           <button onClick={() => onSelect(f)} className="block w-full text-left">
-            <p className="truncate text-[14px] font-medium text-ink">{f.name}</p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">{f.name}</p>
+              {/* Only flagged when it is not a plant — a badge on every row
+                  would carry no information. */}
+              {f.location_type && f.location_type !== 'factory' && (
+                <span className="badge-neutral mt-0.5 flex-shrink-0">
+                  {t(locationTypeKey(f.location_type))}
+                </span>
+              )}
+            </div>
             <p className="truncate text-[13px] text-muted">
               {[f.city, f.province].filter(Boolean).join(', ') || t('common.none')}
             </p>

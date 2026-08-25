@@ -6,6 +6,7 @@ import AutoResize from './AutoResize'
 import MeasureLayer from './MeasureLayer'
 import PortMarker from './PortMarker'
 import { useI18n } from '../../i18n'
+import { locationTypeKey } from '../../lib/constants'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
@@ -36,6 +37,15 @@ L.Icon.Default.mergeOptions({
 const CHINA_CENTER = [35.8617, 104.1954]
 const CHINA_ZOOM = 4
 
+/**
+ * A pin for somewhere that is not a plant.
+ *
+ * Same marker, desaturated by CSS, so an office or a warehouse does not read as
+ * a factory at a glance on a map that is otherwise all factories. Built once:
+ * a new icon per render would make Leaflet replace every marker element.
+ */
+const NON_FACTORY_ICON = new L.Icon.Default({ className: 'marker-muted' })
+
 function ClickHandler({ onMapClick }) {
   useMapEvents({
     click(e) {
@@ -64,6 +74,11 @@ function FactoryPopup({ factory, onEdit, onDelete, canManage }) {
       <p className="text-[13px] text-muted">
         {[factory.city, factory.province].filter(Boolean).join(', ')}
       </p>
+      {factory.location_type && factory.location_type !== 'factory' && (
+        <p>
+          <span className="badge-neutral">{t(locationTypeKey(factory.location_type))}</span>
+        </p>
+      )}
       {factory.products && (
         <p className="text-[13px]">
           <span className="font-medium">{t('factories.products')}:</span> {factory.products}
@@ -162,6 +177,7 @@ export default function FactoryMap({
         <Marker
           key={f.id}
           position={[f.latitude, f.longitude]}
+          icon={f.location_type && f.location_type !== 'factory' ? NON_FACTORY_ICON : undefined}
           eventHandlers={
             measuring
               ? { click: (event) => onMeasureFactory?.(f, event.originalEvent) }
