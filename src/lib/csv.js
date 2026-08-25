@@ -14,6 +14,20 @@ const EXPORT_COLUMNS = [
   'notes',
 ]
 
+/**
+ * Key used to decide whether an imported row is an existing factory.
+ *
+ * Company names arrive punctuated every which way — "CO., LTD", "CO.,LTD.",
+ * and a full-width comma in at least one supplier list — so only the letters
+ * and digits are compared. Deliberately not fuzzy beyond that: merging two
+ * genuinely different suppliers is far worse than creating one duplicate.
+ */
+export const factoryNameKey = (name) =>
+  (name ?? '')
+    .toLowerCase()
+    .replace(/[^\p{Letter}\p{Number}]+/gu, ' ')
+    .trim()
+
 export function exportFactoriesToCsv(factories, filename = 'factories.csv') {
   const rows = factories.map((f) => Object.fromEntries(EXPORT_COLUMNS.map((col) => [col, f[col] ?? ''])))
   const csv = Papa.unparse(rows)

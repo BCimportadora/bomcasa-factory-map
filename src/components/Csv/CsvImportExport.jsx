@@ -18,11 +18,17 @@ export default function CsvImportExport({ factories, onImport }) {
       const { rows, errors } = await parseFactoriesCsv(file)
       const invalidRowNumbers = new Set(errors.map((err) => parseInt(err.match(/^Row (\d+):/)[1], 10)))
       const validRows = rows.filter((_, i) => !invalidRowNumbers.has(i + 2))
-      if (validRows.length > 0) await onImport(validRows)
+      const result = validRows.length > 0 ? await onImport(validRows) : null
 
-      const summary = t('csv.importResult', { imported: validRows.length, total: rows.length })
-      const skipped = errors.length ? ` ${t('csv.importSkipped', { count: errors.length })}` : ''
-      setMessage(summary + skipped)
+      // Added and updated are reported separately: re-importing your own export
+      // should read as all-updated, and anything else means the names did not
+      // line up with what is already on the map.
+      const parts = [
+        t('csv.importSummary', { added: result?.added ?? 0, updated: result?.updated ?? 0 }),
+      ]
+      if (errors.length) parts.push(t('csv.importSkipped', { count: errors.length }))
+      if (result?.notPermitted) parts.push(t('csv.importNotPermitted', { count: result.notPermitted }))
+      setMessage(parts.join(' '))
     } catch (err) {
       setMessage(t('csv.importError', { message: err.message }))
     } finally {

@@ -315,8 +315,10 @@ export default {
     export: 'Exportar CSV',
     import: 'Importar CSV',
     importing: 'Importando…',
-    importResult: 'Se importaron {{imported}} de {{total}} filas.',
-    importSkipped: 'Se omitieron {{count}} fila(s).',
+    importSummary: '{{added}} fábricas añadidas, {{updated}} actualizadas.',
+    importSkipped: 'Se omitieron {{count}} fila(s) por falta de nombre o de coordenadas.',
+    importNotPermitted:
+      '{{count}} fila(s) corresponden a fábricas creadas por otra persona y no se modificaron.',
     importError: 'Error al importar: {{message}}',
   },
 

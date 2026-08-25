@@ -314,8 +314,10 @@ export default {
     export: 'Export CSV',
     import: 'Import CSV',
     importing: 'Importing…',
-    importResult: 'Imported {{imported}} of {{total}} rows.',
-    importSkipped: '{{count}} row(s) were skipped.',
+    importSummary: '{{added}} factories added, {{updated}} updated.',
+    importSkipped: '{{count}} row(s) were skipped for a missing name or coordinates.',
+    importNotPermitted:
+      '{{count}} row(s) match factories created by someone else and were left unchanged.',
     importError: 'Import failed: {{message}}',
   },
 

@@ -9,6 +9,7 @@ import CsvImportExport from '../components/Csv/CsvImportExport'
 import FactoryForm from '../components/Factory/FactoryForm'
 import Modal from '../components/common/Modal'
 import { useFactories } from '../hooks/useFactories'
+import { factoryNameKey } from '../lib/csv'
 import { factoryPoint, portPoint, useMeasure, wantsPairs } from '../hooks/useMeasure'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n'
@@ -95,10 +96,36 @@ export default function FactoriesPage() {
     }
   }
 
+  /**
+   * Import updates factories that already exist and adds the rest.
+   *
+   * Matching on the name is what makes "export, fill in a column, import"
+   * work — the previous behaviour created a row for every line, so
+   * re-importing your own export silently doubled the map.
+   *
+   * A row matching a factory the signed-in user may not edit is skipped rather
+   * than attempted: row-level security would reject the update anyway, and
+   * failing loudly per row would abandon the rest of the file.
+   */
   const handleCsvImport = async (rows) => {
+    const existingByName = new Map(factories.map((f) => [factoryNameKey(f.name), f]))
+    const summary = { added: 0, updated: 0, notPermitted: 0 }
+
     for (const row of rows) {
-      await createFactory({ ...row, created_by: user.id })
+      const existing = existingByName.get(factoryNameKey(row.name))
+
+      if (!existing) {
+        await createFactory({ ...row, created_by: user.id })
+        summary.added += 1
+      } else if (canManage(existing)) {
+        await updateFactory(existing.id, row)
+        summary.updated += 1
+      } else {
+        summary.notPermitted += 1
+      }
     }
+
+    return summary
   }
 
   return (
