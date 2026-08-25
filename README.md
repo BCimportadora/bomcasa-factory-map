@@ -193,6 +193,17 @@ factory → port → factory answers "which port should this supplier ship from"
 which is the question the feature exists for. The same measurement is available
 on the FOB Ports page for port-to-port distances.
 
+**Route or every pair.** By default the stops are read as a route — consecutive
+legs plus a total. Holding **Ctrl** (or ⌘) while selecting switches to *every
+pair*, which measures each stop against every other and sorts them nearest
+first. With a factory, a port and a second factory, the route shows only
+factory→port and port→factory; every pair adds the distance between the two
+factories as well. There is a toggle in the panel too, since a modifier key is
+no use on a touchscreen.
+
+No total is shown in pair mode: summing every pair produces a number that means
+nothing.
+
 The figure is the great-circle distance from
 [`src/lib/distance.js`](src/lib/distance.js) — straight line, not road or sea
 route, which the panel states plainly. There is no routing provider in the

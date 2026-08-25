@@ -9,7 +9,7 @@ import CsvImportExport from '../components/Csv/CsvImportExport'
 import FactoryForm from '../components/Factory/FactoryForm'
 import Modal from '../components/common/Modal'
 import { useFactories } from '../hooks/useFactories'
-import { factoryPoint, portPoint, useMeasure } from '../hooks/useMeasure'
+import { factoryPoint, portPoint, useMeasure, wantsPairs } from '../hooks/useMeasure'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n'
 import { FOB_PORTS } from '../lib/ports'
@@ -199,9 +199,14 @@ export default function FactoriesPage() {
           ports={FOB_PORTS}
           measuring={measure.measuring}
           measurePoints={measure.points}
+          measureLegs={measure.legs}
           measureSelectedKeys={measure.selectedKeys}
-          onMeasureFactory={(factory) => measure.select(factoryPoint(factory))}
-          onMeasurePort={(port) => measure.select(portPoint(port))}
+          onMeasureFactory={(factory, event) =>
+            measure.select(factoryPoint(factory), { comparePairs: wantsPairs(event) })
+          }
+          onMeasurePort={(port, event) =>
+            measure.select(portPoint(port), { comparePairs: wantsPairs(event) })
+          }
         />
 
         {/* The add-a-factory hint would be wrong while measuring, when a click
@@ -217,6 +222,8 @@ export default function FactoriesPage() {
             points={measure.points}
             legs={measure.legs}
             totalKm={measure.totalKm}
+            mode={measure.mode}
+            onModeChange={measure.setMode}
             onUndo={measure.undo}
             onClear={measure.clear}
             onClose={measure.toggle}

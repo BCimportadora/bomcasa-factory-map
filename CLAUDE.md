@@ -77,6 +77,19 @@ the shared tokens, so they follow the theme. The MapLibre *basemap* is separate:
 it only goes dark if `VITE_MAPTILER_STYLE_DARK` is set, because a stock dark
 style would lose the English labels the custom style exists to provide.
 
+**`delete L.Icon.Default.prototype._getIconUrl` in `FactoryMap.jsx` is load-bearing.**
+Leaflet's `Icon.Default` prepends an image path it *guesses* from the
+background-image of `.leaflet-default-icon-path` in its own stylesheet. The
+bundled urls are already absolute, so the two concatenate into
+`/node_modules/leaflet/dist/images//node_modules/...`, which Vite's dev server
+answers with the SPA fallback HTML — every pin renders as a broken image.
+
+It reproduces **only in dev**: a production build inlines that background-image
+as a data URI, Leaflet's path-guessing regex requires the value to end in
+`marker-icon.png`, fails to match, and the prefix comes out empty. So the map
+looks fine on Vercel and broken on localhost, which is a confusing place to
+start debugging. `mergeOptions` alone does not fix it.
+
 ## Security model
 
 RLS is the security boundary — the browser talks to Postgres directly, so there is

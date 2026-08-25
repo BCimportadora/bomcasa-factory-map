@@ -23,7 +23,7 @@ export default function PortMarker({ port, highlighted, onSelect }) {
         fillColor: highlighted ? colors.markerSelected : colors.markerBase,
         fillOpacity: 1,
       }}
-      eventHandlers={{ click: () => onSelect(port) }}
+      eventHandlers={{ click: (event) => onSelect(port, event.originalEvent) }}
     >
       <Tooltip direction="top" offset={[0, -8]} opacity={1}>
         <span className="text-[13px] font-medium">{port.name}</span>

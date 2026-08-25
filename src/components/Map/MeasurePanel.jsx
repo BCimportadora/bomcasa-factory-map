@@ -13,6 +13,8 @@ export default function MeasurePanel({
   points,
   legs,
   totalKm,
+  mode,
+  onModeChange,
   onUndo,
   onClear,
   onClose,
@@ -20,6 +22,8 @@ export default function MeasurePanel({
   nextHint,
 }) {
   const { t, language } = useI18n()
+  // With one stop there is nothing to compare, so the choice is noise.
+  const showModes = points.length > 1
 
   return (
     <div className="absolute bottom-4 left-3 z-[1101] w-72 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-line bg-surface/95 p-4 shadow-panel backdrop-blur">
@@ -37,6 +41,28 @@ export default function MeasurePanel({
           <X size={16} />
         </button>
       </div>
+
+      {showModes && (
+        <div
+          role="group"
+          aria-label={t('measure.modeLabel')}
+          className="mt-3 flex rounded-lg border border-line bg-canvas p-0.5"
+        >
+          {['path', 'pairs'].map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onModeChange(option)}
+              aria-pressed={mode === option}
+              className={`flex-1 rounded-md px-2 py-1 text-[12px] font-medium transition-colors ${
+                mode === option ? 'bg-surface text-ink shadow-subtle' : 'text-muted hover:text-ink'
+              }`}
+            >
+              {t(option === 'path' ? 'measure.modePath' : 'measure.modePairs')}
+            </button>
+          ))}
+        </div>
+      )}
 
       {legs.length === 0 ? (
         <p className="mt-3 text-[13px] text-muted">
@@ -60,13 +86,21 @@ export default function MeasurePanel({
             ))}
           </ol>
 
-          <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-line pt-2.5">
-            <span className="text-[13px] font-medium text-ink">{t('measure.total')}</span>
-            <span className="text-[15px] font-semibold tabular-nums text-ink">
-              {formatDistance(totalKm, language)}
-            </span>
-          </div>
+          {/* Adding up every pair would be a meaningless number, so the total
+              belongs to the route reading only. */}
+          {mode === 'path' && (
+            <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-line pt-2.5">
+              <span className="text-[13px] font-medium text-ink">{t('measure.total')}</span>
+              <span className="text-[15px] font-semibold tabular-nums text-ink">
+                {formatDistance(totalKm, language)}
+              </span>
+            </div>
+          )}
         </>
+      )}
+
+      {showModes && mode === 'path' && (
+        <p className="mt-3 text-[12px] leading-snug text-muted">{t('measure.pairsTip')}</p>
       )}
 
       <div className="mt-3 flex gap-2">

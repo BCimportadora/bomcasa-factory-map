@@ -42,6 +42,26 @@ export const pathLengthKm = (points) =>
   pathLegs(points).reduce((total, leg) => total + leg.km, 0)
 
 /**
+ * Every unordered pair of points, nearest first.
+ *
+ * A path answers "how far is this route"; pairs answer "how far is everything
+ * from everything else" — which port is closest to each of these factories, and
+ * how far apart the factories are, in one reading. Sorted by distance because
+ * the question is almost always "which is nearest".
+ */
+export function pointPairs(points) {
+  const pairs = []
+
+  for (let i = 0; i < points.length; i += 1) {
+    for (let j = i + 1; j < points.length; j += 1) {
+      pairs.push({ from: points[i], to: points[j], km: distanceKm(points[i], points[j]) })
+    }
+  }
+
+  return pairs.sort((a, b) => a.km - b.km)
+}
+
+/**
  * Human-readable distance. Metres below a kilometre, one decimal below a
  * hundred, whole kilometres above — precision that flatters the source data
  * rather than implying more than a rooftop coordinate can support.

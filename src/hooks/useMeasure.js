@@ -1,5 +1,14 @@
 import { useCallback, useMemo, useState } from 'react'
-import { pathLegs, pathLengthKm } from '../lib/distance'
+import { pathLegs, pathLengthKm, pointPairs } from '../lib/distance'
+
+/**
+ * How the selected points are read.
+ *
+ * 'path' walks them in the order they were chosen — a route. 'pairs' measures
+ * every one against every other, which is what answers "how far is each of
+ * these factories from that port, and from each other" in a single reading.
+ */
+export const MEASURE_MODES = ['path', 'pairs']
 
 /**
  * A measurement is a path over anything that has a name and a coordinate, so
@@ -28,15 +37,24 @@ export const portPoint = (port) => ({
 export function useMeasure() {
   const [measuring, setMeasuring] = useState(false)
   const [points, setPoints] = useState([])
+  const [mode, setMode] = useState('path')
 
   // Leaving measure mode discards the path: a stale measurement reappearing
   // the next time the button is pressed is never what was wanted.
   const toggle = useCallback(() => {
     setMeasuring((on) => !on)
     setPoints([])
+    setMode('path')
   }, [])
 
-  const select = useCallback((point) => {
+  /**
+   * Add a stop. `comparePairs` — set when the modifier key was held during the
+   * click — switches to pair mode at the same time, so holding it while
+   * selecting is all that is needed to get every distance rather than a route.
+   */
+  const select = useCallback((point, { comparePairs = false } = {}) => {
+    if (comparePairs) setMode('pairs')
+
     setPoints((current) => {
       // Ignore a repeat of the stop just added; it would contribute a leg of
       // zero and read as a stutter in the list. Returning to a point later in
@@ -49,9 +67,29 @@ export function useMeasure() {
   const undo = useCallback(() => setPoints((current) => current.slice(0, -1)), [])
   const clear = useCallback(() => setPoints([]), [])
 
-  const legs = useMemo(() => pathLegs(points), [points])
+  // In both modes these are { from, to, km } and are what gets drawn and
+  // listed, so everything downstream stays mode-agnostic.
+  const legs = useMemo(
+    () => (mode === 'pairs' ? pointPairs(points) : pathLegs(points)),
+    [mode, points],
+  )
   const totalKm = useMemo(() => pathLengthKm(points), [points])
   const selectedKeys = useMemo(() => new Set(points.map((p) => p.key)), [points])
 
-  return { measuring, points, legs, totalKm, selectedKeys, toggle, select, undo, clear }
+  return {
+    measuring,
+    points,
+    mode,
+    setMode,
+    legs,
+    totalKm,
+    selectedKeys,
+    toggle,
+    select,
+    undo,
+    clear,
+  }
 }
+
+/** True when a click carried the "compare every pair" modifier. */
+export const wantsPairs = (event) => Boolean(event?.ctrlKey || event?.metaKey)

@@ -4,7 +4,7 @@ import PortMap from '../components/Map/PortMap'
 import MeasureButton from '../components/Map/MeasureButton'
 import MeasurePanel from '../components/Map/MeasurePanel'
 import { FOB_PORTS, portDescriptionKey } from '../lib/ports'
-import { portPoint, useMeasure } from '../hooks/useMeasure'
+import { portPoint, useMeasure, wantsPairs } from '../hooks/useMeasure'
 import { useI18n } from '../i18n'
 
 function DetailRow({ label, children }) {
@@ -111,8 +111,11 @@ export default function PortsPage() {
           onSelect={setSelectedPort}
           measuring={measure.measuring}
           measurePoints={measure.points}
+          measureLegs={measure.legs}
           measureSelectedKeys={measure.selectedKeys}
-          onMeasurePort={(port) => measure.select(portPoint(port))}
+          onMeasurePort={(port, event) =>
+            measure.select(portPoint(port), { comparePairs: wantsPairs(event) })
+          }
         />
 
         {!selectedPort && !measure.measuring && (
@@ -126,6 +129,8 @@ export default function PortsPage() {
             points={measure.points}
             legs={measure.legs}
             totalKm={measure.totalKm}
+            mode={measure.mode}
+            onModeChange={measure.setMode}
             onUndo={measure.undo}
             onClear={measure.clear}
             onClose={measure.toggle}

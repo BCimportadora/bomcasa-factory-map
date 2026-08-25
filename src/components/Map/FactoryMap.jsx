@@ -10,6 +10,23 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 
+/*
+ * Leaflet's default marker images, wired up for a bundler.
+ *
+ * The delete is not optional. Icon.Default overrides _getIconUrl to prepend a
+ * "detected" image path, guessed from the background-image of
+ * .leaflet-default-icon-path in Leaflet's own stylesheet. Our urls are already
+ * absolute, so the two get concatenated into
+ * /node_modules/leaflet/dist/images//node_modules/... — which Vite's dev server
+ * answers with the SPA fallback HTML, so every pin renders as a broken image.
+ *
+ * It only shows up locally: a production build inlines that background-image as
+ * a data URI, the path-guessing regex fails to match it, and the prefix comes
+ * out empty. Removing the override drops the guessing entirely and uses the
+ * urls as given, in both.
+ */
+delete L.Icon.Default.prototype._getIconUrl
+
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
   iconUrl: markerIcon,
@@ -100,6 +117,7 @@ export default function FactoryMap({
    */
   measuring = false,
   measurePoints = [],
+  measureLegs = [],
   measureSelectedKeys,
   onMeasureFactory,
   onMeasurePort,
@@ -130,13 +148,17 @@ export default function FactoryMap({
           />
         ))}
 
-      <MeasureLayer points={measurePoints} />
+      <MeasureLayer points={measurePoints} legs={measureLegs} />
 
       {factories.map((f) => (
         <Marker
           key={f.id}
           position={[f.latitude, f.longitude]}
-          eventHandlers={measuring ? { click: () => onMeasureFactory?.(f) } : undefined}
+          eventHandlers={
+            measuring
+              ? { click: (event) => onMeasureFactory?.(f, event.originalEvent) }
+              : undefined
+          }
         >
           {/* No popup while measuring: there, a click means "add this stop". */}
           {!measuring && (
@@ -149,7 +171,8 @@ export default function FactoryMap({
               />
             </Popup>
           )}
-        </Marker>      ))}
+        </Marker>
+      ))}
     </MapContainer>
   )
 }

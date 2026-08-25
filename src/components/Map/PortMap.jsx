@@ -23,6 +23,7 @@ export default function PortMap({
   /** While measuring, clicking a port adds it to the path rather than opening its details. */
   measuring = false,
   measurePoints = [],
+  measureLegs = [],
   measureSelectedKeys,
   onMeasurePort,
 }) {
@@ -42,7 +43,7 @@ export default function PortMap({
           around mid-measurement. */}
       <FlyToPort port={measuring ? null : selectedPort} />
 
-      <MeasureLayer points={measurePoints} />
+      <MeasureLayer points={measurePoints} legs={measureLegs} />
 
       {ports.map((port) => (
         <PortMarker
@@ -51,7 +52,7 @@ export default function PortMap({
           highlighted={
             measuring ? measureSelectedKeys?.has(`port:${port.id}`) : selectedPort?.id === port.id
           }
-          onSelect={measuring ? onMeasurePort : onSelect}
+          onSelect={measuring ? onMeasurePort : (port) => onSelect(port)}
         />
       ))}
     </MapContainer>

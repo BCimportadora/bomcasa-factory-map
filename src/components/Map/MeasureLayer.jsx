@@ -22,8 +22,15 @@ const measureIcon = (position) =>
     iconAnchor: [-6, 46],
   })
 
-/** The path drawn over a map while measuring: the line and its numbered stops. */
-export default function MeasureLayer({ points }) {
+/**
+ * What is drawn over a map while measuring: one line per measured leg, and a
+ * numbered badge on each stop.
+ *
+ * Drawing per leg rather than as a single polyline means the same code serves
+ * both modes — consecutive legs look identical to one continuous line, and pair
+ * mode simply has more of them.
+ */
+export default function MeasureLayer({ points, legs = [] }) {
   const { resolvedTheme } = useTheme()
   const colors = mapColors(resolvedTheme)
 
@@ -31,12 +38,16 @@ export default function MeasureLayer({ points }) {
 
   return (
     <>
-      {points.length > 1 && (
+      {legs.map((leg, index) => (
         <Polyline
-          positions={points.map((point) => [point.latitude, point.longitude])}
+          key={`${leg.from.key}-${leg.to.key}-${index}`}
+          positions={[
+            [leg.from.latitude, leg.from.longitude],
+            [leg.to.latitude, leg.to.longitude],
+          ]}
           pathOptions={{ color: colors.measureLine, weight: 3, opacity: 0.9, dashArray: '7 7' }}
         />
-      )}
+      ))}
 
       {points.map((point, index) => (
         <Marker
