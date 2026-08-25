@@ -69,6 +69,15 @@ export default function MeasurePanel({
   nextHint,
 }) {
   const { t, language } = useI18n()
+
+  /**
+   * A bare port name sitting in a list of company names reads as another
+   * company, so ports say so. Done here rather than baked into the point so it
+   * follows the chosen language.
+   */
+  const label = (point) =>
+    point.kind === 'port' ? t('ports.namedPort', { name: point.name }) : point.name
+
   // With one stop there is nothing to compare, so the choices are noise.
   const showModes = points.length > 1
   const wantsRoad = metric === 'road'
@@ -166,7 +175,7 @@ export default function MeasurePanel({
                     {/* Long supplier names wrap rather than clip — this is the
                         one place the full name is shown. */}
                     <span className="min-w-0 flex-1 break-words leading-snug text-ink">
-                      {point.name}
+                      {label(point)}
                       {distant && (
                         <span className="block text-[12px] text-warning">
                           {t('measure.snapDistance', {
@@ -192,7 +201,7 @@ export default function MeasurePanel({
                     <li
                       key={`${leg.from.key}-${leg.to.key}-${index}`}
                       className="flex items-center justify-between gap-3 text-[13px]"
-                      title={`${leg.from.name} → ${leg.to.name}`}
+                      title={`${label(leg.from)} → ${label(leg.to)}`}
                     >
                       <span className="flex flex-shrink-0 items-center gap-1.5">
                         <StopNumber>{leg.fromIndex + 1}</StopNumber>

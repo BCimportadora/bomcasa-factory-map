@@ -1,10 +1,13 @@
 /**
  * Major Chinese FOB export ports.
  *
- * Coordinates are WGS-84 and point at the container port area itself (not the
- * city centre) — they were checked against MapTiler geocoding for the relevant
- * port district: Yangshan, Beilun, Yantian, Nansha, Qianwan/Huangdao, Xingang,
- * Haicang and Kwai Chung respectively.
+ * Coordinates are WGS-84 and point at the container port area itself, not the
+ * city centre, and each was confirmed by reverse geocoding to the right port
+ * district — Yangshan, Beilun, Shekou, Yantian, Nansha, Qianwan/Huangdao,
+ * Xingang, Jiangyin, Haicang and Kwai Chung respectively.
+ *
+ * `primary` marks the ports this business actually ships from. They are drawn
+ * larger and haloed so they stand out from the rest at country zoom.
  *
  * `descriptionKey` refers to entries in the i18n bundles rather than holding
  * prose here, so the panel is fully translatable. Only factual, publicly known
@@ -22,6 +25,7 @@ export const FOB_PORTS = [
     longitude: 122.0686,
     terminals: ['Yangshan Deep-Water Port', 'Waigaoqiao'],
     unlocode: 'CNSHA',
+    primary: true,
   },
   {
     id: 'ningbo-zhoushan',
@@ -33,17 +37,34 @@ export const FOB_PORTS = [
     longitude: 121.8406,
     terminals: ['Beilun'],
     unlocode: 'CNNGB',
+    primary: true,
   },
   {
+    // Was pinned inside Yantian district, which is now a port in its own
+    // right, so this moves west to the Shekou/Chiwan areas it still covers.
     id: 'shenzhen',
     name: 'Shenzhen',
     nameLocal: '深圳港',
     city: 'Shenzhen',
     province: 'Guangdong',
-    latitude: 22.575,
-    longitude: 114.26,
-    terminals: ['Yantian', 'Shekou', 'Chiwan'],
+    latitude: 22.4568,
+    longitude: 113.8908,
+    terminals: ['Shekou', 'Chiwan'],
     unlocode: 'CNSZX',
+  },
+  {
+    // Commercially a port of loading in its own right — bills of lading say
+    // YANTIAN, not SHENZHEN — and 35 km east of Shekou, so it gets its own pin.
+    id: 'yantian',
+    name: 'Yantian',
+    nameLocal: '盐田港',
+    city: 'Shenzhen',
+    province: 'Guangdong',
+    latitude: 22.5833,
+    longitude: 114.2667,
+    terminals: ['Yantian International Container Terminals'],
+    unlocode: 'CNYTN',
+    primary: true,
   },
   {
     id: 'guangzhou',
@@ -66,6 +87,7 @@ export const FOB_PORTS = [
     longitude: 120.15,
     terminals: ['Qianwan', 'Dongjiakou'],
     unlocode: 'CNTAO',
+    primary: true,
   },
   {
     id: 'tianjin',
@@ -79,6 +101,18 @@ export const FOB_PORTS = [
     unlocode: 'CNTSN',
   },
   {
+    id: 'fuzhou',
+    name: 'Fuzhou',
+    nameLocal: '福州港',
+    city: 'Fuzhou',
+    province: 'Fujian',
+    latitude: 25.455,
+    longitude: 119.32,
+    terminals: ['Jiangyin'],
+    unlocode: 'CNFOC',
+    primary: true,
+  },
+  {
     id: 'xiamen',
     name: 'Xiamen',
     nameLocal: '厦门港',
@@ -88,6 +122,7 @@ export const FOB_PORTS = [
     longitude: 118.0266,
     terminals: ['Haicang'],
     unlocode: 'CNXMN',
+    primary: true,
   },
   {
     id: 'hong-kong',
@@ -99,6 +134,7 @@ export const FOB_PORTS = [
     longitude: 114.129,
     terminals: ['Kwai Tsing'],
     unlocode: 'HKHKG',
+    primary: true,
   },
 ]
 

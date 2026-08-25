@@ -209,6 +209,7 @@ export default {
     subtitle: 'Major Chinese export ports used for FOB shipments.',
     selectPrompt: 'Select a port on the map to see its details.',
     portName: 'Port',
+    namedPort: '{{name}} Port',
     city: 'City',
     province: 'Province / Region',
     terminals: 'Main terminals',
@@ -222,13 +223,17 @@ export default {
       'ningbo-zhoushan':
         'One of the largest ports in the world by cargo tonnage, formed by the merger of the Ningbo and Zhoushan port areas in Zhejiang province.',
       shenzhen:
-        'A cluster of terminals along the Pearl River Delta — Yantian on the eastern side, with Shekou and Chiwan to the west — serving southern China manufacturing.',
+        'The western Shenzhen port areas of Shekou and Chiwan on the Pearl River Delta, serving manufacturing across the western side of the region. The eastern Yantian terminals are listed separately.',
+      yantian:
+        "Shenzhen's eastern deep-water terminals, among the busiest container operations in the world and a common port of loading for exports from the eastern Pearl River Delta.",
       guangzhou:
         'The main port of the Pearl River Delta, with deep-water container handling concentrated at the Nansha port area south of the city.',
       qingdao:
         'The principal port of northern China on the Yellow Sea, handling containers at Qianwan and bulk cargo at Dongjiakou.',
       tianjin:
         'The largest port in northern China and the main maritime gateway for the Beijing-Tianjin region, centred on the Xingang port area.',
+      fuzhou:
+        "The port of Fujian's provincial capital on the Min river estuary, with deep-water container handling concentrated at the Jiangyin port area south of the city.",
       xiamen:
         'A deep-water port in Fujian province on the Taiwan Strait, with container operations concentrated in the Haicang port area.',
       'hong-kong':

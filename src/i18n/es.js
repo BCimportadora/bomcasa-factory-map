@@ -210,6 +210,7 @@ export default {
     subtitle: 'Principales puertos de exportación chinos utilizados para envíos FOB.',
     selectPrompt: 'Selecciona un puerto en el mapa para ver sus detalles.',
     portName: 'Puerto',
+    namedPort: 'Puerto de {{name}}',
     city: 'Ciudad',
     province: 'Provincia / Región',
     terminals: 'Terminales principales',
@@ -223,13 +224,17 @@ export default {
       'ningbo-zhoushan':
         'Uno de los puertos más grandes del mundo por tonelaje de carga, formado por la fusión de las zonas portuarias de Ningbo y Zhoushan, en la provincia de Zhejiang.',
       shenzhen:
-        'Un conjunto de terminales en el delta del río de las Perlas: Yantian en el lado oriental, y Shekou y Chiwan al oeste, que dan servicio a la industria del sur de China.',
+        'Las zonas portuarias occidentales de Shenzhen, Shekou y Chiwan, en el delta del río de las Perlas, que dan servicio a la industria del lado oeste de la región. Las terminales orientales de Yantian figuran por separado.',
+      yantian:
+        'Las terminales de aguas profundas del este de Shenzhen, entre las de mayor tráfico de contenedores del mundo y un puerto de carga habitual para las exportaciones del este del delta del río de las Perlas.',
       guangzhou:
         'El principal puerto del delta del río de las Perlas. La manipulación de contenedores en aguas profundas se concentra en la zona portuaria de Nansha, al sur de la ciudad.',
       qingdao:
         'El puerto principal del norte de China, en el mar Amarillo. Gestiona contenedores en Qianwan y carga a granel en Dongjiakou.',
       tianjin:
         'El mayor puerto del norte de China y la principal puerta marítima de la región de Pekín-Tianjin, centrado en la zona portuaria de Xingang.',
+      fuzhou:
+        'El puerto de la capital de la provincia de Fujian, en el estuario del río Min, con la carga de contenedores de aguas profundas concentrada en la zona portuaria de Jiangyin, al sur de la ciudad.',
       xiamen:
         'Un puerto de aguas profundas en la provincia de Fujian, en el estrecho de Taiwán, con las operaciones de contenedores concentradas en la zona portuaria de Haicang.',
       'hong-kong':

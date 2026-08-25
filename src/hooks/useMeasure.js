@@ -32,6 +32,7 @@ export const MEASURE_MODES = ['path', 'pairs']
  * places and are only accidentally distinct.
  */
 export const factoryPoint = (factory) => ({
+  kind: 'factory',
   key: `factory:${factory.id}`,
   name: factory.name,
   latitude: factory.latitude,
@@ -39,6 +40,7 @@ export const factoryPoint = (factory) => ({
 })
 
 export const portPoint = (port) => ({
+  kind: 'port',
   key: `port:${port.id}`,
   name: port.name,
   latitude: port.latitude,

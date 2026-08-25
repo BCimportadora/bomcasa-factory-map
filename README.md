@@ -189,7 +189,7 @@ places in turn to build a path of any length, and each leg and the running total
 appear in a panel at the bottom left. Undo drops the last stop; Clear starts
 over.
 
-The eight FOB ports appear alongside the factories while measuring — and only
+The FOB ports appear alongside the factories while measuring — and only
 while measuring, since this is the factory map — so a path can mix the two:
 factory → port → factory answers "which port should this supplier ship from",
 which is the question the feature exists for. The same measurement is available
@@ -267,17 +267,33 @@ and filterable. Only non-sensitive columns are selected — email is not request
 for the ordinary directory view.
 
 ### FOB Ports (`/ports`)
-The eight major Chinese export ports used for FOB shipping: Shanghai,
-Ningbo-Zhoushan, Shenzhen, Guangzhou, Qingdao, Tianjin, Xiamen and Hong Kong.
+Ten Chinese export ports used for FOB shipping: Shanghai, Ningbo-Zhoushan,
+Shenzhen, Yantian, Guangzhou, Qingdao, Tianjin, Fuzhou, Xiamen and Hong Kong.
 Selecting a port shows its city, province, main terminals, UN/LOCODE,
 coordinates and a short factual description. The ruler button measures between
 ports; the details panel steps aside while a measurement is open, since the two
 compete for the same corner of the screen.
 
-Coordinates in [`src/lib/ports.js`](src/lib/ports.js) point at the container
-port area rather than the city centre, and were checked against geocoding for
-the relevant port district (Yangshan, Beilun, Yantian, Nansha, Qianwan, Xingang,
-Haicang, Kwai Chung). No business-specific logistics data is invented.
+**Ports this business ships from are emphasised.** The `primary` flag in
+[`src/lib/ports.js`](src/lib/ports.js) draws a port larger and haloed so it is
+pickable at country zoom without hunting: Shanghai, Ningbo-Zhoushan, Yantian,
+Qingdao, Fuzhou, Xiamen and Hong Kong. Change that flag to change the emphasis;
+nothing else needs touching.
+
+**Yantian is listed separately from Shenzhen.** Bills of lading name it as the
+port of loading in its own right, it has its own UN/LOCODE (CNYTN), and it is
+35 km east of the Shekou and Chiwan terminals. The `shenzhen` entry therefore
+covers the western areas only — its coordinate used to sit inside Yantian
+district, which is now its own pin.
+
+Coordinates point at the container port area rather than the city centre, and
+each was confirmed by reverse geocoding to the right district (Yangshan, Beilun,
+Shekou, Yantian, Nansha, Qianwan, Xingang, Jiangyin, Haicang, Kwai Chung). No
+business-specific logistics data is invented.
+
+Ports are labelled "Shanghai Port" rather than "Shanghai" wherever they can
+appear beside a company name — in map tooltips and in the measurement panel —
+because a bare city name in a list of suppliers reads as another supplier.
 
 ### Administration → Manage accounts (`/admin/accounts`)
 Administrators only. Lists all accounts and creates new ones with email, first
