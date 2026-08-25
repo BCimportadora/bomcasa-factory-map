@@ -283,6 +283,8 @@ export default {
     selectFirstPort: 'Selecciona un puerto en el mapa para empezar.',
     selectNextPort: 'Selecciona otro puerto.',
     total: 'Total',
+    stops: 'Seleccionados',
+    distances: 'Distancias',
     modeLabel: 'Cómo medir',
     modePath: 'Ruta',
     modePairs: 'Todos los pares',

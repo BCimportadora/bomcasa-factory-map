@@ -282,6 +282,8 @@ export default {
     selectFirstPort: 'Select a port on the map to start.',
     selectNextPort: 'Select another port.',
     total: 'Total',
+    stops: 'Selected',
+    distances: 'Distances',
     modeLabel: 'How to measure',
     modePath: 'Route',
     modePairs: 'Every pair',

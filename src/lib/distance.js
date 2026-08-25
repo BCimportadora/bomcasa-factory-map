@@ -30,11 +30,17 @@ export function distanceKm(from, to) {
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(a)))
 }
 
-/** Each consecutive pair in a path, with the distance between them. */
+/**
+ * Each consecutive pair in a path, with the distance between them.
+ *
+ * The indices travel with the leg so the UI can label it by stop number rather
+ * than by name. Names are long enough to be unreadable in a panel over a map,
+ * and a point visited twice cannot be identified by looking it up in the list.
+ */
 export function pathLegs(points) {
   return points.slice(1).map((to, index) => {
     const from = points[index]
-    return { from, to, km: distanceKm(from, to) }
+    return { from, to, fromIndex: index, toIndex: index + 1, km: distanceKm(from, to) }
   })
 }
 
@@ -54,7 +60,13 @@ export function pointPairs(points) {
 
   for (let i = 0; i < points.length; i += 1) {
     for (let j = i + 1; j < points.length; j += 1) {
-      pairs.push({ from: points[i], to: points[j], km: distanceKm(points[i], points[j]) })
+      pairs.push({
+        from: points[i],
+        to: points[j],
+        fromIndex: i,
+        toIndex: j,
+        km: distanceKm(points[i], points[j]),
+      })
     }
   }
 
