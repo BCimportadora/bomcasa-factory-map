@@ -182,6 +182,9 @@ create table if not exists public.factories (
   created_at timestamptz not null default now()
 );
 
+-- Added after the first release; safe to re-run.
+alter table public.factories add column if not exists email text;
+
 create index if not exists factories_created_by_idx on public.factories(created_by);
 create index if not exists factories_province_idx on public.factories(province);
 create index if not exists factories_city_idx on public.factories(city);

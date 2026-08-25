@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import { useI18n } from '../../i18n'
 
+/**
+ * Deliberately loose. The point is to catch a typed mistake, not to police what
+ * counts as an address — a supplier contact that the form refuses to save is a
+ * worse outcome than a slightly odd one that does.
+ */
+const LOOKS_LIKE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 const emptyFactory = {
   name: '',
   address: '',
@@ -10,6 +17,7 @@ const emptyFactory = {
   longitude: '',
   contact_person: '',
   phone: '',
+  email: '',
   products: '',
   capacity: '',
   notes: '',
@@ -41,6 +49,10 @@ export default function FactoryForm({ initialValues, onSubmit, onCancel, submitt
     }
     if (Number.isNaN(lng) || lng < -180 || lng > 180) {
       setFormError(t('factories.longitudeInvalid'))
+      return
+    }
+    if (values.email.trim() && !LOOKS_LIKE_EMAIL.test(values.email.trim())) {
+      setFormError(t('factories.emailInvalid'))
       return
     }
     onSubmit({ ...values, latitude: lat, longitude: lng })
@@ -87,6 +99,8 @@ export default function FactoryForm({ initialValues, onSubmit, onCancel, submitt
         {field('contact_person', 'factories.contactPerson')}
         {field('phone', 'factories.phone', { type: 'tel' })}
       </div>
+
+      {field('email', 'factories.email', { type: 'email', inputMode: 'email' })}
 
       {field('products', 'factories.products')}
       {field('capacity', 'factories.capacity')}

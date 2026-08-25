@@ -80,6 +80,14 @@ function FactoryPopup({ factory, onEdit, onDelete, canManage }) {
           <span className="font-medium">{t('factories.phone')}:</span> {factory.phone}
         </p>
       )}
+      {factory.email && (
+        <p className="text-[13px]">
+          <span className="font-medium">{t('factories.email')}:</span>{' '}
+          <a href={`mailto:${factory.email}`} className="text-accent hover:underline">
+            {factory.email}
+          </a>
+        </p>
+      )}
       {canManage(factory) && (
         <div className="flex gap-3 pt-1">
           <button

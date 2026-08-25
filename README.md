@@ -184,6 +184,21 @@ filter by name/city/province/product, and CSV import/export. Everyone can see
 every factory; business users can only edit and delete the ones they created,
 while admins can edit any.
 
+Each factory holds name, address, city, province, coordinates, contact person,
+phone, email, products, capacity and notes. Email is validated only loosely — a
+supplier contact the form refuses to save is a worse outcome than a slightly odd
+one it accepts.
+
+**Importing updates, it does not duplicate.** Rows are matched to existing
+factories by name and update them; unmatched rows are added. That makes export →
+edit a column in Excel → import the way to change many factories at once. Only
+letters and digits are compared, since company names arrive punctuated every
+which way ("CO., LTD" against "CO.,LTD.", and full-width commas appear in real
+supplier lists). It is deliberately no fuzzier than that: merging two different
+suppliers is far worse than creating one duplicate. A row matching a factory the
+signed-in user may not edit is skipped and counted rather than attempted, since
+row-level security would reject it anyway.
+
 **Measuring distance.** The ruler button on the map starts a measurement: click
 places in turn to build a path of any length, and each leg and the running total
 appear in a panel at the bottom left. Undo drops the last stop; Clear starts
