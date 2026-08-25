@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, Ruler, X } from 'lucide-react'
 import FactoryMap from '../components/Map/FactoryMap'
 import FactoryList from '../components/Factory/FactoryList'
 import SearchFilter from '../components/Factory/SearchFilter'
@@ -9,10 +9,11 @@ import Modal from '../components/common/Modal'
 import { useFactories } from '../hooks/useFactories'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n'
+import { formatDistance, pathLegs, pathLengthKm } from '../lib/distance'
 
 export default function FactoriesPage() {
   const { user, isAdmin } = useAuth()
-  const { t, tCount } = useI18n()
+  const { t, tCount, language } = useI18n()
   const { factories, loading, error, createFactory, updateFactory, deleteFactory } = useFactories()
 
   const [query, setQuery] = useState('')
@@ -23,6 +24,8 @@ export default function FactoriesPage() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [panelOpen, setPanelOpen] = useState(true)
+  const [measuring, setMeasuring] = useState(false)
+  const [measurePoints, setMeasurePoints] = useState([])
 
   const canManage = (factory) => isAdmin || factory.created_by === user?.id
 
@@ -41,7 +44,27 @@ export default function FactoriesPage() {
     })
   }, [factories, query, province])
 
+  const measureLegs = useMemo(() => pathLegs(measurePoints), [measurePoints])
+  const measureTotalKm = useMemo(() => pathLengthKm(measurePoints), [measurePoints])
+
+  const toggleMeasuring = () => {
+    setMeasuring((on) => !on)
+    setMeasurePoints([])
+  }
+
+  const handleMeasureSelect = (factory) => {
+    setMeasurePoints((points) => {
+      // Ignore a repeat of the stop just added: it would contribute a leg of
+      // zero and read as a stutter in the list.
+      const last = points[points.length - 1]
+      return last?.id === factory.id ? points : [...points, factory]
+    })
+  }
+
   const handleMapClick = (latlng) => {
+    // While measuring, a click on empty map is a miss, not a new factory.
+    if (measuring) return
+
     setFormError('')
     setEditingFactory(null)
     setNewFactoryCoords({ latitude: latlng.lat.toFixed(6), longitude: latlng.lng.toFixed(6) })
@@ -160,21 +183,40 @@ export default function FactoriesPage() {
       </aside>
 
       <main className="relative min-w-0 flex-1">
-        {/* Top-left is reserved for this control; the map's zoom buttons are
+        {/* Top-left is reserved for these controls; the map's zoom buttons are
             pinned to the top-right so the two can never collide. */}
-        <button
-          type="button"
-          onClick={() => setPanelOpen((o) => !o)}
-          aria-expanded={panelOpen}
-          aria-label={panelOpen ? t('factories.hidePanel') : t('factories.showPanel')}
-          title={panelOpen ? t('factories.hidePanel') : t('factories.showPanel')}
-          className="absolute left-3 top-3 z-[1101] flex items-center gap-2 rounded-xl border border-line bg-surface/95 px-2.5 py-2 text-muted shadow-subtle backdrop-blur transition-colors hover:text-ink"
-        >
-          {panelOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}
-          {!panelOpen && (
-            <span className="text-[13px] font-medium">{t('factories.showPanelShort')}</span>
-          )}
-        </button>
+        <div className="absolute left-3 top-3 z-[1101] flex flex-col items-start gap-2">
+          <button
+            type="button"
+            onClick={() => setPanelOpen((o) => !o)}
+            aria-expanded={panelOpen}
+            aria-label={panelOpen ? t('factories.hidePanel') : t('factories.showPanel')}
+            title={panelOpen ? t('factories.hidePanel') : t('factories.showPanel')}
+            className="flex items-center gap-2 rounded-xl border border-line bg-surface/95 px-2.5 py-2 text-muted shadow-subtle backdrop-blur transition-colors hover:text-ink"
+          >
+            {panelOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}
+            {!panelOpen && (
+              <span className="text-[13px] font-medium">{t('factories.showPanelShort')}</span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleMeasuring}
+            aria-pressed={measuring}
+            title={measuring ? t('measure.stop') : t('measure.start')}
+            className={`flex items-center gap-2 rounded-xl border px-2.5 py-2 shadow-subtle backdrop-blur transition-colors ${
+              measuring
+                ? 'border-accent bg-accent text-white'
+                : 'border-line bg-surface/95 text-muted hover:text-ink'
+            }`}
+          >
+            <Ruler size={17} />
+            <span className="text-[13px] font-medium">
+              {measuring ? t('measure.stop') : t('measure.start')}
+            </span>
+          </button>
+        </div>
 
         <FactoryMap
           factories={filteredFactories}
@@ -184,11 +226,87 @@ export default function FactoriesPage() {
           onDelete={handleDelete}
           canManage={canManage}
           layoutKey={panelOpen}
+          measuring={measuring}
+          measurePoints={measurePoints}
+          onMeasureSelect={handleMeasureSelect}
         />
 
-        <p className="pointer-events-none absolute bottom-4 left-1/2 z-[500] -translate-x-1/2 whitespace-nowrap rounded-full bg-surface/90 px-3.5 py-1.5 text-[12px] text-muted shadow-subtle backdrop-blur">
-          {t('factories.clickMapHint')}
-        </p>
+        {/* The add-a-factory hint would be wrong while measuring, when a click
+            on the map deliberately does nothing. */}
+        {!measuring && (
+          <p className="pointer-events-none absolute bottom-4 left-1/2 z-[500] -translate-x-1/2 whitespace-nowrap rounded-full bg-surface/90 px-3.5 py-1.5 text-[12px] text-muted shadow-subtle backdrop-blur">
+            {t('factories.clickMapHint')}
+          </p>
+        )}
+
+        {measuring && (
+          <div className="absolute bottom-4 left-3 z-[1101] w-72 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-line bg-surface/95 p-4 shadow-panel backdrop-blur">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-ink">{t('measure.title')}</p>
+                <p className="text-[12px] text-muted">{t('measure.straightLine')}</p>
+              </div>
+              <button
+                type="button"
+                onClick={toggleMeasuring}
+                aria-label={t('measure.stop')}
+                className="-mr-1 -mt-1 flex-shrink-0 rounded-lg p-1.5 text-muted transition-colors hover:bg-canvas hover:text-ink"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {measureLegs.length === 0 ? (
+              <p className="mt-3 text-[13px] text-muted">
+                {measurePoints.length === 0 ? t('measure.selectFirst') : t('measure.selectNext')}
+              </p>
+            ) : (
+              <>
+                <ol className="mt-3 max-h-40 space-y-1.5 overflow-y-auto">
+                  {measureLegs.map((leg, index) => (
+                    <li
+                      key={`${leg.from.id}-${leg.to.id}-${index}`}
+                      className="flex items-baseline justify-between gap-3 text-[13px]"
+                    >
+                      <span className="min-w-0 truncate text-muted">
+                        {leg.from.name} → {leg.to.name}
+                      </span>
+                      <span className="flex-shrink-0 tabular-nums text-ink">
+                        {formatDistance(leg.km, language)}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+
+                <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-line pt-2.5">
+                  <span className="text-[13px] font-medium text-ink">{t('measure.total')}</span>
+                  <span className="text-[15px] font-semibold tabular-nums text-ink">
+                    {formatDistance(measureTotalKm, language)}
+                  </span>
+                </div>
+              </>
+            )}
+
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setMeasurePoints((points) => points.slice(0, -1))}
+                disabled={measurePoints.length === 0}
+                className="btn-secondary btn-sm flex-1"
+              >
+                {t('measure.undo')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMeasurePoints([])}
+                disabled={measurePoints.length === 0}
+                className="btn-secondary btn-sm flex-1"
+              >
+                {t('measure.clear')}
+              </button>
+            </div>
+          </div>
+        )}
       </main>
 
       {(editingFactory || newFactoryCoords) && (

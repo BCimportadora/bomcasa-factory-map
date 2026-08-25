@@ -16,11 +16,13 @@ const PALETTES = {
     markerStroke: '#ffffff', // --c-surface
     markerSelected: '#0071e3', // --c-accent
     markerBase: '#171717', // --c-ink
+    measureLine: '#0071e3', // --c-accent
   },
   dark: {
     markerStroke: '#1c1c1f', // --c-surface
     markerSelected: '#0a84ff', // --c-accent
     markerBase: '#f3f3f6', // --c-ink
+    measureLine: '#0a84ff', // --c-accent
   },
 }
 

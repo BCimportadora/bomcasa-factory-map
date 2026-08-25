@@ -272,6 +272,18 @@ export default {
     countOther: '{{count}} factories',
   },
 
+  measure: {
+    start: 'Measure',
+    stop: 'Done',
+    title: 'Distance',
+    straightLine: 'Straight line, not by road',
+    selectFirst: 'Select a factory on the map to start.',
+    selectNext: 'Select another factory.',
+    total: 'Total',
+    undo: 'Undo',
+    clear: 'Clear',
+  },
+
   csv: {
     export: 'Export CSV',
     import: 'Import CSV',

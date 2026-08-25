@@ -328,6 +328,29 @@
   color: rgb(var(--c-ink)) !important;
 }
 
+/* Numbered stop on a distance measurement. Built by L.divIcon in
+   FactoryMap, which is outside React's tree, so it is styled here rather than
+   with utility classes. */
+.measure-pin {
+  /* Clicks fall through to the factory marker underneath, so the badge never
+     blocks selecting the same factory again — a route back to where it started
+     is a legitimate thing to measure. */
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  border: 2px solid rgb(var(--c-surface));
+  background: rgb(var(--c-accent));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: var(--shadow-subtle);
+}
+
 .leaflet-tooltip {
   background: rgb(var(--c-surface)) !important;
   border: 1px solid rgb(var(--c-line)) !important;

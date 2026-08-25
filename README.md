@@ -182,6 +182,23 @@ filter by name/city/province/product, and CSV import/export. Everyone can see
 every factory; business users can only edit and delete the ones they created,
 while admins can edit any.
 
+**Measuring distance.** The ruler button on the map starts a measurement: click
+factories in turn to build a path, and each leg and the running total appear in
+a panel at the bottom left. Undo drops the last stop; Clear starts over.
+
+The figure is the great-circle distance from
+[`src/lib/distance.js`](src/lib/distance.js) — straight line, not road or sea
+route, which the panel states plainly. There is no routing provider in the
+stack, and quietly presenting a straight line as a driving distance would be
+worse than not offering the feature. Haversine rather than a flat-earth
+approximation, because suppliers are routinely more than a thousand kilometres
+apart, where the shortcut drifts by kilometres.
+
+While measuring, clicking empty map does *not* create a factory and clicking a
+marker does not open its details — the click means "add this stop". The
+numbered badges ignore pointer events so the same factory can be selected
+again, which is what measuring a return trip needs.
+
 ### People (`/people`)
 Directory of everyone with access, showing name, department and role. Searchable
 and filterable. Only non-sensitive columns are selected — email is not requested
@@ -316,6 +333,7 @@ src/
   context/ThemeContext.jsx         holds and applies light / dark / system
   lib/constants.js                 departments, roles, themes, profile helpers
   lib/mapColors.js                 marker colours Leaflet needs as literal values
+  lib/distance.js                  great-circle distance and formatting
   lib/sections.js                  the app's sections — menu, sidebar and routes
   lib/ports.js                     FOB port dataset
   lib/csv.js, supabaseClient.js

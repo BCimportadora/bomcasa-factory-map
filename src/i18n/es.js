@@ -273,6 +273,18 @@ export default {
     countOther: '{{count}} fábricas',
   },
 
+  measure: {
+    start: 'Medir',
+    stop: 'Listo',
+    title: 'Distancia',
+    straightLine: 'En línea recta, no por carretera',
+    selectFirst: 'Selecciona una fábrica en el mapa para empezar.',
+    selectNext: 'Selecciona otra fábrica.',
+    total: 'Total',
+    undo: 'Deshacer',
+    clear: 'Borrar',
+  },
+
   csv: {
     export: 'Exportar CSV',
     import: 'Importar CSV',
