@@ -136,6 +136,12 @@ no API layer to enforce anything.
   or Vercel's Hobby plan blocks the deploy as an outside collaborator.
 - `supabase/schema.sql` is idempotent — re-run it in full after any schema change
   rather than writing incremental migrations.
+- **That file is dollar-quoted (`do $$ … end $$;`), which naive string editing
+  eats.** JavaScript's `String.replace()` treats `$$` in the *replacement* as an
+  escaped single `$`, so a scripted edit silently emits `do $` and Postgres
+  rejects the whole file with "syntax error at or near \"$\"". Use a replacer
+  function, or check afterwards that no lone `$` survives and that the `$$`
+  count is even.
 - Edge Functions need `npx supabase functions deploy` after any change under
   `supabase/functions/`. The "Docker is not running" warning is harmless; Docker is
   only needed to serve functions locally.

@@ -188,13 +188,13 @@ alter table public.factories add column if not exists email text;
 -- warehouse beside a port. Defaulting to 'factory' keeps existing rows correct.
 alter table public.factories add column if not exists location_type text not null default 'factory';
 
-do $
+do $$
 begin
   if not exists (select 1 from pg_constraint where conname = 'factories_location_type_check') then
     alter table public.factories add constraint factories_location_type_check
       check (location_type in ('factory', 'office', 'warehouse'));
   end if;
-end $;
+end $$;
 
 create index if not exists factories_created_by_idx on public.factories(created_by);
 create index if not exists factories_province_idx on public.factories(province);
