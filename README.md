@@ -76,6 +76,8 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 VITE_MAPTILER_KEY=your-maptiler-key          # optional, enables English map labels
 VITE_MAPTILER_STYLE=your-english-style-id    # optional, see "Map labels" below
 VITE_MAPTILER_STYLE_DARK=your-dark-style-id  # optional, dark basemap for night mode
+VITE_ROUTING_URL=https://your-osrm-host       # optional, see "Measuring distance"
+VITE_ROUTING_PROFILE=driving                  # optional, OSRM profile name
 ```
 
 `VITE_*` variables are compiled into the browser bundle at **build time**, so
@@ -203,6 +205,34 @@ no use on a touchscreen.
 
 No total is shown in pair mode: summing every pair produces a number that means
 nothing.
+
+**Straight line or by road.** The second toggle switches between the great-circle
+distance and the actual driving distance and time, from an OSRM-compatible
+routing service ([`src/lib/routing.js`](src/lib/routing.js)). Both readings work
+in either mode, so "road distance between every pair" is available too — one
+`/table` request returns the whole matrix, and consecutive legs are simply some
+of its cells. The matrix is asymmetric on purpose: with one-way streets, A→B and
+B→A are genuinely different roads.
+
+Straight line stays the default, because it is instant, needs no network, and
+cannot fail. Road distances are a network call, so while one is in flight — or
+if it fails — the straight-line figures stay on screen with a note saying so,
+rather than the panel emptying out.
+
+Two things to know before relying on it:
+
+- **The default is OSRM's public *demo* server.** It needs no account and covers
+  China from OpenStreetMap data, but it makes no uptime promise and asks not to
+  be used for production load. Set `VITE_ROUTING_URL` to a self-hosted or
+  commercial OSRM instance before depending on it; the API is identical, so no
+  code changes.
+- **Factory coordinates are sent to that server.** Your supplier locations are
+  business-sensitive, and this is the one feature in the app that shares them
+  with a third party. Self-hosting avoids that entirely.
+
+Road data in China is less complete in OpenStreetMap than in Europe, and the
+demo server routes a car rather than a lorry, so treat the figures as good
+approximations rather than dispatch-grade planning.
 
 The figure is the great-circle distance from
 [`src/lib/distance.js`](src/lib/distance.js) — straight line, not road or sea
@@ -364,6 +394,7 @@ src/
   lib/constants.js                 departments, roles, themes, profile helpers
   lib/mapColors.js                 marker colours Leaflet needs as literal values
   lib/distance.js                  great-circle distance and formatting
+  lib/routing.js                   road distances and driving times (OSRM)
   lib/sections.js                  the app's sections — menu, sidebar and routes
   lib/ports.js                     FOB port dataset
   lib/csv.js, supabaseClient.js

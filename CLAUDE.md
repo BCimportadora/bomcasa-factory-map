@@ -90,6 +90,19 @@ as a data URI, Leaflet's path-guessing regex requires the value to end in
 looks fine on Vercel and broken on localhost, which is a confusing place to
 start debugging. `mergeOptions` alone does not fix it.
 
+**Road distances default to OSRM's public demo server, and send factory
+coordinates to it.** `src/lib/routing.js` reads `VITE_ROUTING_URL` and falls
+back to `router.project-osrm.org`, which needs no key but promises no uptime and
+asks not to be used for production load. Straight-line distance is deliberately
+the default reading in the UI: it is instant, offline and cannot fail, and it
+stays on screen while a road lookup is in flight or after one fails. If supplier
+locations must not leave the company, set `VITE_ROUTING_URL` to a self-hosted
+OSRM — the API is identical.
+
+One `/table` request per point-set covers both readings, so switching between
+route and every-pair costs nothing further. Do not "optimise" it into per-pair
+`/route` calls: that is n² requests at a free service instead of one.
+
 ## Security model
 
 RLS is the security boundary — the browser talks to Postgres directly, so there is

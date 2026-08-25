@@ -1,6 +1,32 @@
 import { X } from 'lucide-react'
 import { formatDistance } from '../../lib/distance'
+import { formatDuration } from '../../lib/routing'
 import { useI18n } from '../../i18n'
+
+/** Two-option segmented control, matching the ones in Settings. */
+function Segmented({ label, value, options, onChange }) {
+  return (
+    <div
+      role="group"
+      aria-label={label}
+      className="mt-2 flex flex-shrink-0 rounded-lg border border-line bg-canvas p-0.5"
+    >
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => onChange(option.value)}
+          aria-pressed={value === option.value}
+          className={`flex-1 rounded-md px-2 py-1 text-[12px] font-medium transition-colors ${
+            value === option.value ? 'bg-surface text-ink shadow-subtle' : 'text-muted hover:text-ink'
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 /** Stop number, matching the badge drawn on the map. */
 function StopNumber({ children }) {
@@ -28,8 +54,13 @@ export default function MeasurePanel({
   points,
   legs,
   totalKm,
+  totalSeconds,
   mode,
   onModeChange,
+  metric,
+  onMetricChange,
+  roadStatus,
+  roadError,
   onUndo,
   onClear,
   onClose,
@@ -37,15 +68,20 @@ export default function MeasurePanel({
   nextHint,
 }) {
   const { t, language } = useI18n()
-  // With one stop there is nothing to compare, so the choice is noise.
+  // With one stop there is nothing to compare, so the choices are noise.
   const showModes = points.length > 1
+  const wantsRoad = metric === 'road'
 
   return (
     <div className="absolute bottom-4 left-3 z-[1101] flex max-h-[70vh] w-80 max-w-[calc(100vw-1.5rem)] flex-col rounded-2xl border border-line bg-surface/95 p-4 shadow-panel backdrop-blur">
       <div className="flex flex-shrink-0 items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[13px] font-semibold text-ink">{t('measure.title')}</p>
-          <p className="text-[12px] text-muted">{t('measure.straightLine')}</p>
+          <p className="text-[12px] text-muted">
+            {t(
+              wantsRoad && roadStatus === 'ready' ? 'measure.byRoadNote' : 'measure.straightLine',
+            )}
+          </p>
         </div>
         <button
           type="button"
@@ -58,25 +94,37 @@ export default function MeasurePanel({
       </div>
 
       {showModes && (
-        <div
-          role="group"
-          aria-label={t('measure.modeLabel')}
-          className="mt-3 flex flex-shrink-0 rounded-lg border border-line bg-canvas p-0.5"
-        >
-          {['path', 'pairs'].map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => onModeChange(option)}
-              aria-pressed={mode === option}
-              className={`flex-1 rounded-md px-2 py-1 text-[12px] font-medium transition-colors ${
-                mode === option ? 'bg-surface text-ink shadow-subtle' : 'text-muted hover:text-ink'
-              }`}
-            >
-              {t(option === 'path' ? 'measure.modePath' : 'measure.modePairs')}
-            </button>
-          ))}
-        </div>
+        <>
+          <Segmented
+            label={t('measure.modeLabel')}
+            value={mode}
+            onChange={onModeChange}
+            options={[
+              { value: 'path', label: t('measure.modePath') },
+              { value: 'pairs', label: t('measure.modePairs') },
+            ]}
+          />
+          <Segmented
+            label={t('measure.metricLabel')}
+            value={metric}
+            onChange={onMetricChange}
+            options={[
+              { value: 'straight', label: t('measure.metricStraight') },
+              { value: 'road', label: t('measure.metricRoad') },
+            ]}
+          />
+        </>
+      )}
+
+      {/* Straight-line figures stay on screen throughout, so these say what is
+          being shown rather than replacing the answer with a spinner. */}
+      {wantsRoad && roadStatus === 'loading' && (
+        <p className="mt-2 flex-shrink-0 text-[12px] text-muted">{t('measure.roadLoading')}</p>
+      )}
+      {wantsRoad && roadStatus === 'error' && (
+        <p className="mt-2 flex-shrink-0 text-[12px] leading-snug text-danger">
+          {t(`measure.roadError.${roadError ?? 'unavailable'}`)}
+        </p>
       )}
 
       {/* Only this middle section scrolls, so the buttons below stay reachable
@@ -123,8 +171,11 @@ export default function MeasurePanel({
                         </span>
                         <StopNumber>{leg.toIndex + 1}</StopNumber>
                       </span>
-                      <span className="tabular-nums text-ink">
+                      <span className="text-right tabular-nums text-ink">
                         {formatDistance(leg.km, language)}
+                        {leg.seconds !== undefined && (
+                          <span className="text-muted"> · {formatDuration(leg.seconds, language)}</span>
+                        )}
                       </span>
                     </li>
                   ))}
@@ -135,8 +186,15 @@ export default function MeasurePanel({
                 {mode === 'path' && (
                   <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-line pt-2.5">
                     <span className="text-[13px] font-medium text-ink">{t('measure.total')}</span>
-                    <span className="text-[15px] font-semibold tabular-nums text-ink">
-                      {formatDistance(totalKm, language)}
+                    <span className="text-right">
+                      <span className="text-[15px] font-semibold tabular-nums text-ink">
+                        {formatDistance(totalKm, language)}
+                      </span>
+                      {totalSeconds !== undefined && (
+                        <span className="block text-[12px] tabular-nums text-muted">
+                          {formatDuration(totalSeconds, language)}
+                        </span>
+                      )}
                     </span>
                   </div>
                 )}

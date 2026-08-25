@@ -129,8 +129,13 @@ export default function PortsPage() {
             points={measure.points}
             legs={measure.legs}
             totalKm={measure.totalKm}
+            totalSeconds={measure.totalSeconds}
             mode={measure.mode}
             onModeChange={measure.setMode}
+            metric={measure.metric}
+            onMetricChange={measure.setMetric}
+            roadStatus={measure.roadStatus}
+            roadError={measure.roadError}
             onUndo={measure.undo}
             onClear={measure.clear}
             onClose={measure.toggle}
