@@ -136,6 +136,7 @@ export default function PortsPage() {
             onMetricChange={measure.setMetric}
             roadStatus={measure.roadStatus}
             roadError={measure.roadError}
+            roadSnaps={measure.roadSnaps}
             onUndo={measure.undo}
             onClear={measure.clear}
             onClose={measure.toggle}

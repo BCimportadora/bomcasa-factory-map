@@ -156,6 +156,7 @@ export function useMeasure() {
     setMetric,
     roadStatus: road.status,
     roadError: road.error,
+    roadSnaps: road.matrix?.snapped ?? null,
     legs,
     totalKm,
     totalSeconds,

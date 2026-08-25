@@ -25,6 +25,14 @@ const PROFILE = import.meta.env.VITE_ROUTING_PROFILE || 'driving'
  */
 export const MAX_ROUTED_POINTS = 25
 
+/**
+ * How far a coordinate may be moved onto the road network before the answer
+ * stops being about the place that was asked for. A rooftop pin is metres from
+ * a road; a kilometre means the coordinate is somewhere a lorry cannot reach,
+ * and the distance returned is to the nearest road instead.
+ */
+export const SNAP_WARNING_METRES = 1000
+
 export class RoutingError extends Error {
   constructor(reason) {
     super(`Routing failed: ${reason}`)
@@ -69,7 +77,16 @@ export async function fetchRoadMatrix(points, { signal } = {}) {
     throw new RoutingError(body.code === 'NoRoute' ? 'noRoute' : 'unavailable')
   }
 
-  return { distances: body.distances, durations: Array.isArray(body.durations) ? body.durations : null }
+  return {
+    distances: body.distances,
+    durations: Array.isArray(body.durations) ? body.durations : null,
+    // How far each coordinate had to be moved to reach a routable road. The
+    // service snaps silently, so without this a distance measured from
+    // somewhere else entirely looks exactly like a good one.
+    snapped: Array.isArray(body.sources)
+      ? body.sources.map((source) => (Number.isFinite(source?.distance) ? source.distance : null))
+      : null,
+  }
 }
 
 /**

@@ -1,6 +1,6 @@
 import { X } from 'lucide-react'
 import { formatDistance } from '../../lib/distance'
-import { formatDuration } from '../../lib/routing'
+import { formatDuration, SNAP_WARNING_METRES } from '../../lib/routing'
 import { useI18n } from '../../i18n'
 
 /** Two-option segmented control, matching the ones in Settings. */
@@ -61,6 +61,7 @@ export default function MeasurePanel({
   onMetricChange,
   roadStatus,
   roadError,
+  roadSnaps,
   onUndo,
   onClear,
   onClose,
@@ -71,6 +72,18 @@ export default function MeasurePanel({
   // With one stop there is nothing to compare, so the choices are noise.
   const showModes = points.length > 1
   const wantsRoad = metric === 'road'
+
+  /**
+   * How far each stop had to be moved onto the road network. The service does
+   * this silently, so a distance measured from a road a few kilometres away
+   * would otherwise be indistinguishable from a good one.
+   */
+  const snapMetres = (index) =>
+    wantsRoad && roadStatus === 'ready' && Number.isFinite(roadSnaps?.[index])
+      ? roadSnaps[index]
+      : null
+
+  const hasDistantStop = points.some((_, index) => snapMetres(index) > SNAP_WARNING_METRES)
 
   return (
     <div className="absolute bottom-4 left-3 z-[1101] flex max-h-[70vh] w-80 max-w-[calc(100vw-1.5rem)] flex-col rounded-2xl border border-line bg-surface/95 p-4 shadow-panel backdrop-blur">
@@ -126,6 +139,11 @@ export default function MeasurePanel({
           {t(`measure.roadError.${roadError ?? 'unavailable'}`)}
         </p>
       )}
+      {hasDistantStop && (
+        <p className="mt-2 flex-shrink-0 text-[12px] leading-snug text-warning">
+          {t('measure.snapWarning')}
+        </p>
+      )}
 
       {/* Only this middle section scrolls, so the buttons below stay reachable
           however many pairs there are. */}
@@ -138,16 +156,28 @@ export default function MeasurePanel({
               {t('measure.stops')}
             </p>
             <ol className="mt-1.5 space-y-1">
-              {points.map((point, index) => (
-                <li key={`${point.key}-${index}`} className="flex items-start gap-2 text-[13px]">
-                  <StopNumber>{index + 1}</StopNumber>
-                  {/* Long supplier names wrap rather than clip — this is the one
-                      place the full name is shown. */}
-                  <span className="min-w-0 flex-1 break-words leading-snug text-ink">
-                    {point.name}
-                  </span>
-                </li>
-              ))}
+              {points.map((point, index) => {
+                const metres = snapMetres(index)
+                const distant = metres > SNAP_WARNING_METRES
+
+                return (
+                  <li key={`${point.key}-${index}`} className="flex items-start gap-2 text-[13px]">
+                    <StopNumber>{index + 1}</StopNumber>
+                    {/* Long supplier names wrap rather than clip — this is the
+                        one place the full name is shown. */}
+                    <span className="min-w-0 flex-1 break-words leading-snug text-ink">
+                      {point.name}
+                      {distant && (
+                        <span className="block text-[12px] text-warning">
+                          {t('measure.snapDistance', {
+                            distance: formatDistance(metres / 1000, language),
+                          })}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                )
+              })}
             </ol>
 
             {legs.length === 0 ? (

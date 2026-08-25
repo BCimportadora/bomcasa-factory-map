@@ -293,6 +293,8 @@ export default {
     metricRoad: 'Por carretera',
     byRoadNote: 'Por carretera, con tiempo de conducción estimado',
     roadLoading: 'Calculando distancias por carretera…',
+    snapWarning: 'Algunos puntos están lejos de cualquier carretera, así que su distancia empieza en la más cercana.',
+    snapDistance: 'a {{distance}} de la carretera más cercana',
     roadError: {
       unavailable: 'Las distancias por carretera no están disponibles ahora. Se muestra la línea recta.',
       rateLimited: 'El servicio de rutas está saturado. Se muestra la línea recta; inténtalo en un momento.',

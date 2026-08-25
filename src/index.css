@@ -22,6 +22,7 @@
     --c-accent: 0 113 227;
     --c-accent-hover: 0 98 196;
     --c-danger: 215 0 21;
+    --c-warning: 180 83 9;
     --c-success: 29 158 94;
     --c-success-strong: 19 122 71;
 
@@ -62,6 +63,7 @@
     --c-accent: 10 132 255;
     --c-accent-hover: 56 152 255;
     --c-danger: 255 105 97;
+    --c-warning: 251 191 36;
     --c-success: 48 209 88;
     --c-success-strong: 124 226 150;
 

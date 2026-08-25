@@ -28,6 +28,7 @@ export default {
           dark: token('--c-accent-hover'),
         },
         danger: token('--c-danger'),
+        warning: token('--c-warning'),
         success: {
           DEFAULT: token('--c-success'),
           dark: token('--c-success-strong'),

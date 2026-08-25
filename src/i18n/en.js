@@ -292,6 +292,8 @@ export default {
     metricRoad: 'By road',
     byRoadNote: 'By road, with estimated driving time',
     roadLoading: 'Looking up road distances…',
+    snapWarning: 'Some stops are far from any road, so their road distances start from the nearest one.',
+    snapDistance: '{{distance}} from the nearest road',
     roadError: {
       unavailable: 'Road distances are unavailable right now. Showing straight line.',
       rateLimited: 'The routing service is busy. Showing straight line — try again shortly.',

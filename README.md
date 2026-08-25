@@ -231,8 +231,15 @@ Two things to know before relying on it:
   with a third party. Self-hosting avoids that entirely.
 
 Road data in China is less complete in OpenStreetMap than in Europe, and the
-demo server routes a car rather than a lorry, so treat the figures as good
-approximations rather than dispatch-grade planning.
+demo server routes a car rather than a lorry with no traffic modelled, so treat
+the figures as good approximations rather than dispatch-grade planning.
+
+**Stops far from a road are flagged.** Routing snaps each coordinate to the
+nearest road before measuring, silently — so a factory saved with a rough
+coordinate would give a distance measured from somewhere else, looking exactly
+like a good answer. Any stop moved more than `SNAP_WARNING_METRES` (1 km) is
+called out in the panel with how far it was moved. Stops on real roads snap by a
+few metres and stay quiet.
 
 The figure is the great-circle distance from
 [`src/lib/distance.js`](src/lib/distance.js) — straight line, not road or sea

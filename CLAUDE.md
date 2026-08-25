@@ -103,6 +103,12 @@ One `/table` request per point-set covers both readings, so switching between
 route and every-pair costs nothing further. Do not "optimise" it into per-pair
 `/route` calls: that is n² requests at a free service instead of one.
 
+The `sources[].distance` field in that response is how far each coordinate was
+snapped onto the road network, and the panel warns above 1 km. Keep it: OSRM
+snaps silently, so without it a distance measured from a road tens of kilometres
+away is indistinguishable from a good one. A verified example — the middle of
+Qinghai Lake snaps 27 km, a rooftop in Shijiazhuang snaps 47 m.
+
 ## Security model
 
 RLS is the security boundary — the browser talks to Postgres directly, so there is
