@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
-import { MapContainer, CircleMarker, Tooltip, ZoomControl, useMap } from 'react-leaflet'
+import { MapContainer, ZoomControl, useMap } from 'react-leaflet'
 import BaseTileLayer from './BaseTileLayer'
 import AutoResize from './AutoResize'
-import { useTheme } from '../../context/ThemeContext'
-import { mapColors } from '../../lib/mapColors'
+import MeasureLayer from './MeasureLayer'
+import PortMarker from './PortMarker'
 
 const CHINA_CENTER = [30.5, 118.0]
 const CHINA_ZOOM = 4
@@ -16,14 +16,16 @@ function FlyToPort({ port }) {
   return null
 }
 
-/**
- * Ports are drawn as circle markers rather than pins: there are only a handful
- * of them and the flat dot keeps the map calm and readable at country zoom.
- */
-export default function PortMap({ ports, selectedPort, onSelect }) {
-  const { resolvedTheme } = useTheme()
-  const colors = mapColors(resolvedTheme)
-
+export default function PortMap({
+  ports,
+  selectedPort,
+  onSelect,
+  /** While measuring, clicking a port adds it to the path rather than opening its details. */
+  measuring = false,
+  measurePoints = [],
+  measureSelectedKeys,
+  onMeasurePort,
+}) {
   return (
     <MapContainer
       center={CHINA_CENTER}
@@ -35,30 +37,23 @@ export default function PortMap({ ports, selectedPort, onSelect }) {
       {/* Matches the factory map so the controls sit in the same place. */}
       <ZoomControl position="topright" />
       <BaseTileLayer />
-      <AutoResize />
-      <FlyToPort port={selectedPort} />
+      <AutoResize watch={measuring} />
+      {/* Flying to the details of a port nobody asked to see would yank the map
+          around mid-measurement. */}
+      <FlyToPort port={measuring ? null : selectedPort} />
 
-      {ports.map((port) => {
-        const isSelected = selectedPort?.id === port.id
-        return (
-          <CircleMarker
-            key={port.id}
-            center={[port.latitude, port.longitude]}
-            radius={isSelected ? 10 : 7}
-            pathOptions={{
-              color: colors.markerStroke,
-              weight: 2,
-              fillColor: isSelected ? colors.markerSelected : colors.markerBase,
-              fillOpacity: 1,
-            }}
-            eventHandlers={{ click: () => onSelect(port) }}
-          >
-            <Tooltip direction="top" offset={[0, -8]} opacity={1}>
-              <span className="text-[13px] font-medium">{port.name}</span>
-            </Tooltip>
-          </CircleMarker>
-        )
-      })}
+      <MeasureLayer points={measurePoints} />
+
+      {ports.map((port) => (
+        <PortMarker
+          key={port.id}
+          port={port}
+          highlighted={
+            measuring ? measureSelectedKeys?.has(`port:${port.id}`) : selectedPort?.id === port.id
+          }
+          onSelect={measuring ? onMeasurePort : onSelect}
+        />
+      ))}
     </MapContainer>
   )
 }

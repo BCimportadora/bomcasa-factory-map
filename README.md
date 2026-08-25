@@ -183,8 +183,15 @@ every factory; business users can only edit and delete the ones they created,
 while admins can edit any.
 
 **Measuring distance.** The ruler button on the map starts a measurement: click
-factories in turn to build a path, and each leg and the running total appear in
-a panel at the bottom left. Undo drops the last stop; Clear starts over.
+places in turn to build a path of any length, and each leg and the running total
+appear in a panel at the bottom left. Undo drops the last stop; Clear starts
+over.
+
+The eight FOB ports appear alongside the factories while measuring — and only
+while measuring, since this is the factory map — so a path can mix the two:
+factory → port → factory answers "which port should this supplier ship from",
+which is the question the feature exists for. The same measurement is available
+on the FOB Ports page for port-to-port distances.
 
 The figure is the great-circle distance from
 [`src/lib/distance.js`](src/lib/distance.js) — straight line, not road or sea
@@ -195,9 +202,16 @@ approximation, because suppliers are routinely more than a thousand kilometres
 apart, where the shortcut drifts by kilometres.
 
 While measuring, clicking empty map does *not* create a factory and clicking a
-marker does not open its details — the click means "add this stop". The
-numbered badges ignore pointer events so the same factory can be selected
-again, which is what measuring a return trip needs.
+marker does not open its details — the click means "add this stop". The numbered
+badges ignore pointer events so the same place can be selected again, which is
+what measuring a return trip needs.
+
+The mechanics are shared by both maps: [`useMeasure`](src/hooks/useMeasure.js)
+holds the state and turns a factory or a port into a measurable point, and
+`MeasureButton`, `MeasureLayer` and `MeasurePanel` under
+[`src/components/Map/`](src/components/Map) draw it. Point keys are namespaced
+(`factory:…`, `port:…`) because the two id spaces are only accidentally
+distinct.
 
 ### People (`/people`)
 Directory of everyone with access, showing name, department and role. Searchable
@@ -208,7 +222,9 @@ for the ordinary directory view.
 The eight major Chinese export ports used for FOB shipping: Shanghai,
 Ningbo-Zhoushan, Shenzhen, Guangzhou, Qingdao, Tianjin, Xiamen and Hong Kong.
 Selecting a port shows its city, province, main terminals, UN/LOCODE,
-coordinates and a short factual description.
+coordinates and a short factual description. The ruler button measures between
+ports; the details panel steps aside while a measurement is open, since the two
+compete for the same corner of the screen.
 
 Coordinates in [`src/lib/ports.js`](src/lib/ports.js) point at the container
 port area rather than the city centre, and were checked against geocoding for
@@ -323,12 +339,15 @@ src/
     Layout/LanguageSync.jsx        mirrors language choice to the profile
     Layout/ThemeSync.jsx           mirrors appearance to the profile; device when signed out
     Map/BaseTileLayer.jsx          basemap selection + fallback
-    Map/FactoryMap.jsx             factory markers
-    Map/PortMap.jsx                FOB port markers
+    Map/FactoryMap.jsx             factory markers, plus ports while measuring
+    Map/PortMap.jsx                FOB port map
+    Map/PortMarker.jsx             a port, drawn the same on either map
+    Map/Measure{Button,Layer,Panel}.jsx  distance measurement UI
     common/Modal.jsx, FullScreenMessage.jsx
   context/AuthContext.jsx          session, profile, role, profile updates
   hooks/useFactories.js            factory CRUD + realtime
   hooks/useProfiles.js             directory reads
+  hooks/useMeasure.js              measurement state, shared by both maps
   i18n/                            en.js, es.js, provider
   context/ThemeContext.jsx         holds and applies light / dark / system
   lib/constants.js                 departments, roles, themes, profile helpers

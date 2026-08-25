@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { Anchor, X } from 'lucide-react'
 import PortMap from '../components/Map/PortMap'
+import MeasureButton from '../components/Map/MeasureButton'
+import MeasurePanel from '../components/Map/MeasurePanel'
 import { FOB_PORTS, portDescriptionKey } from '../lib/ports'
+import { portPoint, useMeasure } from '../hooks/useMeasure'
 import { useI18n } from '../i18n'
 
 function DetailRow({ label, children }) {
@@ -54,6 +57,12 @@ function PortDetails({ port, t, onClose }) {
 export default function PortsPage() {
   const { t } = useI18n()
   const [selectedPort, setSelectedPort] = useState(null)
+  const measure = useMeasure()
+
+  // The details panel and a measurement compete for the same screen, and the
+  // list is still a useful way to jump around while measuring — so a list click
+  // flies to the port either way, and only the details panel steps aside.
+  const showDetails = selectedPort && !measure.measuring
 
   return (
     <div className="flex h-full flex-col lg:flex-row">
@@ -89,17 +98,45 @@ export default function PortsPage() {
       </aside>
 
       <main className="relative min-h-[320px] flex-1">
-        <PortMap ports={FOB_PORTS} selectedPort={selectedPort} onSelect={setSelectedPort} />
+        {/* Top-left is free on this map: the zoom buttons are pinned right. */}
+        <MeasureButton
+          active={measure.measuring}
+          onClick={measure.toggle}
+          className="absolute left-3 top-3 z-[1101]"
+        />
 
-        {!selectedPort && (
+        <PortMap
+          ports={FOB_PORTS}
+          selectedPort={selectedPort}
+          onSelect={setSelectedPort}
+          measuring={measure.measuring}
+          measurePoints={measure.points}
+          measureSelectedKeys={measure.selectedKeys}
+          onMeasurePort={(port) => measure.select(portPoint(port))}
+        />
+
+        {!selectedPort && !measure.measuring && (
           <p className="pointer-events-none absolute bottom-4 left-1/2 z-[500] -translate-x-1/2 whitespace-nowrap rounded-full bg-surface/90 px-3.5 py-1.5 text-[12px] text-muted shadow-subtle backdrop-blur">
             {t('ports.selectPrompt')}
           </p>
         )}
+
+        {measure.measuring && (
+          <MeasurePanel
+            points={measure.points}
+            legs={measure.legs}
+            totalKm={measure.totalKm}
+            onUndo={measure.undo}
+            onClear={measure.clear}
+            onClose={measure.toggle}
+            emptyHint={t('measure.selectFirstPort')}
+            nextHint={t('measure.selectNextPort')}
+          />
+        )}
       </main>
 
       {/* Details: a bottom sheet on small screens, a side panel on large */}
-      {selectedPort && (
+      {showDetails && (
         <aside className="max-h-[45vh] flex-shrink-0 overflow-hidden border-t border-line bg-surface lg:max-h-none lg:w-80 lg:border-l lg:border-t-0">
           <PortDetails port={selectedPort} t={t} onClose={() => setSelectedPort(null)} />
         </aside>
