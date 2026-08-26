@@ -693,6 +693,10 @@ export default {
   },
 
   errors: {
+    sectionFailed: 'This section stopped working',
+    sectionFailedHint: 'Something went wrong while drawing this page. The rest of the app still works — the message below says what happened.',
+    technicalDetail: 'Technical detail',
+    reload: 'Reload the page',
     accessDenied: 'Access denied',
     accessDeniedMessage: 'You do not have permission to view this page.',
     notFound: 'Page not found',

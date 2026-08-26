@@ -694,6 +694,10 @@ export default {
   },
 
   errors: {
+    sectionFailed: 'Esta sección dejó de funcionar',
+    sectionFailedHint: 'Algo falló al dibujar esta página. El resto de la aplicación sigue funcionando; el mensaje de abajo dice qué ocurrió.',
+    technicalDetail: 'Detalle técnico',
+    reload: 'Recargar la página',
     accessDenied: 'Acceso denegado',
     accessDeniedMessage: 'No tienes permiso para ver esta página.',
     notFound: 'Página no encontrada',

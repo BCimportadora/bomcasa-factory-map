@@ -15,6 +15,7 @@ import SuggestionsPage from './pages/SuggestionsPage'
 import AdminAccountsPage from './pages/AdminAccountsPage'
 import SectionPlaceholder from './pages/SectionPlaceholder'
 import ProtectedRoute from './components/Auth/ProtectedRoute'
+import ErrorBoundary from './components/common/ErrorBoundary'
 import RecoveryRedirect from './components/Auth/RecoveryRedirect'
 import ThemeSync from './components/Layout/ThemeSync'
 import AppLayout from './components/Layout/AppLayout'
@@ -26,7 +27,11 @@ import { SECTIONS } from './lib/sections'
  */
 const protectedPage = (element, { requireAdmin = false } = {}) => (
   <ProtectedRoute requireAdmin={requireAdmin}>
-    <AppLayout>{element}</AppLayout>
+    <AppLayout>
+      {/* Inside the layout, so a section that crashes leaves the sidebar
+          usable and the user can navigate out of it. */}
+      <ErrorBoundary>{element}</ErrorBoundary>
+    </AppLayout>
   </ProtectedRoute>
 )
 
@@ -100,7 +105,9 @@ function AppRoutes() {
         path="/innovations/print"
         element={
           <ProtectedRoute>
-            <InnovationsPrintPage />
+            <ErrorBoundary>
+              <InnovationsPrintPage />
+            </ErrorBoundary>
           </ProtectedRoute>
         }
       />
