@@ -38,12 +38,21 @@ const CHINA_CENTER = [35.8617, 104.1954]
 const CHINA_ZOOM = 4
 
 /**
- * A pin for somewhere that is not a plant.
+ * Pins, built once each: a new icon per render would make Leaflet replace
+ * every marker element.
  *
- * Same marker, desaturated by CSS, so an office or a warehouse does not read as
- * a factory at a glance on a map that is otherwise all factories. Built once:
- * a new icon per render would make Leaflet replace every marker element.
+ * A non-plant gets the same marker desaturated by CSS, so an office or a
+ * warehouse does not read as a factory at a glance on a map that is otherwise
+ * all factories.
+ *
+ * FACTORY_ICON exists rather than letting Leaflet supply its own default,
+ * because react-leaflet passes its props straight into `new L.Marker(pos,
+ * options)` and Leaflet's setOptions copies *every* key it is given --
+ * including ones whose value is undefined. So `icon={undefined}` does not fall
+ * back to the default, it shadows it, and the marker throws on
+ * `options.icon.createIcon`. Always hand it a real icon.
  */
+const FACTORY_ICON = new L.Icon.Default()
 const NON_FACTORY_ICON = new L.Icon.Default({ className: 'marker-muted' })
 
 function ClickHandler({ onMapClick }) {
@@ -177,7 +186,7 @@ export default function FactoryMap({
         <Marker
           key={f.id}
           position={[f.latitude, f.longitude]}
-          icon={f.location_type && f.location_type !== 'factory' ? NON_FACTORY_ICON : undefined}
+          icon={f.location_type && f.location_type !== 'factory' ? NON_FACTORY_ICON : FACTORY_ICON}
           eventHandlers={
             measuring
               ? { click: (event) => onMeasureFactory?.(f, event.originalEvent) }

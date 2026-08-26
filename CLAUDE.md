@@ -190,6 +190,21 @@ the shared tokens, so they follow the theme. The MapLibre *basemap* is separate:
 it only goes dark if `VITE_MAPTILER_STYLE_DARK` is set, because a stock dark
 style would lose the English labels the custom style exists to provide.
 
+**Never pass `icon={undefined}` to a react-leaflet `<Marker>`.** react-leaflet
+hands its props straight to `new L.Marker(position, options)`, and Leaflet's
+`setOptions` copies *every* key it is given, undefined values included. So an
+undefined icon does not fall back to Leaflet's default — it shadows it, and the
+marker throws `Cannot read properties of undefined (reading 'createIcon')` the
+moment it is added. That took down the whole Factories page, and because the
+follow-on unmount errors say `_leaflet_events` instead, the message you see
+names the wrong thing. `FACTORY_ICON` exists purely so both branches of the
+office/warehouse ternary hand over a real icon.
+
+**Sections are wrapped in an ErrorBoundary for this reason.** A throw anywhere
+used to unmount the app and leave a white page, indistinguishable from a network
+failure or a bad deploy. It sits inside `AppLayout` so the sidebar survives, and
+is keyed on the path so navigating away clears it.
+
 **`delete L.Icon.Default.prototype._getIconUrl` in `FactoryMap.jsx` is load-bearing.**
 Leaflet's `Icon.Default` prepends an image path it *guesses* from the
 background-image of `.leaflet-default-icon-path` in its own stylesheet. The
