@@ -288,6 +288,90 @@ export default {
     countOther: '{{count}} fábricas',
   },
 
+  orders: {
+    add: 'Nuevo pedido',
+    addTitle: 'Nuevo pedido',
+    editTitle: 'Editar pedido',
+
+    reference: 'Referencia del pedido',
+    referencePlaceholder: 'p. ej. BC-2026-014',
+    factory: 'Fábrica',
+    noFactory: 'Sin fábrica seleccionada',
+    allFactories: 'Todas las fábricas',
+    statusLabel: 'Estado',
+    allStatuses: 'Todos los estados de esta lista',
+    currency: 'Moneda',
+    total: 'Total',
+
+    shippingTitle: 'Envío',
+    fobPort: 'Puerto FOB',
+    noPort: 'Sin puerto seleccionado',
+    orderDate: 'Fecha del pedido',
+    readyDate: 'Listo en fábrica',
+    etd: 'ETD',
+    eta: 'ETA',
+    containerNo: 'Contenedor',
+    blNumber: 'Conocimiento de embarque',
+    notes: 'Notas',
+
+    searchPlaceholder: 'Buscar por referencia, producto, contenedor...',
+    loading: 'Cargando pedidos...',
+    loadError: 'No pudimos cargar los pedidos.',
+    emptyHint: 'Los pedidos que añadas aparecerán aquí y pasarán a la siguiente lista según avancen.',
+
+    referenceRequired: 'La referencia del pedido es obligatoria.',
+    readyBeforeOrder: 'La fecha de listo no puede ser anterior a la del pedido.',
+    etaBeforeEtd: 'El ETA no puede ser anterior al ETD.',
+    saveError: 'No pudimos guardar este pedido.',
+    deleteTitle: 'Eliminar pedido',
+    deleteConfirm: 'Esto elimina el pedido y todas sus líneas. No se puede deshacer.',
+    deleteError: 'No pudimos eliminar este pedido.',
+
+    advanceTo: 'Pasar a {{status}}',
+    countOne: '1 pedido',
+    countOther: '{{count}} pedidos',
+    lineCountOne: '1 línea',
+    lineCountOther: '{{count}} líneas',
+
+    status: {
+      draft: 'Borrador',
+      confirmed: 'Confirmado',
+      in_production: 'En producción',
+      ready: 'Listo',
+      shipped: 'Embarcado',
+      arrived: 'Llegado',
+      cancelled: 'Cancelado',
+    },
+
+    due: {
+      today: 'hoy',
+      lateOne: '1 día de retraso',
+      lateOther: '{{count}} días de retraso',
+      inOne: 'en 1 día',
+      inOther: 'en {{count}} días',
+    },
+
+    items: {
+      title: 'Productos',
+      hint: 'Cantidad x precio unitario',
+      product: 'Producto',
+      quantity: 'Cantidad',
+      unit: 'Unidad',
+      unitPrice: 'Precio unitario',
+      add: 'Añadir línea',
+      remove: 'Eliminar esta linea',
+    },
+
+    views: {
+      todo: {
+        empty: 'Nada en producción',
+      },
+      inTransit: {
+        empty: 'Nada listo ni en tránsito',
+      },
+    },
+  },
+
   measure: {
     start: 'Medir',
     stop: 'Listo',

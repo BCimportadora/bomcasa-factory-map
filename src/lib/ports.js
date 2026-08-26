@@ -139,3 +139,6 @@ export const FOB_PORTS = [
 ]
 
 export const portDescriptionKey = (id) => `ports.descriptions.${id}`
+
+/** Look up a port by the id stored on an order. */
+export const getPort = (id) => FOB_PORTS.find((port) => port.id === id) ?? null

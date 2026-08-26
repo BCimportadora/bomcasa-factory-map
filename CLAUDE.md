@@ -39,6 +39,38 @@ top-left. They overlapped when zoom was left at its default.
 `BaseTileLayer` did, which tore down and rebuilt the entire GL map on every render
 of the surrounding page, including every panel toggle.
 
+**Orders are one table with two views, not two features.** `orders` +
+`order_items`, and a single status flow (`draft → confirmed → in_production →
+ready → shipped → arrived`, plus `cancelled`). "Orders to do" shows the first
+three, "ready & in transit" the next three, and an order that ships changes
+status rather than being re-typed. Both tiles render `OrdersPage` with a
+different `view` prop; the split itself lives in `ORDER_VIEWS` in
+`src/lib/orders.js`. A cancelled order is reachable from the to-do filter only —
+in neither list it would be lost, in both it would clutter the shipping board.
+
+**Making a section real takes two edits, not one.** Flip `ready` in
+`src/lib/sections.js` *and* add an explicit route in `App.jsx`. The generated
+routes only cover `ready: false` sections, so flipping the flag alone leaves the
+tile pointing at a route that no longer exists.
+
+**Saving order lines inserts before deleting, on purpose.** `replaceItems` in
+`useOrders.js` writes the new rows, then removes the old ones by id. The two
+steps are not one transaction: in this order a failure leaves visible duplicate
+lines, which someone can fix. The other order would silently empty the order.
+
+**`order_items.line_no` is not decoration.** PostgREST makes no promise about
+row order, so without it the lines of an order can come back shuffled between
+two reads of an unchanged record. The hook sorts on it after every fetch.
+
+**Status badge colours are tokens because one shade cannot serve both themes.**
+`--c-status-*` in `src/index.css`, light and dark values measured against
+`--c-surface` in each theme; all seven clear WCAG AA for 12px text, worst case
+4.70:1. The obvious `bg-amber-500/10 text-amber-600` style used by the menu tiles
+does not survive the check — `text-amber-600` measures 3.19:1 on a white card and
+`text-teal-700` 3.11:1 on a dark one. If you re-measure these, note that probing
+a Tailwind class Tailwind never compiled returns the *inherited* colour, not the
+one you asked for, which reads as a suspiciously perfect result.
+
 **Colours are CSS variables, not Tailwind literals.** `tailwind.config.js` maps
 every colour name onto `rgb(var(--c-*) / <alpha-value>)`, with the values in
 `:root` and `:root.dark` at the top of `src/index.css`. So `bg-surface` already

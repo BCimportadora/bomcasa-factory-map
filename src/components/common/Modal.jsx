@@ -2,7 +2,14 @@ import { useEffect } from 'react'
 import { X } from 'lucide-react'
 import { useI18n } from '../../i18n'
 
-export default function Modal({ title, onClose, children }) {
+/**
+ * `size` widens the dialog for forms that genuinely need the room (the order
+ * form carries a table of line items). Everything else stays narrow, because a
+ * wide dialog around a short form reads as an empty page.
+ */
+const WIDTHS = { default: 'max-w-lg', wide: 'max-w-2xl' }
+
+export default function Modal({ title, onClose, size = 'default', children }) {
   const { t } = useI18n()
 
   useEffect(() => {
@@ -27,7 +34,7 @@ export default function Modal({ title, onClose, children }) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-surface shadow-overlay sm:rounded-2xl"
+        className={`max-h-[92vh] w-full ${WIDTHS[size] ?? WIDTHS.default} overflow-y-auto rounded-t-2xl bg-surface shadow-overlay sm:rounded-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 flex items-center justify-between gap-3 border-b border-line bg-surface/95 px-5 py-4 backdrop-blur">

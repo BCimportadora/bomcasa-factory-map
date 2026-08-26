@@ -48,7 +48,7 @@ export const SECTIONS = [
     path: '/orders/to-do',
     group: 'orders',
     icon: ClipboardList,
-    ready: false,
+    ready: true,
     tone: 'bg-amber-500/10 text-amber-600',
   },
   {
@@ -56,7 +56,7 @@ export const SECTIONS = [
     path: '/orders/in-transit',
     group: 'orders',
     icon: Truck,
-    ready: false,
+    ready: true,
     tone: 'bg-emerald-500/10 text-emerald-600',
   },
   {

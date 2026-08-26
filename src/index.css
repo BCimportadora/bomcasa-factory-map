@@ -41,6 +41,22 @@
     --shadow-panel: 0 4px 24px rgb(0 0 0 / 0.06);
     --shadow-overlay: 0 12px 48px rgb(0 0 0 / 0.16);
 
+
+    /*
+     * Order status colours.
+     *
+     * Tokens rather than Tailwind literals for the usual reason: a single
+     * shade cannot clear 4.5:1 on both a white card and a near-black one.
+     * Every pair below was measured against --c-surface in its own theme and
+     * clears AA for the 12px badge text (worst case 4.70).
+     */
+    --c-status-draft: 71 85 105;
+    --c-status-confirmed: 37 99 235;
+    --c-status-in-production: 180 83 9;
+    --c-status-ready: 15 118 110;
+    --c-status-shipped: 4 120 87;
+    --c-status-arrived: 79 70 229;
+    --c-status-cancelled: 225 29 72;
     /* Tells the browser to draw scrollbars, form controls and the like to
        match — without it a dark page keeps light native widgets. */
     color-scheme: light;
@@ -78,6 +94,15 @@
     --shadow-panel: 0 4px 24px rgb(0 0 0 / 0.5);
     --shadow-overlay: 0 12px 48px rgb(0 0 0 / 0.7);
 
+
+    /* Lighter counterparts; see the note in the light block above. */
+    --c-status-draft: 148 163 184;
+    --c-status-confirmed: 96 165 250;
+    --c-status-in-production: 251 191 36;
+    --c-status-ready: 45 212 191;
+    --c-status-shipped: 52 211 153;
+    --c-status-arrived: 129 140 248;
+    --c-status-cancelled: 251 113 133;
     color-scheme: dark;
   }
 
@@ -165,6 +190,25 @@
   .badge-neutral {
     @apply badge bg-canvas text-muted ring-1 ring-inset ring-line;
   }
+
+  /*
+   * Status pill. The hue is supplied by whichever .status-* class sits
+   * alongside, so the badge itself stays one rule and the two themes are
+   * handled by the tokens rather than by dark: variants.
+   */
+  .badge-status {
+    @apply badge;
+    background-color: rgb(var(--c-status) / 0.12);
+    color: rgb(var(--c-status));
+  }
+
+  .status-draft { --c-status: var(--c-status-draft); }
+  .status-confirmed { --c-status: var(--c-status-confirmed); }
+  .status-in-production { --c-status: var(--c-status-in-production); }
+  .status-ready { --c-status: var(--c-status-ready); }
+  .status-shipped { --c-status: var(--c-status-shipped); }
+  .status-arrived { --c-status: var(--c-status-arrived); }
+  .status-cancelled { --c-status: var(--c-status-cancelled); }
 
   .badge-accent {
     @apply badge bg-accent/10 text-accent;

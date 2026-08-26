@@ -8,6 +8,7 @@ import HomePage from './pages/HomePage'
 import FactoriesPage from './pages/FactoriesPage'
 import PeoplePage from './pages/PeoplePage'
 import PortsPage from './pages/PortsPage'
+import OrdersPage from './pages/OrdersPage'
 import AdminAccountsPage from './pages/AdminAccountsPage'
 import SectionPlaceholder from './pages/SectionPlaceholder'
 import ProtectedRoute from './components/Auth/ProtectedRoute'
@@ -66,6 +67,16 @@ function AppRoutes() {
       <Route path="/factories" element={protectedPage(<FactoriesPage />)} />
       <Route path="/people" element={protectedPage(<PeoplePage />)} />
       <Route path="/ports" element={protectedPage(<PortsPage />)} />
+
+      {/*
+        Two views of one orders table, not two features. The paths match the
+        ones declared in lib/sections.js.
+      */}
+      <Route path="/orders/to-do" element={protectedPage(<OrdersPage view="todo" />)} />
+      <Route
+        path="/orders/in-transit"
+        element={protectedPage(<OrdersPage view="inTransit" />)}
+      />
       <Route path="/account" element={protectedPage(<AccountPage />)} />
       <Route path="/admin/accounts" element={protectedPage(<AdminAccountsPage />, { requireAdmin: true })} />
 

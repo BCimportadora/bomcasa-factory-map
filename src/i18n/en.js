@@ -287,6 +287,90 @@ export default {
     countOther: '{{count}} factories',
   },
 
+  orders: {
+    add: 'New order',
+    addTitle: 'New order',
+    editTitle: 'Edit order',
+
+    reference: 'Order reference',
+    referencePlaceholder: 'e.g. BC-2026-014',
+    factory: 'Factory',
+    noFactory: 'No factory selected',
+    allFactories: 'All factories',
+    statusLabel: 'Status',
+    allStatuses: 'All statuses in this list',
+    currency: 'Currency',
+    total: 'Total',
+
+    shippingTitle: 'Shipping',
+    fobPort: 'FOB port',
+    noPort: 'No port selected',
+    orderDate: 'Order date',
+    readyDate: 'Ready at factory',
+    etd: 'ETD',
+    eta: 'ETA',
+    containerNo: 'Container',
+    blNumber: 'Bill of lading',
+    notes: 'Notes',
+
+    searchPlaceholder: 'Search by reference, product, container...',
+    loading: 'Loading orders...',
+    loadError: 'We could not load the orders.',
+    emptyHint: 'Orders you add will appear here, and move to the next list as they progress.',
+
+    referenceRequired: 'An order reference is required.',
+    readyBeforeOrder: 'The ready date cannot be before the order date.',
+    etaBeforeEtd: 'The ETA cannot be before the ETD.',
+    saveError: 'We could not save this order.',
+    deleteTitle: 'Delete order',
+    deleteConfirm: 'This deletes the order and all of its lines. It cannot be undone.',
+    deleteError: 'We could not delete this order.',
+
+    advanceTo: 'Move to {{status}}',
+    countOne: '1 order',
+    countOther: '{{count}} orders',
+    lineCountOne: '1 line',
+    lineCountOther: '{{count}} lines',
+
+    status: {
+      draft: 'Draft',
+      confirmed: 'Confirmed',
+      in_production: 'In production',
+      ready: 'Ready',
+      shipped: 'Shipped',
+      arrived: 'Arrived',
+      cancelled: 'Cancelled',
+    },
+
+    due: {
+      today: 'today',
+      lateOne: '1 day late',
+      lateOther: '{{count}} days late',
+      inOne: 'in 1 day',
+      inOther: 'in {{count}} days',
+    },
+
+    items: {
+      title: 'Products',
+      hint: 'Quantity x unit price',
+      product: 'Product',
+      quantity: 'Quantity',
+      unit: 'Unit',
+      unitPrice: 'Unit price',
+      add: 'Add line',
+      remove: 'Remove this line',
+    },
+
+    views: {
+      todo: {
+        empty: 'Nothing in production',
+      },
+      inTransit: {
+        empty: 'Nothing ready or on the water',
+      },
+    },
+  },
+
   measure: {
     start: 'Measure',
     stop: 'Done',

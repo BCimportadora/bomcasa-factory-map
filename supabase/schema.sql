@@ -232,6 +232,141 @@ create policy "Admins delete all, business users delete their own"
   using (created_by = auth.uid() or public.is_admin());
 
 -- ---------------------------------------------------------------------------
+-- orders and order_items
+--
+-- One order is one purchase from one factory, and it moves through a single
+-- lifecycle: draft -> confirmed -> in_production -> ready -> shipped -> arrived.
+-- The two menu sections are two filtered views of this one table, so an order
+-- that ships is never re-typed: its status changes and it moves across.
+--
+-- Line items live in their own table because a proforma invoice carries several
+-- products at different prices, and the totals have to add up across them.
+-- ---------------------------------------------------------------------------
+create table if not exists public.orders (
+  id uuid primary key default gen_random_uuid(),
+  reference text not null,
+  factory_id uuid references public.factories(id) on delete set null,
+  status text not null default 'draft',
+  currency text not null default 'USD',
+  -- Matches an id in src/lib/ports.js. Deliberately not a foreign key: the port
+  -- list is fixed reference data compiled into the bundle, not a table anyone
+  -- edits, so there is nothing to point at.
+  fob_port text,
+  order_date date,
+  ready_date date,
+  etd date,
+  eta date,
+  container_no text,
+  bl_number text,
+  notes text,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'orders_status_check') then
+    alter table public.orders add constraint orders_status_check
+      check (status in ('draft', 'confirmed', 'in_production', 'ready', 'shipped', 'arrived', 'cancelled'));
+  end if;
+end $$;
+
+create index if not exists orders_status_idx on public.orders(status);
+create index if not exists orders_factory_id_idx on public.orders(factory_id);
+create index if not exists orders_created_by_idx on public.orders(created_by);
+
+create table if not exists public.order_items (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references public.orders(id) on delete cascade,
+  product text not null,
+  quantity numeric(14, 3),
+  unit text not null default 'pcs',
+  unit_price numeric(14, 4),
+  -- Preserves the order the lines were typed in. Without it PostgREST returns
+  -- them in whatever order Postgres happens to find them, which can differ
+  -- between two reads of the same unchanged order.
+  line_no integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists order_items_order_id_idx on public.order_items(order_id);
+
+-- Keeps updated_at honest without every caller having to remember it.
+create or replace function public.touch_updated_at()
+returns trigger as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists orders_touch_updated_at on public.orders;
+create trigger orders_touch_updated_at
+  before update on public.orders
+  for each row execute procedure public.touch_updated_at();
+
+alter table public.orders enable row level security;
+alter table public.order_items enable row level security;
+
+-- Same model as factories: the order book is shared company knowledge, so any
+-- signed-in user can read it, but editing stays with whoever entered the order
+-- (or an administrator).
+drop policy if exists "Authenticated users can view all orders" on public.orders;
+create policy "Authenticated users can view all orders"
+  on public.orders for select to authenticated using (true);
+
+drop policy if exists "Authenticated users insert their own orders" on public.orders;
+create policy "Authenticated users insert their own orders"
+  on public.orders for insert to authenticated with check (created_by = auth.uid());
+
+drop policy if exists "Admins update all orders, business users their own" on public.orders;
+create policy "Admins update all orders, business users their own"
+  on public.orders for update to authenticated
+  using (created_by = auth.uid() or public.is_admin())
+  with check (created_by = auth.uid() or public.is_admin());
+
+drop policy if exists "Admins delete all orders, business users their own" on public.orders;
+create policy "Admins delete all orders, business users their own"
+  on public.orders for delete to authenticated
+  using (created_by = auth.uid() or public.is_admin());
+
+-- Line items carry no permissions of their own: whether a line may be touched
+-- is decided entirely by the order it hangs off. SECURITY DEFINER so the check
+-- reads orders directly rather than through the policies above, which is both
+-- cheaper and immune to a later change in how orders are read.
+create or replace function public.can_edit_order(target_order uuid)
+returns boolean as $$
+  select exists (
+    select 1 from public.orders o
+    where o.id = target_order and (o.created_by = auth.uid() or public.is_admin())
+  );
+$$ language sql security definer stable set search_path = public;
+
+revoke all on function public.can_edit_order(uuid) from public;
+grant execute on function public.can_edit_order(uuid) to authenticated;
+
+drop policy if exists "Authenticated users can view all order items" on public.order_items;
+create policy "Authenticated users can view all order items"
+  on public.order_items for select to authenticated using (true);
+
+drop policy if exists "Order items follow their order (insert)" on public.order_items;
+create policy "Order items follow their order (insert)"
+  on public.order_items for insert to authenticated
+  with check (public.can_edit_order(order_id));
+
+drop policy if exists "Order items follow their order (update)" on public.order_items;
+create policy "Order items follow their order (update)"
+  on public.order_items for update to authenticated
+  using (public.can_edit_order(order_id))
+  with check (public.can_edit_order(order_id));
+
+drop policy if exists "Order items follow their order (delete)" on public.order_items;
+create policy "Order items follow their order (delete)"
+  on public.order_items for delete to authenticated
+  using (public.can_edit_order(order_id));
+
+-- ---------------------------------------------------------------------------
 -- Bootstrap the first administrator (run once, after that account exists):
 --
 --   update public.profiles set role = 'admin' where email = 'you@example.com';
