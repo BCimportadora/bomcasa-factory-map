@@ -9,6 +9,8 @@ import FactoriesPage from './pages/FactoriesPage'
 import PeoplePage from './pages/PeoplePage'
 import PortsPage from './pages/PortsPage'
 import OrdersPage from './pages/OrdersPage'
+import InnovationsPage from './pages/InnovationsPage'
+import InnovationsPrintPage from './pages/InnovationsPrintPage'
 import AdminAccountsPage from './pages/AdminAccountsPage'
 import SectionPlaceholder from './pages/SectionPlaceholder'
 import ProtectedRoute from './components/Auth/ProtectedRoute'
@@ -76,6 +78,29 @@ function AppRoutes() {
       <Route
         path="/orders/in-transit"
         element={protectedPage(<OrdersPage view="inTransit" />)}
+      />
+
+      {/* Two views of one innovations table; see lib/innovations.js. */}
+      <Route
+        path="/innovations/in-development"
+        element={protectedPage(<InnovationsPage view="development" />)}
+      />
+      <Route
+        path="/innovations/ready"
+        element={protectedPage(<InnovationsPage view="ready" />)}
+      />
+
+      {/*
+        The print sheet skips AppLayout on purpose: a sidebar and a theme are
+        exactly what should not end up on the paper.
+      */}
+      <Route
+        path="/innovations/print"
+        element={
+          <ProtectedRoute>
+            <InnovationsPrintPage />
+          </ProtectedRoute>
+        }
       />
       <Route path="/account" element={protectedPage(<AccountPage />)} />
       <Route path="/admin/accounts" element={protectedPage(<AdminAccountsPage />, { requireAdmin: true })} />

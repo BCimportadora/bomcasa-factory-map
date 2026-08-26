@@ -371,6 +371,123 @@ export default {
     },
   },
 
+  innovations: {
+    add: 'New innovation',
+    addTitle: 'New innovation',
+    editTitle: 'Edit innovation',
+
+    name: 'Item name',
+    labelField: 'Label',
+    allLabels: 'All labels',
+    assignedTo: 'Working on it',
+    nobodyAssigned: 'Nobody yet',
+    addedBy: 'Added by',
+    addedOn: 'Added on',
+    notes: 'Notes',
+
+    localPrice: 'Local price',
+    localPriceShort: 'Locally {{price}}',
+    localPriceNotes: 'Where that price comes from',
+    localPriceNotesPlaceholder: 'e.g. seen in store, competitor listing',
+    currency: 'Currency',
+
+    images: 'Images',
+    imagesHint: 'JPG, PNG, WEBP or GIF, up to 10 MB each',
+    addImage: 'Add',
+    removeImage: 'Remove this image',
+    noImage: 'No image yet',
+    imageLoading: 'Loading image',
+    showImage: 'Show image {{number}}',
+    imagesAfterSave: 'Save the item first, then you can add photographs to it.',
+    imageTooLarge: '{{name}} is larger than 10 MB.',
+    imageWrongType: '{{name}} is not a JPG, PNG, WEBP or GIF.',
+    imageUploadError: 'We could not upload that image.',
+    imageRemoveError: 'We could not remove that image.',
+
+    variations: 'Variations',
+    variationsHint: 'Sizes or bundles quoted together',
+    variationName: 'Variation name',
+    addVariation: 'Add variation',
+    removeVariation: 'Remove this variation',
+    itemItself: 'The item itself',
+
+    quotesTitle: 'Factories quoting',
+    noQuotes: 'No factory asked yet.',
+    addQuote: 'Add factory',
+    removeQuote: 'Remove this factory',
+    quoteFactory: 'Factory',
+    chooseFactory: 'Choose a factory',
+    quotedPrice: 'Quoted',
+    awaitingQuote: 'No price yet',
+    unknownFactory: 'Factory not set',
+    safetyLabel: 'Safe to deal with',
+
+    orderPlan: 'Order plan',
+    fobPrice: 'FOB price',
+    fobEach: '{{price}} FOB',
+    noFobYet: 'No FOB price yet',
+    plannedUnits: 'Units to order',
+    plannedUnitsShort: '{{units}} units planned',
+    plannedTotal: 'Planned total',
+
+    promote: 'Move to ready to order',
+    promoteNeedsDone: 'Label the item done first.',
+    promoteAdminOnly: 'This item is done. An administrator can move it to ready to order.',
+    promoteError: 'We could not move this item.',
+    demote: 'Send back to development',
+
+    printReady: 'Print ready to present ({{count}})',
+    print: 'Print',
+    printTitle: 'Innovations ready to present',
+    printSubtitle: '{{count}} item(s) labelled ready to present.',
+    printEmpty: 'Nothing is labelled ready to present yet.',
+    backToBoard: 'Back to the board',
+
+    openDetail: 'Open {{name}}',
+    searchPlaceholder: 'Search by name, note, variation...',
+    loading: 'Loading innovations...',
+    loadError: 'We could not load the innovations.',
+    emptyHint: 'Anyone on the team can add an item here, with photographs and a label.',
+    nameRequired: 'An item name is required.',
+    saveError: 'We could not save this item.',
+    deleteTitle: 'Delete innovation',
+    deleteConfirm: 'This deletes the item, its photographs and all of its quotes. It cannot be undone.',
+    deleteError: 'We could not delete this item.',
+    countOne: '1 item',
+    countOther: '{{count}} items',
+
+    labels: {
+      need_to_present: 'Need to present',
+      to_do: 'To do',
+      checking: 'Checking',
+      got_supplier: 'Got supplier',
+      got_quote: 'Got a quote',
+      ready_to_present: 'Ready to present',
+      done: 'Done',
+      denied: 'Denied',
+    },
+
+    stages: {
+      development: 'In development',
+      ready: 'Ready to order',
+    },
+
+    safety: {
+      unknown: 'Not checked',
+      safe: 'Safe',
+      unsafe: 'Not safe',
+    },
+
+    views: {
+      development: {
+        empty: 'Nothing in development',
+      },
+      ready: {
+        empty: 'Nothing ready to order',
+      },
+    },
+  },
+
   measure: {
     start: 'Measure',
     stop: 'Done',

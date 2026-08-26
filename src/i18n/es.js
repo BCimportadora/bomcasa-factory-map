@@ -372,6 +372,123 @@ export default {
     },
   },
 
+  innovations: {
+    add: 'Nueva innovación',
+    addTitle: 'Nueva innovación',
+    editTitle: 'Editar innovación',
+
+    name: 'Nombre del artículo',
+    labelField: 'Etiqueta',
+    allLabels: 'Todas las etiquetas',
+    assignedTo: 'Lo lleva',
+    nobodyAssigned: 'Nadie todavía',
+    addedBy: 'Añadido por',
+    addedOn: 'Añadido el',
+    notes: 'Notas',
+
+    localPrice: 'Precio local',
+    localPriceShort: 'Local {{price}}',
+    localPriceNotes: 'De dónde sale ese precio',
+    localPriceNotesPlaceholder: 'p. ej. visto en tienda, anuncio de la competencia',
+    currency: 'Moneda',
+
+    images: 'Imágenes',
+    imagesHint: 'JPG, PNG, WEBP o GIF, hasta 10 MB cada una',
+    addImage: 'Añadir',
+    removeImage: 'Eliminar esta imagen',
+    noImage: 'Sin imagen todavía',
+    imageLoading: 'Cargando imagen',
+    showImage: 'Ver imagen {{number}}',
+    imagesAfterSave: 'Guarda primero el artículo y después podrás añadirle fotografías.',
+    imageTooLarge: '{{name}} supera los 10 MB.',
+    imageWrongType: '{{name}} no es un JPG, PNG, WEBP ni GIF.',
+    imageUploadError: 'No pudimos subir esa imagen.',
+    imageRemoveError: 'No pudimos eliminar esa imagen.',
+
+    variations: 'Variaciones',
+    variationsHint: 'Medidas o packs cotizados juntos',
+    variationName: 'Nombre de la variación',
+    addVariation: 'Añadir variación',
+    removeVariation: 'Eliminar esta variación',
+    itemItself: 'El artículo en sí',
+
+    quotesTitle: 'Fábricas que cotizan',
+    noQuotes: 'Aún no se ha pedido a ninguna fábrica.',
+    addQuote: 'Añadir fábrica',
+    removeQuote: 'Eliminar esta fábrica',
+    quoteFactory: 'Fábrica',
+    chooseFactory: 'Elige una fábrica',
+    quotedPrice: 'Cotizado',
+    awaitingQuote: 'Sin precio todavía',
+    unknownFactory: 'Fábrica sin definir',
+    safetyLabel: 'Fiable',
+
+    orderPlan: 'Plan de pedido',
+    fobPrice: 'Precio FOB',
+    fobEach: '{{price}} FOB',
+    noFobYet: 'Sin precio FOB todavía',
+    plannedUnits: 'Unidades a pedir',
+    plannedUnitsShort: '{{units}} unidades previstas',
+    plannedTotal: 'Total previsto',
+
+    promote: 'Pasar a listo para pedir',
+    promoteNeedsDone: 'Etiqueta el artículo como hecho primero.',
+    promoteAdminOnly: 'Este artículo está hecho. Un administrador puede pasarlo a listo para pedir.',
+    promoteError: 'No pudimos mover este artículo.',
+    demote: 'Devolver a desarrollo',
+
+    printReady: 'Imprimir listos para presentar ({{count}})',
+    print: 'Imprimir',
+    printTitle: 'Innovaciones listas para presentar',
+    printSubtitle: '{{count}} artículo(s) etiquetados como listos para presentar.',
+    printEmpty: 'Todavía no hay nada etiquetado como listo para presentar.',
+    backToBoard: 'Volver al tablero',
+
+    openDetail: 'Abrir {{name}}',
+    searchPlaceholder: 'Buscar por nombre, nota, variación...',
+    loading: 'Cargando innovaciones...',
+    loadError: 'No pudimos cargar las innovaciones.',
+    emptyHint: 'Cualquiera del equipo puede añadir un artículo aquí, con fotografías y una etiqueta.',
+    nameRequired: 'El nombre del artículo es obligatorio.',
+    saveError: 'No pudimos guardar este artículo.',
+    deleteTitle: 'Eliminar innovación',
+    deleteConfirm: 'Esto elimina el artículo, sus fotografías y todas sus cotizaciones. No se puede deshacer.',
+    deleteError: 'No pudimos eliminar este artículo.',
+    countOne: '1 artículo',
+    countOther: '{{count}} artículos',
+
+    labels: {
+      need_to_present: 'Hay que presentar',
+      to_do: 'Por hacer',
+      checking: 'Comprobando',
+      got_supplier: 'Proveedor encontrado',
+      got_quote: 'Cotización recibida',
+      ready_to_present: 'Listo para presentar',
+      done: 'Hecho',
+      denied: 'Descartado',
+    },
+
+    stages: {
+      development: 'En desarrollo',
+      ready: 'Listo para pedir',
+    },
+
+    safety: {
+      unknown: 'Sin comprobar',
+      safe: 'Fiable',
+      unsafe: 'No fiable',
+    },
+
+    views: {
+      development: {
+        empty: 'Nada en desarrollo',
+      },
+      ready: {
+        empty: 'Nada listo para pedir',
+      },
+    },
+  },
+
   measure: {
     start: 'Medir',
     stop: 'Listo',

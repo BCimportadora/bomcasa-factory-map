@@ -64,7 +64,7 @@ export const SECTIONS = [
     path: '/innovations/in-development',
     group: 'innovations',
     icon: Lightbulb,
-    ready: false,
+    ready: true,
     tone: 'bg-violet-500/10 text-violet-600',
   },
   {
@@ -72,7 +72,7 @@ export const SECTIONS = [
     path: '/innovations/ready',
     group: 'innovations',
     icon: PackageCheck,
-    ready: false,
+    ready: true,
     tone: 'bg-indigo-500/10 text-indigo-600',
   },
   {

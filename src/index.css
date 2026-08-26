@@ -57,6 +57,16 @@
     --c-status-shipped: 4 120 87;
     --c-status-arrived: 79 70 229;
     --c-status-cancelled: 225 29 72;
+
+    /* R&D labels; same measured-in-both-themes rule as the order statuses. */
+    --c-status-idea: 71 85 105;
+    --c-status-todo: 37 99 235;
+    --c-status-checking: 180 83 9;
+    --c-status-supplier: 109 40 217;
+    --c-status-quote: 14 116 144;
+    --c-status-present: 15 118 110;
+    --c-status-done: 4 120 87;
+    --c-status-denied: 225 29 72;
     /* Tells the browser to draw scrollbars, form controls and the like to
        match — without it a dark page keeps light native widgets. */
     color-scheme: light;
@@ -103,6 +113,16 @@
     --c-status-shipped: 52 211 153;
     --c-status-arrived: 129 140 248;
     --c-status-cancelled: 251 113 133;
+
+    /* R&D labels, lighter counterparts. */
+    --c-status-idea: 148 163 184;
+    --c-status-todo: 96 165 250;
+    --c-status-checking: 251 191 36;
+    --c-status-supplier: 167 139 250;
+    --c-status-quote: 34 211 238;
+    --c-status-present: 45 212 191;
+    --c-status-done: 52 211 153;
+    --c-status-denied: 251 113 133;
     color-scheme: dark;
   }
 
@@ -202,6 +222,14 @@
     color: rgb(var(--c-status));
   }
 
+  .status-idea { --c-status: var(--c-status-idea); }
+  .status-todo { --c-status: var(--c-status-todo); }
+  .status-checking { --c-status: var(--c-status-checking); }
+  .status-supplier { --c-status: var(--c-status-supplier); }
+  .status-quote { --c-status: var(--c-status-quote); }
+  .status-present { --c-status: var(--c-status-present); }
+  .status-done { --c-status: var(--c-status-done); }
+  .status-denied { --c-status: var(--c-status-denied); }
   .status-draft { --c-status: var(--c-status-draft); }
   .status-confirmed { --c-status: var(--c-status-confirmed); }
   .status-in-production { --c-status: var(--c-status-in-production); }
@@ -426,4 +454,38 @@
 
 .leaflet-tooltip-right::before {
   border-right-color: rgb(var(--c-surface)) !important;
+}
+
+/*
+ * The innovations print sheet.
+ *
+ * Everywhere else in this file the colours follow the theme. Paper does not
+ * have a theme: printing a night-mode page either wastes a cartridge on a
+ * black rectangle or, with backgrounds off, prints pale grey text on white.
+ * So print forces black on white regardless of the setting, and tells the
+ * browser to render form controls and scrollbars light while it does.
+ */
+@media print {
+  :root,
+  :root.dark {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    height: auto;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Ask for the photographs and borders to actually come out. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  @page {
+    margin: 14mm;
+  }
 }

@@ -367,6 +367,279 @@ create policy "Order items follow their order (delete)"
   using (public.can_edit_order(order_id));
 
 -- ---------------------------------------------------------------------------
+-- innovations (R&D)
+--
+-- One table, two sections, exactly like orders. `label` is the working tag that
+-- anyone may set; `stage` is the promotion, and only an administrator may move
+-- it. They are separate columns on purpose: an item can sit at label 'done' for
+-- days before someone with the authority actually promotes it, and collapsing
+-- the two would make the promotion happen by accident.
+-- ---------------------------------------------------------------------------
+create table if not exists public.innovations (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  label text not null default 'need_to_present',
+  stage text not null default 'development',
+  -- Who is carrying the item forward. Distinct from created_by: the person who
+  -- had the idea is often not the person chasing the quotes.
+  assigned_to uuid references auth.users(id) on delete set null,
+  local_price numeric(14, 2),
+  local_currency text not null default 'USD',
+  local_price_notes text,
+  -- Only meaningful once promoted, but kept on the same row so that promoting
+  -- an item does not mean copying it into a second table.
+  fob_price numeric(14, 4),
+  fob_currency text not null default 'USD',
+  planned_units numeric(14, 0),
+  notes text,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'innovations_label_check') then
+    alter table public.innovations add constraint innovations_label_check
+      check (label in ('need_to_present', 'to_do', 'checking', 'got_supplier',
+                       'got_quote', 'ready_to_present', 'done', 'denied'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'innovations_stage_check') then
+    alter table public.innovations add constraint innovations_stage_check
+      check (stage in ('development', 'ready'));
+  end if;
+end $$;
+
+create index if not exists innovations_stage_idx on public.innovations(stage);
+create index if not exists innovations_label_idx on public.innovations(label);
+create index if not exists innovations_created_by_idx on public.innovations(created_by);
+create index if not exists innovations_assigned_to_idx on public.innovations(assigned_to);
+
+-- Images live in Storage; this table only records which object belongs to which
+-- innovation, and in what order they should be shown.
+create table if not exists public.innovation_images (
+  id uuid primary key default gen_random_uuid(),
+  innovation_id uuid not null references public.innovations(id) on delete cascade,
+  storage_path text not null,
+  line_no integer not null default 0,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists innovation_images_innovation_idx
+  on public.innovation_images(innovation_id);
+
+-- A single innovation report can cover several sizes or a bundle (a 4 1/2 inch
+-- and a 7 inch disc quoted together), so quotes hang off a variation.
+create table if not exists public.innovation_variations (
+  id uuid primary key default gen_random_uuid(),
+  innovation_id uuid not null references public.innovations(id) on delete cascade,
+  name text not null,
+  notes text,
+  line_no integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists innovation_variations_innovation_idx
+  on public.innovation_variations(innovation_id);
+
+create table if not exists public.innovation_quotes (
+  id uuid primary key default gen_random_uuid(),
+  innovation_id uuid not null references public.innovations(id) on delete cascade,
+  -- Null means the quote covers the whole item rather than one variation, which
+  -- is the normal case before anyone has split it into sizes.
+  variation_id uuid references public.innovation_variations(id) on delete cascade,
+  factory_id uuid references public.factories(id) on delete set null,
+  -- Whether we consider this supplier safe to deal with. 'unknown' is the
+  -- honest default: an unchecked factory must not read as an approved one.
+  safety text not null default 'unknown',
+  quoted_price numeric(14, 4),
+  currency text not null default 'USD',
+  notes text,
+  line_no integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'innovation_quotes_safety_check') then
+    alter table public.innovation_quotes add constraint innovation_quotes_safety_check
+      check (safety in ('unknown', 'safe', 'unsafe'));
+  end if;
+end $$;
+
+create index if not exists innovation_quotes_innovation_idx
+  on public.innovation_quotes(innovation_id);
+create index if not exists innovation_quotes_variation_idx
+  on public.innovation_quotes(variation_id);
+
+drop trigger if exists innovations_touch_updated_at on public.innovations;
+create trigger innovations_touch_updated_at
+  before update on public.innovations
+  for each row execute procedure public.touch_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- Promotion guard.
+--
+-- Moving an item into the "ready to order" section is an administrator's
+-- decision, and it is only allowed once the item is actually finished. Hiding
+-- the button is not enough: the anon key is public, so any signed-in user can
+-- PATCH this column directly. Same reasoning as the role guard on profiles.
+--
+-- auth.uid() is NULL in the SQL editor and for service-role requests, which is
+-- what leaves an administrator a way in from the dashboard.
+-- ---------------------------------------------------------------------------
+create or replace function public.enforce_innovation_update_rules()
+returns trigger as $$
+begin
+  if new.stage is distinct from old.stage then
+    if auth.uid() is not null and not public.is_admin() then
+      raise exception 'Only administrators can move an innovation between sections';
+    end if;
+    if new.stage = 'ready' and old.label <> 'done' and new.label <> 'done' then
+      raise exception 'An innovation must be labelled done before it can be moved';
+    end if;
+  end if;
+
+  new.created_by := old.created_by;
+  new.created_at := old.created_at;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists innovations_enforce_update_rules on public.innovations;
+create trigger innovations_enforce_update_rules
+  before update on public.innovations
+  for each row execute procedure public.enforce_innovation_update_rules();
+
+alter table public.innovations enable row level security;
+alter table public.innovation_images enable row level security;
+alter table public.innovation_variations enable row level security;
+alter table public.innovation_quotes enable row level security;
+
+-- R&D is collaborative: anyone signed in may add an item and may edit any item,
+-- because the person chasing a quote is usually not the person who added it.
+-- The one column that is not open is `stage`, guarded by the trigger above.
+drop policy if exists "Authenticated users can view innovations" on public.innovations;
+create policy "Authenticated users can view innovations"
+  on public.innovations for select to authenticated using (true);
+
+drop policy if exists "Any signed-in user can add an innovation" on public.innovations;
+create policy "Any signed-in user can add an innovation"
+  on public.innovations for insert to authenticated with check (created_by = auth.uid());
+
+drop policy if exists "Any signed-in user can edit an innovation" on public.innovations;
+create policy "Any signed-in user can edit an innovation"
+  on public.innovations for update to authenticated using (true) with check (true);
+
+-- Deleting is not collaborative: it destroys someone else's work.
+drop policy if exists "Owners and admins delete innovations" on public.innovations;
+create policy "Owners and admins delete innovations"
+  on public.innovations for delete to authenticated
+  using (created_by = auth.uid() or public.is_admin());
+
+-- The child tables follow the parent: anyone who may edit the innovation may
+-- edit its images, variations and quotes. The function exists so that the four
+-- policies below do not each re-state the rule.
+create or replace function public.can_edit_innovation(target uuid)
+returns boolean as $$
+  select exists (select 1 from public.innovations i where i.id = target);
+$$ language sql security definer stable set search_path = public;
+
+revoke all on function public.can_edit_innovation(uuid) from public;
+grant execute on function public.can_edit_innovation(uuid) to authenticated;
+
+drop policy if exists "View innovation images" on public.innovation_images;
+create policy "View innovation images"
+  on public.innovation_images for select to authenticated using (true);
+
+drop policy if exists "Insert innovation images" on public.innovation_images;
+create policy "Insert innovation images"
+  on public.innovation_images for insert to authenticated
+  with check (public.can_edit_innovation(innovation_id));
+
+drop policy if exists "Update innovation images" on public.innovation_images;
+create policy "Update innovation images"
+  on public.innovation_images for update to authenticated
+  using (public.can_edit_innovation(innovation_id))
+  with check (public.can_edit_innovation(innovation_id));
+
+drop policy if exists "Delete innovation images" on public.innovation_images;
+create policy "Delete innovation images"
+  on public.innovation_images for delete to authenticated
+  using (public.can_edit_innovation(innovation_id));
+
+drop policy if exists "View innovation variations" on public.innovation_variations;
+create policy "View innovation variations"
+  on public.innovation_variations for select to authenticated using (true);
+
+drop policy if exists "Insert innovation variations" on public.innovation_variations;
+create policy "Insert innovation variations"
+  on public.innovation_variations for insert to authenticated
+  with check (public.can_edit_innovation(innovation_id));
+
+drop policy if exists "Update innovation variations" on public.innovation_variations;
+create policy "Update innovation variations"
+  on public.innovation_variations for update to authenticated
+  using (public.can_edit_innovation(innovation_id))
+  with check (public.can_edit_innovation(innovation_id));
+
+drop policy if exists "Delete innovation variations" on public.innovation_variations;
+create policy "Delete innovation variations"
+  on public.innovation_variations for delete to authenticated
+  using (public.can_edit_innovation(innovation_id));
+
+drop policy if exists "View innovation quotes" on public.innovation_quotes;
+create policy "View innovation quotes"
+  on public.innovation_quotes for select to authenticated using (true);
+
+drop policy if exists "Insert innovation quotes" on public.innovation_quotes;
+create policy "Insert innovation quotes"
+  on public.innovation_quotes for insert to authenticated
+  with check (public.can_edit_innovation(innovation_id));
+
+drop policy if exists "Update innovation quotes" on public.innovation_quotes;
+create policy "Update innovation quotes"
+  on public.innovation_quotes for update to authenticated
+  using (public.can_edit_innovation(innovation_id))
+  with check (public.can_edit_innovation(innovation_id));
+
+drop policy if exists "Delete innovation quotes" on public.innovation_quotes;
+create policy "Delete innovation quotes"
+  on public.innovation_quotes for delete to authenticated
+  using (public.can_edit_innovation(innovation_id));
+
+-- ---------------------------------------------------------------------------
+-- Storage for innovation images.
+--
+-- The bucket is PRIVATE. A public bucket serves every object to anyone who has
+-- or guesses the URL, with no sign-in at all, and these are unreleased product
+-- designs. The application reads them through short-lived signed URLs instead.
+-- ---------------------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('innovations', 'innovations', false, 10485760,
+        array['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+on conflict (id) do update
+  set public = false,
+      file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Authenticated users read innovation images" on storage.objects;
+create policy "Authenticated users read innovation images"
+  on storage.objects for select to authenticated
+  using (bucket_id = 'innovations');
+
+drop policy if exists "Authenticated users upload innovation images" on storage.objects;
+create policy "Authenticated users upload innovation images"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'innovations');
+
+drop policy if exists "Uploaders and admins delete innovation images" on storage.objects;
+create policy "Uploaders and admins delete innovation images"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'innovations' and (owner = auth.uid() or public.is_admin()));
+
+-- ---------------------------------------------------------------------------
 -- Bootstrap the first administrator (run once, after that account exists):
 --
 --   update public.profiles set role = 'admin' where email = 'you@example.com';

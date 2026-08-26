@@ -48,6 +48,42 @@ different `view` prop; the split itself lives in `ORDER_VIEWS` in
 `src/lib/orders.js`. A cancelled order is reachable from the to-do filter only —
 in neither list it would be lost, in both it would clutter the shipping board.
 
+**Innovation images live in a PRIVATE storage bucket.** A public bucket serves
+every object to anyone who has or guesses the URL, with no sign-in at all, and
+these are unreleased product designs. So there is no permanent URL to store:
+`useSignedImages` signs each path for the person looking at it, one hour at a
+time. If images ever go blank, check the bucket is still `public = false` and
+that the `storage.objects` policies survived — re-running `schema.sql` restores
+both.
+
+**That hook batches on purpose.** Every card mounts its own `InnovationImage`,
+so a board of forty items would issue forty signing requests in the same tick.
+A module-level queue collects the paths and signs them in one call at the end of
+the tick, keyed by path so duplicates collapse too. Do not "simplify" it back
+into a per-component request.
+
+**Promotion to the ready-to-order section is enforced in the database.**
+`enforce_innovation_update_rules` rejects a `stage` change from a non-admin, and
+rejects a move to `ready` unless the label is `done`. The button in the detail
+modal is a convenience; the trigger is the control, because the anon key is
+public and PostgREST would otherwise take the PATCH straight from the browser.
+`label` and `stage` are deliberately separate columns — collapsing them would
+make relabelling an item promote it by accident.
+
+**Variations are upserted, never recreated.** Quotes reference variation ids, so
+the delete-and-reinsert pattern used for order lines would cascade every quote
+away. A variation added in the open form has no id yet, so the editor tags its
+quotes with a temporary `key` and `saveDetails` translates those to real ids
+after the variations come back — joined on `line_no`, since the order rows are
+returned in is not guaranteed.
+
+**The print sheet is the one screen that ignores the theme.** `/innovations/print`
+hard-codes black on white and skips `AppLayout` entirely, and `@media print` in
+`index.css` forces `background: #fff` past the dark tokens. Printing a night-mode
+page either wastes a cartridge on a black rectangle or, with backgrounds off,
+prints pale grey text on white. This is a deliberate exception to the
+colours-are-tokens rule below, not an oversight.
+
 **Making a section real takes two edits, not one.** Flip `ready` in
 `src/lib/sections.js` *and* add an explicit route in `App.jsx`. The generated
 routes only cover `ready: false` sections, so flipping the flag alone leaves the
