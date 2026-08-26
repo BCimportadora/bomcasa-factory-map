@@ -39,6 +39,41 @@ top-left. They overlapped when zoom was left at its default.
 `BaseTileLayer` did, which tore down and rebuilt the entire GL map on every render
 of the surrounding page, including every panel toggle.
 
+**The .xlsx reader is hand-rolled, and the cell regex is the load-bearing part.**
+`src/lib/xlsxReader.js` unzips with the browser's own `DecompressionStream`
+rather than pulling in a spreadsheet library. Cells are matched as *whole*
+`<c>…</c>` or `<c …/>` elements, never with a lazy `.*?` up to the first `/>`:
+a shared formula is written `<f t="shared" si="0"/>`, and a lazy match stops
+there and returns nothing. That failure is invisible in the worst way — the
+first rows of a sheet read perfectly and every later row comes back blank,
+because Excel writes the formula out once and has the rest reference it. It
+cost a debugging round here; the totals row is what gave it away.
+
+**Liquidation columns are found by heading text, not position.** These sheets
+are maintained by hand and gain a column sooner or later. Matching on position
+means the import silently reads duty as freight instead of failing. Headings
+are normalised (accents, line breaks, double spaces) and the map in
+`src/lib/liquidation.js` lists more specific headings first — "costo total imp
+pagos" must be tried before "costo total". It also deliberately accepts the
+sheet's typo "TRERRESTE" alongside the correct spelling; do not "fix" that.
+
+**Landed-cost headline figures are columns, the rest is jsonb.** Twenty-odd
+charge components differ between shipments and will gain new ones, so
+`order_items.cost_breakdown` holds them and only the figures that get read,
+sorted or totalled are real columns. A sheet growing a column needs no
+migration.
+
+**A price of zero is not a price; a charge of zero is.** The sheets carry 0
+against items never sold (a spare driver marked USO INTERNO), so `OrderDetail`
+renders prices of 0 as an em dash while leaving breakdown charges of 0 as
+"0.00" — no duty charged is a real fact. The stored values keep the zero either
+way.
+
+**Never leave a customer spreadsheet in `public/`.** Verifying the parser means
+serving a real workbook to the dev server, and `public/` is copied verbatim into
+`dist/` and deployed. Delete it the moment the check passes, and confirm with
+`find . -name '*.xlsx' -not -path './node_modules/*'` before committing.
+
 **Orders are one table with two views, not two features.** `orders` +
 `order_items`, and a single status flow (`draft → confirmed → in_production →
 ready → shipped → arrived`, plus `cancelled`). "Orders to do" shows the first

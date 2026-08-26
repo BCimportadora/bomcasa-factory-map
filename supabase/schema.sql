@@ -367,6 +367,39 @@ create policy "Order items follow their order (delete)"
   using (public.can_edit_order(order_id));
 
 -- ---------------------------------------------------------------------------
+-- Landed cost (liquidacion de costo)
+--
+-- A liquidation is produced per container after it arrives: it spreads the
+-- freight, insurance, duties and local charges across the order lines and
+-- arrives at a cost per unit and a selling price. It belongs to the order it
+-- settles, so these columns extend orders rather than forming a second table.
+--
+-- The headline figures are real columns because they are what gets read, sorted
+-- and totalled. The rest of the sheet -- twenty-odd charge components that
+-- differ between shipments and will gain new ones -- lives in a jsonb blob, so
+-- a spreadsheet that grows a column does not need a migration.
+-- ---------------------------------------------------------------------------
+alter table public.orders add column if not exists landed_currency text not null default 'DOP';
+alter table public.orders add column if not exists landed_total numeric(16, 4);
+alter table public.orders add column if not exists landed_units numeric(14, 3);
+-- Where the figures came from: file name, sheet, who imported it and when.
+-- Without this an unexpected number has no provenance to check.
+alter table public.orders add column if not exists liquidation jsonb;
+
+alter table public.order_items add column if not exists product_code text;
+alter table public.order_items add column if not exists units_received numeric(14, 3);
+alter table public.order_items add column if not exists fob_total numeric(14, 4);
+alter table public.order_items add column if not exists landed_total numeric(16, 4);
+alter table public.order_items add column if not exists landed_unit_cost numeric(14, 4);
+alter table public.order_items add column if not exists sale_price numeric(14, 4);
+alter table public.order_items add column if not exists list_price numeric(14, 4);
+alter table public.order_items add column if not exists line_comment text;
+-- Every remaining column of the sheet, keyed by the importer's field names.
+alter table public.order_items add column if not exists cost_breakdown jsonb;
+
+create index if not exists order_items_product_code_idx on public.order_items(product_code);
+
+-- ---------------------------------------------------------------------------
 -- innovations (R&D)
 --
 -- One table, two sections, exactly like orders. `label` is the working tag that

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { splitLine } from '../lib/liquidation'
 
 /** Columns that live on `orders`. Anything else on a form value is ignored. */
 const ORDER_COLUMNS = [
@@ -132,6 +133,93 @@ export function useOrders() {
     return data
   }
 
+  /**
+   * Write a parsed cost liquidation onto an order.
+   *
+   * Creates the order when `orderId` is null, otherwise replaces the lines of
+   * the one given -- a liquidation is the settled truth about a container, so
+   * re-importing a corrected sheet should leave the order holding what the
+   * sheet says and nothing else.
+   *
+   * quantity and unit_price are filled from the sheet as well as the landed
+   * columns, so the existing USD total on the card keeps working: units times
+   * the FOB unit price is exactly the line's FOB total.
+   */
+  const importLiquidation = async (parsed, { orderId, factoryId, userId, currency = 'USD' }) => {
+    const orderValues = {
+      reference: parsed.reference,
+      factory_id: factoryId || null,
+      currency,
+      landed_currency: parsed.landedCurrency ?? 'DOP',
+      landed_total: parsed.totals.landed_total ?? null,
+      landed_units: parsed.totals.units ?? null,
+      liquidation: {
+        file_name: parsed.fileName,
+        sheet_name: parsed.sheetName,
+        imported_at: new Date().toISOString(),
+        imported_by: userId,
+        line_count: parsed.lines.length,
+        fob_total: parsed.totals.fob_total ?? null,
+        stated_totals: parsed.statedTotals ?? null,
+        warnings: parsed.warnings ?? [],
+      },
+    }
+
+    let id = orderId
+    if (id) {
+      const { error } = await supabase.from('orders').update(orderValues).eq('id', id)
+      if (error) throw error
+    } else {
+      const { data, error } = await supabase
+        .from('orders')
+        .insert({ ...orderValues, status: 'arrived', created_by: userId })
+        .select()
+        .single()
+      if (error) throw error
+      id = data.id
+    }
+
+    const rows = parsed.lines.map((line, index) => ({
+      order_id: id,
+      product: line.description ?? line.product_code,
+      product_code: line.product_code,
+      quantity: line.units ?? null,
+      unit: 'pcs',
+      unit_price: line.units && line.fob_total ? line.fob_total / line.units : null,
+      units_received: line.units ?? null,
+      fob_total: line.fob_total ?? null,
+      landed_total: line.landed_total ?? null,
+      landed_unit_cost: line.landed_unit_cost ?? null,
+      sale_price: line.sale_price_inc_tax ?? null,
+      list_price: line.list_price ?? null,
+      line_comment: line.comment ?? null,
+      cost_breakdown: splitLine(line),
+      line_no: index,
+    }))
+
+    // Insert the new lines before removing the old, for the same reason as
+    // replaceItems: duplicates are visible and fixable, a wipe is not.
+    const { data: existing, error: readError } = await supabase
+      .from('order_items')
+      .select('id')
+      .eq('order_id', id)
+    if (readError) throw readError
+
+    const { error: insertError } = await supabase.from('order_items').insert(rows)
+    if (insertError) throw insertError
+
+    if (existing && existing.length > 0) {
+      const { error } = await supabase
+        .from('order_items')
+        .delete()
+        .in('id', existing.map((row) => row.id))
+      if (error) throw error
+    }
+
+    await fetchOrders()
+    return id
+  }
+
   /** Advancing an order along the lifecycle touches nothing else. */
   const setStatus = async (id, status) => {
     const { error } = await supabase.from('orders').update({ status }).eq('id', id)
@@ -153,6 +241,7 @@ export function useOrders() {
     createOrder,
     updateOrder,
     setStatus,
+    importLiquidation,
     deleteOrder,
     refetch: fetchOrders,
   }

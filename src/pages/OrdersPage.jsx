@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { FileSpreadsheet, Plus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n'
 import { useOrders } from '../hooks/useOrders'
@@ -10,6 +10,8 @@ import Modal from '../components/common/Modal'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import OrderCard from '../components/Order/OrderCard'
 import OrderForm from '../components/Order/OrderForm'
+import OrderDetail from '../components/Order/OrderDetail'
+import LiquidationImport from '../components/Order/LiquidationImport'
 
 /**
  * Both order sections render from here.
@@ -22,7 +24,8 @@ export default function OrdersPage({ view }) {
   const config = ORDER_VIEWS[view]
   const { t, language, tCount } = useI18n()
   const { user, isAdmin } = useAuth()
-  const { orders, loading, error, createOrder, updateOrder, setStatus, deleteOrder } = useOrders()
+  const { orders, loading, error, createOrder, updateOrder, setStatus, deleteOrder, importLiquidation } =
+    useOrders()
   const { factories } = useFactories()
 
   const [query, setQuery] = useState('')
@@ -30,6 +33,8 @@ export default function OrdersPage({ view }) {
   const [factoryId, setFactoryId] = useState('')
   const [editing, setEditing] = useState(null) // an order, or the string 'new'
   const [deleting, setDeleting] = useState(null)
+  const [viewing, setViewing] = useState(null)
+  const [importing, setImporting] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [actionError, setActionError] = useState('')
 
@@ -124,10 +129,16 @@ export default function OrdersPage({ view }) {
             <h1 className="page-title">{t(sectionNameKey(config.sectionId))}</h1>
             <p className="page-subtitle">{t(sectionDescriptionKey(config.sectionId))}</p>
           </div>
-          <button type="button" onClick={() => setEditing('new')} className="btn-primary">
-            <Plus size={16} strokeWidth={2.25} />
-            {t('orders.add')}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setImporting(true)} className="btn-secondary">
+              <FileSpreadsheet size={16} strokeWidth={2} />
+              {t('liquidation.action')}
+            </button>
+            <button type="button" onClick={() => setEditing('new')} className="btn-primary">
+              <Plus size={16} strokeWidth={2.25} />
+              {t('orders.add')}
+            </button>
+          </div>
         </header>
 
         {actionError && (
@@ -207,6 +218,7 @@ export default function OrdersPage({ view }) {
                   factory={factoriesById.get(order.factory_id)}
                   dateField={config.dateField}
                   canManage={canManage(order)}
+                  onOpen={setViewing}
                   onEdit={setEditing}
                   onDelete={setDeleting}
                   onAdvance={handleAdvance}
@@ -235,6 +247,25 @@ export default function OrdersPage({ view }) {
             submitting={submitting}
           />
         </Modal>
+      )}
+
+      {viewing && (
+        <OrderDetail
+          order={orders.find((o) => o.id === viewing.id) ?? viewing}
+          factory={factoriesById.get(viewing.factory_id)}
+          onClose={() => setViewing(null)}
+        />
+      )}
+
+      {importing && (
+        <LiquidationImport
+          orders={orders}
+          factories={factories}
+          onImport={(parsed, options) =>
+            importLiquidation(parsed, { ...options, userId: user.id })
+          }
+          onClose={() => setImporting(false)}
+        />
       )}
 
       {deleting && (

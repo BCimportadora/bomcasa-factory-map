@@ -58,7 +58,16 @@ function DueDate({ value, labelKey }) {
   )
 }
 
-export default function OrderCard({ order, factory, dateField, canManage, onEdit, onDelete, onAdvance }) {
+export default function OrderCard({
+  order,
+  factory,
+  dateField,
+  canManage,
+  onOpen,
+  onEdit,
+  onDelete,
+  onAdvance,
+}) {
   const { t, language, tCount } = useI18n()
 
   const items = order.order_items ?? []
@@ -71,9 +80,13 @@ export default function OrderCard({ order, factory, dateField, canManage, onEdit
     <li className="card p-4 transition-shadow duration-200 hover:shadow-subtle">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-[15px] font-semibold tracking-[-0.01em] text-ink">
+          <button
+            type="button"
+            onClick={() => onOpen(order)}
+            className="block max-w-full truncate text-left text-[15px] font-semibold tracking-[-0.01em] text-ink hover:text-accent"
+          >
             {order.reference}
-          </p>
+          </button>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-muted">
             <span className="inline-flex items-center gap-1.5">
               <Factory size={13} strokeWidth={1.75} />
@@ -114,9 +127,20 @@ export default function OrderCard({ order, factory, dateField, canManage, onEdit
           <p className="hint">{tCount('orders.lineCount', items.length)}</p>
         </div>
         {total > 0 && (
-          <p className="flex-shrink-0 text-[17px] font-semibold tracking-[-0.01em] text-ink">
-            {formatMoney(total, order.currency, language)}
-          </p>
+          <div className="flex-shrink-0 text-right">
+            <p className="text-[17px] font-semibold tracking-[-0.01em] text-ink">
+              {formatMoney(total, order.currency, language)}
+            </p>
+            {/* Landed cost is in another currency, so it is labelled rather
+                than sitting under the FOB total as if comparable. */}
+            {order.landed_total != null && (
+              <p className="hint">
+                {t('liquidation.landedShort', {
+                  amount: formatMoney(order.landed_total, order.landed_currency ?? 'DOP', language),
+                })}
+              </p>
+            )}
+          </div>
         )}
       </div>
 
