@@ -488,6 +488,50 @@ export default {
     },
   },
 
+  suggestions: {
+    add: 'New suggestion',
+    addTitle: 'New suggestion',
+    editTitle: 'Edit suggestion',
+
+    titleField: 'Suggestion',
+    titlePlaceholder: 'What should change?',
+    titleRequired: 'A suggestion needs a title.',
+    bodyField: 'Details',
+    bodyPlaceholder: 'What is awkward today, and what would be better?',
+
+    statusField: 'Status',
+    allStatuses: 'All statuses',
+    postedBy: 'Posted by {{name}} on {{date}}',
+
+    decide: 'Decide',
+    decideTitle: 'Decide on this suggestion',
+    saveDecision: 'Save decision',
+    responseField: 'Reply',
+    responsePlaceholder: 'Why this was planned, done or declined',
+    responseHint: 'Shown to whoever asked, so a decision does not just go quiet.',
+    responseLabel: 'Reply',
+    decideError: 'We could not save that decision.',
+
+    openOne: '1 open suggestion',
+    openOther: '{{count}} open suggestions',
+    loading: 'Loading suggestions...',
+    loadError: 'We could not load the suggestions.',
+    empty: 'No suggestions yet',
+    emptyHint: 'Anyone on the team can ask for a change to this platform here.',
+    saveError: 'We could not save this suggestion.',
+    deleteTitle: 'Delete suggestion',
+    deleteConfirm: 'This deletes the suggestion and any reply to it. It cannot be undone.',
+    deleteError: 'We could not delete this suggestion.',
+
+    status: {
+      new: 'New',
+      planned: 'Planned',
+      in_progress: 'In progress',
+      done: 'Done',
+      declined: 'Declined',
+    },
+  },
+
   measure: {
     start: 'Measure',
     stop: 'Done',

@@ -48,6 +48,16 @@ different `view` prop; the split itself lives in `ORDER_VIEWS` in
 `src/lib/orders.js`. A cancelled order is reachable from the to-do filter only —
 in neither list it would be lost, in both it would clutter the shipping board.
 
+**Every section is built, so the placeholder path is now dead code that should
+stay.** `SECTIONS.filter((s) => !s.ready)` in `App.jsx` currently yields nothing
+and `SectionPlaceholder` never renders. Both are the mechanism for the next
+section rather than leftovers — deleting them means rebuilding them.
+
+**Suggestions reuse the R&D label colours deliberately.** `STATUS_TONES` in
+`src/lib/suggestions.js` points at `status-idea`, `status-todo` and friends
+rather than defining its own. A second palette would mean five more light/dark
+contrast pairs to keep honest for no gain — a status board is a status board.
+
 **Innovation images live in a PRIVATE storage bucket.** A public bucket serves
 every object to anyone who has or guesses the URL, with no sign-in at all, and
 these are unreleased product designs. So there is no permanent URL to store:

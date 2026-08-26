@@ -489,6 +489,50 @@ export default {
     },
   },
 
+  suggestions: {
+    add: 'Nueva sugerencia',
+    addTitle: 'Nueva sugerencia',
+    editTitle: 'Editar sugerencia',
+
+    titleField: 'Sugerencia',
+    titlePlaceholder: '¿Qué habría que cambiar?',
+    titleRequired: 'La sugerencia necesita un título.',
+    bodyField: 'Detalles',
+    bodyPlaceholder: '¿Qué resulta incómodo hoy y qué sería mejor?',
+
+    statusField: 'Estado',
+    allStatuses: 'Todos los estados',
+    postedBy: 'Publicado por {{name}} el {{date}}',
+
+    decide: 'Decidir',
+    decideTitle: 'Decidir sobre esta sugerencia',
+    saveDecision: 'Guardar decisión',
+    responseField: 'Respuesta',
+    responsePlaceholder: 'Por qué se planificó, se hizo o se descartó',
+    responseHint: 'Se muestra a quien lo pidió, para que una decisión no quede en silencio.',
+    responseLabel: 'Respuesta',
+    decideError: 'No pudimos guardar esa decisión.',
+
+    openOne: '1 sugerencia abierta',
+    openOther: '{{count}} sugerencias abiertas',
+    loading: 'Cargando sugerencias...',
+    loadError: 'No pudimos cargar las sugerencias.',
+    empty: 'Todavía no hay sugerencias',
+    emptyHint: 'Cualquiera del equipo puede pedir aquí un cambio en esta plataforma.',
+    saveError: 'No pudimos guardar esta sugerencia.',
+    deleteTitle: 'Eliminar sugerencia',
+    deleteConfirm: 'Esto elimina la sugerencia y cualquier respuesta. No se puede deshacer.',
+    deleteError: 'No pudimos eliminar esta sugerencia.',
+
+    status: {
+      new: 'Nueva',
+      planned: 'Planificada',
+      in_progress: 'En curso',
+      done: 'Hecha',
+      declined: 'Descartada',
+    },
+  },
+
   measure: {
     start: 'Medir',
     stop: 'Listo',

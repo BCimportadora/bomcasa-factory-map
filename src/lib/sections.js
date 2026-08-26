@@ -88,7 +88,7 @@ export const SECTIONS = [
     path: '/suggestions',
     group: 'workspace',
     icon: MessageSquarePlus,
-    ready: false,
+    ready: true,
     tone: 'bg-rose-500/10 text-rose-600',
   },
 ]

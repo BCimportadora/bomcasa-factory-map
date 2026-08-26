@@ -11,6 +11,7 @@ import PortsPage from './pages/PortsPage'
 import OrdersPage from './pages/OrdersPage'
 import InnovationsPage from './pages/InnovationsPage'
 import InnovationsPrintPage from './pages/InnovationsPrintPage'
+import SuggestionsPage from './pages/SuggestionsPage'
 import AdminAccountsPage from './pages/AdminAccountsPage'
 import SectionPlaceholder from './pages/SectionPlaceholder'
 import ProtectedRoute from './components/Auth/ProtectedRoute'
@@ -68,6 +69,7 @@ function AppRoutes() {
 
       <Route path="/factories" element={protectedPage(<FactoriesPage />)} />
       <Route path="/people" element={protectedPage(<PeoplePage />)} />
+      <Route path="/suggestions" element={protectedPage(<SuggestionsPage />)} />
       <Route path="/ports" element={protectedPage(<PortsPage />)} />
 
       {/*

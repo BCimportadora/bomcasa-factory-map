@@ -640,6 +640,93 @@ create policy "Uploaders and admins delete innovation images"
   using (bucket_id = 'innovations' and (owner = auth.uid() or public.is_admin()));
 
 -- ---------------------------------------------------------------------------
+-- suggestions (ideas and requests for this platform)
+--
+-- The smallest section: one table, no children. Anyone signed in may post, and
+-- may correct their own wording afterwards. Deciding what happens to a
+-- suggestion is a different thing from making one, so `status` is guarded the
+-- same way `innovations.stage` is -- otherwise anybody could mark their own
+-- request Done and it would drop off the list.
+-- ---------------------------------------------------------------------------
+create table if not exists public.suggestions (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  body text,
+  status text not null default 'new',
+  -- Filled in when an administrator declines or completes something, so the
+  -- person who asked can see why rather than watching it go quiet.
+  response text,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'suggestions_status_check') then
+    alter table public.suggestions add constraint suggestions_status_check
+      check (status in ('new', 'planned', 'in_progress', 'done', 'declined'));
+  end if;
+end $$;
+
+create index if not exists suggestions_status_idx on public.suggestions(status);
+create index if not exists suggestions_created_by_idx on public.suggestions(created_by);
+
+drop trigger if exists suggestions_touch_updated_at on public.suggestions;
+create trigger suggestions_touch_updated_at
+  before update on public.suggestions
+  for each row execute procedure public.touch_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- Same reasoning as the innovation promotion guard: hiding the control is not
+-- enough, because the anon key is public and PostgREST would take the PATCH
+-- straight from the browser.
+-- ---------------------------------------------------------------------------
+create or replace function public.enforce_suggestion_update_rules()
+returns trigger as $$
+begin
+  if new.status is distinct from old.status or new.response is distinct from old.response then
+    if auth.uid() is not null and not public.is_admin() then
+      raise exception 'Only administrators can decide on a suggestion';
+    end if;
+  end if;
+
+  new.created_by := old.created_by;
+  new.created_at := old.created_at;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists suggestions_enforce_update_rules on public.suggestions;
+create trigger suggestions_enforce_update_rules
+  before update on public.suggestions
+  for each row execute procedure public.enforce_suggestion_update_rules();
+
+alter table public.suggestions enable row level security;
+
+drop policy if exists "Authenticated users can view suggestions" on public.suggestions;
+create policy "Authenticated users can view suggestions"
+  on public.suggestions for select to authenticated using (true);
+
+drop policy if exists "Any signed-in user can post a suggestion" on public.suggestions;
+create policy "Any signed-in user can post a suggestion"
+  on public.suggestions for insert to authenticated
+  with check (created_by = auth.uid());
+
+-- Authors may reword their own; administrators may edit any, and are the only
+-- ones the trigger above lets touch status or response.
+drop policy if exists "Authors and admins edit suggestions" on public.suggestions;
+create policy "Authors and admins edit suggestions"
+  on public.suggestions for update to authenticated
+  using (created_by = auth.uid() or public.is_admin())
+  with check (created_by = auth.uid() or public.is_admin());
+
+drop policy if exists "Authors and admins delete suggestions" on public.suggestions;
+create policy "Authors and admins delete suggestions"
+  on public.suggestions for delete to authenticated
+  using (created_by = auth.uid() or public.is_admin());
+
+-- ---------------------------------------------------------------------------
 -- Bootstrap the first administrator (run once, after that account exists):
 --
 --   update public.profiles set role = 'admin' where email = 'you@example.com';
