@@ -18,7 +18,8 @@ import { FOB_PORTS } from '../lib/ports'
 export default function FactoriesPage() {
   const { user, isAdmin } = useAuth()
   const { t, tCount } = useI18n()
-  const { factories, loading, error, createFactory, updateFactory, deleteFactory } = useFactories()
+  const { factories, loading, error, listFactories, createFactory, updateFactory, deleteFactory } =
+    useFactories()
 
   const [query, setQuery] = useState('')
   const [province, setProvince] = useState('')
@@ -108,7 +109,14 @@ export default function FactoriesPage() {
    * failing loudly per row would abandon the rest of the file.
    */
   const handleCsvImport = async (rows) => {
-    const existingByName = new Map(factories.map((f) => [factoryNameKey(f.name), f]))
+    // Straight from the database, not from `factories`. That state only
+    // refreshes when the realtime subscription fires, so importing twice — or
+    // importing before the first load has landed — would answer "does this
+    // factory exist?" from a list that predates the rows it is asking about,
+    // and insert every one of them again. That is what put a duplicate of
+    // nearly every supplier on the map.
+    const current = await listFactories()
+    const existingByName = new Map(current.map((f) => [factoryNameKey(f.name), f]))
     const summary = { added: 0, updated: 0, notPermitted: 0 }
 
     for (const row of rows) {
@@ -116,11 +124,9 @@ export default function FactoriesPage() {
 
       if (!existing) {
         const created = await createFactory({ ...row, created_by: user.id })
-        // Into the map, not just the database. Without this the lookup only
-        // ever reflects the rows that existed before the import started, so a
-        // file naming the same factory twice inserts it twice — which is how
-        // the map ended up with a duplicate of nearly every supplier. The
-        // second mention now updates the row the first one created.
+        // Into the map, not just the database, so a file that names the same
+        // factory twice updates the row its first mention created instead of
+        // inserting a second one.
         existingByName.set(factoryNameKey(row.name), created)
         summary.added += 1
       } else if (canManage(existing)) {
