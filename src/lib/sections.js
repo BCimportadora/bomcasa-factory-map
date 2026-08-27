@@ -3,6 +3,7 @@ import {
   ClipboardList,
   Factory,
   FolderOpen,
+  Library,
   Lightbulb,
   MessageSquarePlus,
   PackageCheck,
@@ -67,6 +68,14 @@ export const SECTIONS = [
     icon: FolderOpen,
     ready: true,
     tone: 'bg-orange-500/10 text-orange-600',
+  },
+  {
+    id: 'catalog',
+    path: '/catalog',
+    group: 'documents',
+    icon: Library,
+    ready: true,
+    tone: 'bg-teal-500/10 text-teal-600',
   },
   {
     id: 'innovationsDevelopment',

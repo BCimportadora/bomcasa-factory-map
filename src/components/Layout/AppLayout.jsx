@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { LayoutGrid, ShieldCheck, LogOut, Menu, X, Settings } from 'lucide-react'
+import { LayoutGrid, Library, ShieldCheck, LogOut, Menu, X, Settings } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useI18n } from '../../i18n'
 import { initials, fullName, roleKey } from '../../lib/constants'
@@ -72,6 +72,13 @@ export default function AppLayout({ children }) {
             >
               <ShieldCheck size={18} strokeWidth={1.75} />
               {t('nav.manageAccounts')}
+            </NavLink>
+            <NavLink
+              to="/admin/catalog"
+              className={({ isActive }) => `nav-link ${isActive ? 'nav-link-active' : ''}`}
+            >
+              <Library size={18} strokeWidth={1.75} />
+              {t('nav.catalogSettings')}
             </NavLink>
           </div>
         )}

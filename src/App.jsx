@@ -10,10 +10,12 @@ import PeoplePage from './pages/PeoplePage'
 import PortsPage from './pages/PortsPage'
 import OrdersPage from './pages/OrdersPage'
 import FilesPage from './pages/FilesPage'
+import CatalogPage from './pages/CatalogPage'
 import InnovationsPage from './pages/InnovationsPage'
 import InnovationsPrintPage from './pages/InnovationsPrintPage'
 import SuggestionsPage from './pages/SuggestionsPage'
 import AdminAccountsPage from './pages/AdminAccountsPage'
+import AdminCatalogPage from './pages/AdminCatalogPage'
 import SectionPlaceholder from './pages/SectionPlaceholder'
 import ProtectedRoute from './components/Auth/ProtectedRoute'
 import ErrorBoundary from './components/common/ErrorBoundary'
@@ -88,6 +90,9 @@ function AppRoutes() {
         element={protectedPage(<OrdersPage view="inTransit" />)}
       />
 
+      {/* The master product list, built from the documents in Files. */}
+      <Route path="/catalog" element={protectedPage(<CatalogPage />)} />
+
       {/*
         Files drills down factory -> order -> documents. One page renders all
         three levels from the route params, because they share the same data and
@@ -123,6 +128,7 @@ function AppRoutes() {
       />
       <Route path="/account" element={protectedPage(<AccountPage />)} />
       <Route path="/admin/accounts" element={protectedPage(<AdminAccountsPage />, { requireAdmin: true })} />
+      <Route path="/admin/catalog" element={protectedPage(<AdminCatalogPage />, { requireAdmin: true })} />
 
       {/*
         Sections that are announced on the menu but not built yet. Driven from
