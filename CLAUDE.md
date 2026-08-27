@@ -69,10 +69,85 @@ renders prices of 0 as an em dash while leaving breakdown charges of 0 as
 "0.00" — no duty charged is a real fact. The stored values keep the zero either
 way.
 
+**The catalog's identity is the code's DIGITS; the hyphen is only how it is
+written.** The same article is `591103` on a DGA liquidación, `5911-03` on a
+proforma and in our master list, and `5911.03` in a few rows of that list where
+somebody typed a dot. `code_key` strips everything but digits so all three are
+one product; `product_code` holds the hyphenated form because that is what
+people here read. `formatProductCode` reinstates the hyphen on six-digit codes
+and leaves the 3- and 4-digit legacy codes alone, and it runs on display as well
+as on write so rows imported before that rule read correctly without a
+migration.
+
+**Which document supplies which field is not arbitrary, and moving one is a
+decision.** The liquidación gives the partida arancelaria and nothing priced —
+its FOB is rounded to two decimals for the declaration and its gravamen is one
+shipment's duty. The proforma gives the barcode. Every money figure and the duty
+rate come from our own cost sheet, two of them derived rather than read:
+`fob_usd = COSTO TOTAL / unidades recibidas` and `gravamen_pct = Gravamen /
+CIF pesos * 100`. That the gravamen derived from the cost sheet matches the one
+derived from the liquidación is a useful cross-check, not a reason to take it
+from the cheaper source.
+
+**Catalog pricing follows the newest ORDER, decided by its number rather than a
+date.** Milan 11 supersedes Milan 10, which supersedes Milan 9, and paperwork
+arrives out of sequence often enough that importing an old order must not undo a
+new one. Dates cannot do this job: a liquidación for an earlier order can be
+filed later, and a cost sheet carries no date of its own at all. Numbers are
+compared only within the same series — "Klik 76" and "Milan 11" are separate
+runs — and where two documents cannot be ranked, `compareDocuments` returns
+`unknown` and the disagreement is reported for a person. 'unknown' is
+deliberately not 'older': keeping whichever arrived first is a decision nobody
+made.
+
+**A liquidación line with no product code still becomes a catalog row.** Spare
+drivers and the rechargeable bulbs on Milan 10 carry no code at all, but they do
+carry a partida arancelaria, and dropping them loses it. They are keyed
+`desc:<description>` instead, and a later coded row for the same goods *adopts*
+that row rather than sitting beside it as a duplicate — which is what makes the
+result the same whichever document is imported first. Adoption matches on the
+description as a prefix, because the cost sheet writes a packing suffix the
+declaration omits, and only when exactly one product matches. Two candidates
+mean the description identifies nothing, and a tariff code on the wrong product
+is worse than one left unattached.
+
+**The `Totales` row is not always on the last page of a liquidación.** A short
+declaration puts it on page 1 with only the container and money footer overleaf.
+Reading the stated totals from `pages[pages.length - 1]` finds nothing, every
+totals check then fails with "not found", and — worse — a page past the Totales
+row has no stop bound, so the `FURGONES` table's `1` in the ITEM column becomes
+a phantom line item and the row-count check fails against a document that parsed
+almost perfectly. Find the Totales row once, read rows up to and including its
+page, and ignore everything after.
+
+**A supplier proforma's header is two rows deep, and the sub-headings are
+BELOW.** The top row carries `No.`, `Code` and the merged group headings
+(`QUANTITY`, `FOB PRICE`); the row under it carries `Q'TY`, `UNIT PRICE`,
+`English`, `Spanish`. Columns A–E are merged down across both, so their labels
+appear only on the top row. Reading one row and not the other loses half the
+columns in silence: the prices and the Spanish description come back empty and
+everything else looks perfect. The invoice number is under its label too, not
+beside it — the cell to the right is the next label.
+
+**A Vite `?url` import must be STATIC.** `import workerUrl from
+'pdfjs-dist/build/pdf.worker.min.mjs?url'` works; `await import('...?url')`
+resolves in a production build and 404s in dev, surfacing as "Failed to fetch
+dynamically imported module". This is the same shape as the maplibre worker note
+above, and it is worth re-reading that one before reaching for a dynamic import
+of any worker. `?url` yields a string, so importing it statically costs a few
+bytes and does not drag the library into the main bundle — the heavy
+`pdfjs-dist/build/pdf.mjs` stays behind its own dynamic import, and Vite emits
+the worker as a separate asset either way.
+
 **Never leave a customer spreadsheet in `public/`.** Verifying the parser means
 serving a real workbook to the dev server, and `public/` is copied verbatim into
 `dist/` and deployed. Delete it the moment the check passes, and confirm with
 `find . -name '*.xlsx' -not -path './node_modules/*'` before committing.
+
+The part that catches people out: a build run while the fixture is still in
+`public/` copies it into `dist/`, and removing it from `public/` afterwards does
+**not** remove it from `dist/` — the next deploy ships it. Search the whole tree,
+not just `public/`, and rebuild after deleting.
 
 **Orders are one table with two views, not two features.** `orders` +
 `order_items`, and a single status flow (`draft → confirmed → in_production →
