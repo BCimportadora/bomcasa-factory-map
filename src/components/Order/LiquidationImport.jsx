@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { AlertTriangle, FileSpreadsheet, Paperclip, Upload } from 'lucide-react'
+import { AlertTriangle, FileSpreadsheet, Library, Paperclip, Upload } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import Modal from '../common/Modal'
 import { readWorkbook, isSupported } from '../../lib/xlsxReader'
@@ -49,6 +49,7 @@ export default function LiquidationImport({ orders, factories, onImport, onClose
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [fileWarning, setFileWarning] = useState('')
+  const [catalogNote, setCatalogNote] = useState(null)
 
   const supported = isSupported()
 
@@ -85,13 +86,15 @@ export default function LiquidationImport({ orders, factories, onImport, onClose
         factoryId: factoryId || null,
         file: source,
       })
-      // The costs are in either way. If only the sheet failed to file, say so
-      // and stay open -- closing on a warning nobody read would leave someone
-      // believing the document was stored when it was not.
+      // The costs are in either way. If only the sheet failed to file, or the
+      // catalog could not be updated, say so and stay open -- closing on a
+      // warning nobody read would leave someone believing it all went through.
+      if (result?.catalog) setCatalogNote(result.catalog)
       if (result?.fileError) {
         setFileWarning(t('liquidation.fileNotStored'))
         return
       }
+      if (result?.catalog?.error) return
       onClose()
     } catch (err) {
       setError(err.message ?? t('liquidation.importError'))
@@ -112,6 +115,34 @@ export default function LiquidationImport({ orders, factories, onImport, onClose
         <p role="alert" className="alert-error mb-4">
           {error}
         </p>
+      )}
+
+      {catalogNote && !catalogNote.error && (
+        <div role="status" className="mb-4 flex gap-2.5 rounded-xl border border-line px-3.5 py-3">
+          <Library size={16} className="mt-0.5 flex-shrink-0 text-muted" />
+          <div>
+            <p className="text-[13px] font-medium text-ink">{t('liquidation.catalogUpdated')}</p>
+            <p className="hint mt-0.5">
+              {catalogNote.skipped === 'alreadyImported'
+                ? t('liquidation.catalogAlready')
+                : t('liquidation.catalogCounts', {
+                    added: catalogNote.added,
+                    updated: catalogNote.updated,
+                    skipped: catalogNote.skipped,
+                  })}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {catalogNote?.error && (
+        <div role="alert" className="mb-4 flex gap-2.5 rounded-xl border border-warning/30 bg-warning/5 px-3.5 py-3">
+          <AlertTriangle size={16} className="mt-0.5 flex-shrink-0 text-warning" />
+          <div>
+            <p className="text-[13px] font-medium text-ink">{t('liquidation.catalogFailed')}</p>
+            <p className="hint mt-0.5">{t('liquidation.catalogFailedHint')}</p>
+          </div>
+        </div>
       )}
 
       {fileWarning && (
@@ -267,7 +298,7 @@ export default function LiquidationImport({ orders, factories, onImport, onClose
             {/* Once the costs are in, importing again achieves nothing — the
                 only thing left to do is close and, if wanted, attach the sheet
                 by hand from the order's files. */}
-            {fileWarning ? (
+            {fileWarning || catalogNote ? (
               <button type="button" onClick={onClose} className="btn-primary">
                 {t('common.close')}
               </button>

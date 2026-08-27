@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { splitLine } from '../lib/liquidation'
 import { attachFilesToOrder } from './useOrderFiles'
+import { applyCatalogImport } from './useCatalog'
+import { planImport } from '../lib/catalog'
 import { MAX_FILE_BYTES, isAllowedFile } from '../lib/orderFiles'
 
 /** Columns that live on `orders`. Anything else on a form value is ignored. */
@@ -135,6 +137,23 @@ export function useOrders() {
     return data
   }
 
+  /** The catalog as the database has it — never from subscription-backed state. */
+  const listCatalogProducts = async () => {
+    const { data, error } = await supabase.from('catalog').select('*')
+    if (error) throw error
+    return data ?? []
+  }
+
+  const findCatalogImport = async (docKey) => {
+    const { data, error } = await supabase
+      .from('catalog_imports')
+      .select('id')
+      .eq('doc_key', docKey)
+      .maybeSingle()
+    if (error) throw error
+    return data ?? null
+  }
+
   /**
    * Write a parsed cost liquidation onto an order.
    *
@@ -146,6 +165,8 @@ export function useOrders() {
    * quantity and unit_price are filled from the sheet as well as the landed
    * columns, so the existing USD total on the card keeps working: units times
    * the FOB unit price is exactly the line's FOB total.
+   *
+   * The same sheet also updates the catalog — see the end of this function.
    */
   const importLiquidation = async (
     parsed,
@@ -241,8 +262,57 @@ export function useOrders() {
       }
     }
 
+    // The same sheet also updates the catalog.
+    //
+    // A cost sheet is the only document that knows what a product costs us and
+    // what we sell it for, so importing one into an order and leaving the
+    // catalog stale would mean two answers to the same question. The catalog
+    // takes the newer of the two by ORDER NUMBER -- Milan 11 supersedes Milan
+    // 10 -- so importing an old order after a new one adds what is missing
+    // without undoing the current pricing.
+    //
+    // Not fatal, for the same reason the file attachment is not: the order and
+    // its lines are already saved, and failing the whole import over the
+    // catalog would send someone back to re-import a sheet that went in.
+    let catalogResult = null
+    try {
+      const existing = await listCatalogProducts()
+      const plan = planImport({
+        docType: 'costo',
+        rows: parsed.lines,
+        existing,
+        docRef: parsed.reference ?? null,
+        docDate: null,
+      })
+      const alreadyRead = await findCatalogImport(`costo:${parsed.reference ?? parsed.fileName}`)
+      if (alreadyRead) {
+        catalogResult = { skipped: 'alreadyImported' }
+      } else {
+        await applyCatalogImport({
+          plan,
+          document: {
+            doc_type: 'costo',
+            doc_key: `costo:${parsed.reference ?? parsed.fileName}`,
+            file_name: parsed.fileName ?? 'cost sheet',
+            invoice_no: parsed.reference ?? null,
+            doc_ref: parsed.reference ?? null,
+            line_count: parsed.lines.length,
+          },
+          userId,
+        })
+        catalogResult = {
+          added: plan.added.length,
+          updated: plan.updated.length,
+          skipped: plan.skipped.length,
+          conflicts: plan.conflicts.length,
+        }
+      }
+    } catch (err) {
+      catalogResult = { error: err.message ?? String(err) }
+    }
+
     await fetchOrders()
-    return { id, fileError }
+    return { id, fileError, catalog: catalogResult }
   }
 
   /** Advancing an order along the lifecycle touches nothing else. */
