@@ -1,0 +1,537 @@
+/**
+ * The catalog: one row per product, built from the documents an import travels
+ * on.
+ *
+ * Two rules shape everything here.
+ *
+ * A product is identified by its code reduced to DIGITS. The same article is
+ * written `591503` on a liquidación and `5915-03` on a proforma, and a few rows
+ * of the master list carry a dot where the hyphen belongs. Comparing the codes
+ * as written would file one product as three.
+ *
+ * Prices follow the NEWEST document, not the first one imported. Paperwork
+ * arrives out of order -- Milan 10's liquidación can turn up after Milan 11's --
+ * and what belongs on a product is the most recent price, not whichever file
+ * happened to be opened first. Documents are therefore compared by their own
+ * date. An older document still fills in blanks, but never overwrites what a
+ * newer one established, and two documents of the same date that disagree are
+ * reported for a person rather than silently resolved.
+ */
+
+/**
+ * The deduplication key: digits only.
+ *
+ * Deliberately not "trim and uppercase". These codes are numeric and arrive
+ * punctuated three different ways; the punctuation carries no meaning.
+ */
+export const codeKey = (code) => (code ?? '').toString().replace(/\D/g, '')
+
+/**
+ * The code as we write it: `NNNN-NN`.
+ *
+ * A liquidación prints it without the hyphen (`591103`) because the customs
+ * agent types it that way; our own master list, the proformas and everyone
+ * here use `5911-03`. One product, one spelling — the hyphen goes back in.
+ *
+ * Only six-digit codes are reshaped. The master list also holds four- and
+ * three-digit legacy codes, and inventing a hyphen for those would be making
+ * up a format nobody uses.
+ */
+export const formatProductCode = (code) => {
+  const raw = (code ?? '').toString().trim()
+  if (raw.includes('-')) return raw
+  const digits = codeKey(raw)
+  return digits.length === 6 ? `${digits.slice(0, 4)}-${digits.slice(4)}` : raw
+}
+
+/**
+ * A description reduced to letters and digits, for products that arrive without
+ * a code.
+ *
+ * Some liquidación lines carry no product code at all — spare drivers, and the
+ * rechargeable bulbs on Milan 10. They still classify goods under a partida
+ * arancelaria, which is worth having, so they become catalog entries keyed on
+ * their description instead. Prefixed so such a key can never be mistaken for,
+ * or collide with, a real code.
+ */
+export const descriptionKey = (description) => {
+  const text = (description ?? '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/\s*NO APLICA\s*$/, '')
+    .replace(/[^A-Z0-9]+/g, '')
+  return text ? `desc:${text}` : ''
+}
+
+/**
+ * An existing product whose description matches an uncoded line, or null.
+ *
+ * The cost sheet writes the same goods with a packing suffix the declaration
+ * omits — "BOMBILLO LED RECARGABLE 12W KOLNY" against "...KOLNY (100/1)" — so a
+ * prefix counts as a match. Only when exactly one product matches: two
+ * candidates mean the description does not identify anything, and attaching a
+ * tariff code to the wrong product is worse than leaving it unattached.
+ */
+export const matchByDescription = (description, products) => {
+  const needle = descriptionKey(description)
+  if (!needle || needle.length < 'desc:'.length + 8) return null
+  const body = needle.slice(5)
+  const hits = (products ?? []).filter((p) => {
+    const theirs = descriptionKey(p.description)
+    if (!theirs) return false
+    const other = theirs.slice(5)
+    return other === body || other.startsWith(body) || body.startsWith(other)
+  })
+  return hits.length === 1 ? hits[0] : null
+}
+
+/** Gravamen as a percentage of CIF, to two decimals. Null when CIF is zero. */
+export const gravamenPct = (gravamen, cif) => {
+  const g = Number(gravamen)
+  const c = Number(cif)
+  if (!Number.isFinite(g) || !Number.isFinite(c) || c === 0) return null
+  return (Math.round((g / c) * 10000) / 100).toFixed(2)
+}
+
+/** Fields a person may edit by hand, and which the importer may fill if null. */
+export const EDITABLE_FIELDS = [
+  'product_code',
+  'description',
+  'fob_usd',
+  'arancel',
+  'gravamen_pct',
+  'barcode',
+  'supplier_code',
+  'model',
+  'description_en',
+  'description_es',
+  'unit_price_dop',
+  'precio_lista',
+]
+
+/** Which of those hold money, and in which currency. Nothing is ever converted. */
+export const CURRENCY_OF = {
+  fob_usd: 'USD',
+  unit_price_dop: 'DOP',
+  precio_lista: 'DOP',
+}
+
+export const fieldLabelKey = (field) => `catalog.fields.${field}`
+
+/**
+ * Validation gates from docs/data-sources.md.
+ *
+ * Every one of these must pass before a single row is written. They are not
+ * warnings: a liquidación whose columns do not sum to its own Totales row has
+ * been mis-parsed, and importing it would put wrong duty rates into the
+ * catalog where nothing later would question them.
+ */
+export function validateLiquidacion(parsed) {
+  const checks = []
+  const rows = parsed.rows ?? []
+
+  const maxItem = rows.reduce((m, r) => Math.max(m, r.item || 0), 0)
+  checks.push({
+    id: 'rowCount',
+    ok: rows.length > 0 && rows.length === maxItem,
+    expected: String(maxItem),
+    actual: String(rows.length),
+  })
+
+  const contiguous = rows.every((r, i) => r.item === i + 1)
+  checks.push({ id: 'contiguous', ok: contiguous, expected: `1..${maxItem}`, actual: contiguous ? 'ok' : 'gaps' })
+
+  // The tax columns are exact sums. Five centavos of tolerance covers the
+  // document's own rounding and nothing else.
+  for (const [id, field] of [
+    ['cif', 'cif'],
+    ['gravamen', 'gravamen'],
+    ['selectivo', 'selectivo'],
+    ['itbis', 'itbis'],
+    ['total', 'total'],
+  ]) {
+    const stated = parsed.statedTotals?.[field]
+    if (stated === null || stated === undefined) {
+      checks.push({ id, ok: false, expected: 'stated total', actual: 'not found' })
+      continue
+    }
+    const sum = rows.reduce((s, r) => s + Number(r[field] ?? 0), 0)
+    const diff = Math.abs(sum - Number(stated))
+    checks.push({
+      id,
+      ok: diff <= 0.05,
+      expected: Number(stated).toFixed(2),
+      actual: sum.toFixed(2),
+      diff: diff.toFixed(2),
+    })
+  }
+
+  return { ok: checks.every((c) => c.ok), checks }
+}
+
+/**
+ * Where each field comes from, decided by which document actually knows it.
+ *
+ * The DGA liquidación knows what customs classified the goods as, so it gives
+ * the partida arancelaria — and nothing else priced. Its FOB figure is rounded
+ * to two decimals for the declaration and its gravamen is one shipment's duty,
+ * neither of which is what we want to quote from.
+ *
+ * The supplier's proforma knows the barcode. That is all we take from it.
+ *
+ * Our own cost sheet knows what things cost and what we sell them for, so every
+ * money figure and the duty rate come from there.
+ */
+
+/** From the liquidación: the tariff classification, and the identity. */
+const fromLiquidacionRow = (row) => ({
+  product_code: formatProductCode(row.codigo),
+  description: row.descripcion ? row.descripcion.replace(/\s*NO APLICA\s*$/, '').trim() : null,
+  arancel: row.arancel || null,
+})
+
+/** From the proforma: the barcode, and the supplier's own identifiers. */
+const fromProformaRow = (row) => ({
+  product_code: formatProductCode(row.supplier_code),
+  barcode: row.barcode,
+  supplier_code: row.supplier_code,
+  model: row.model,
+  description_en: row.description_en,
+  description_es: row.description_es,
+})
+
+/**
+ * From the internal cost sheet: every figure with a currency on it, plus the
+ * duty rate.
+ *
+ * Two are derived rather than read, because the sheet holds totals where we
+ * want a rate and a unit price:
+ *
+ *   fob_usd      = COSTO TOTAL (US$) / unidades recibidas
+ *   gravamen_pct = Gravamen (RD$) / CIF pesos * 100
+ *
+ * Both divisions are guarded: a line with no units, or a duty-free line whose
+ * CIF is zero, yields null rather than Infinity or NaN.
+ */
+const fromCostoRow = (row) => ({
+  product_code: formatProductCode(row.product_code),
+  description: row.description,
+  fob_usd: perUnit(row.fob_total, row.units),
+  gravamen_pct: gravamenPct(row.duty, row.cif_local),
+  unit_price_dop: row.landed_unit_cost,
+  precio_lista: row.list_price,
+})
+
+/** A total divided by a count, to four decimals. Null unless both are usable. */
+const perUnit = (total, units) => {
+  const t = Number(total)
+  const u = Number(units)
+  if (!Number.isFinite(t) || !Number.isFinite(u) || u === 0) return null
+  return (Math.round((t / u) * 10000) / 10000).toFixed(4)
+}
+
+const isBlank = (value) => value === null || value === undefined || value === ''
+
+/**
+ * An order reference split into its series and its number: "MILAN 11" ->
+ * { series: 'milan', number: 11 }.
+ *
+ * Orders within a series run in sequence, and the sequence is what says which
+ * pricing is current: Milan 11 supersedes Milan 10, which supersedes Milan 9.
+ * Dates cannot be relied on for this — a liquidación for an earlier order can
+ * be filed later, and a cost sheet carries no date of its own at all.
+ */
+export const orderPriority = (reference) => {
+  const raw = (reference ?? '').toString().trim()
+  const m = raw.match(/^\s*([A-Za-zÁÉÍÓÚÑáéíóúñ\s.]+?)\s*[-#]?\s*(\d+)\s*$/)
+  if (!m) return null
+  const series = m[1]
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z]+/g, '')
+  if (!series) return null
+  return { series, number: Number(m[2]) }
+}
+
+/**
+ * How an incoming document relates to the one that set a value: 'newer',
+ * 'older', 'same' or 'unknown'.
+ *
+ * Sequence first, and only within the same series: "Milan 11" beats "Milan 10",
+ * but "Klik 76" and "Milan 11" are separate runs of orders whose numbers mean
+ * nothing to each other. Where the references cannot be compared that way the
+ * document dates decide.
+ *
+ * 'unknown' is deliberately distinct from 'older'. Two documents we cannot
+ * place relative to each other are a question for a person, not an excuse to
+ * keep whichever happened to arrive first.
+ */
+export const compareDocuments = (incoming, stored) => {
+  const a = orderPriority(incoming?.ref)
+  const b = orderPriority(stored?.ref)
+  if (a && b && a.series === b.series) {
+    return a.number > b.number ? 'newer' : a.number < b.number ? 'older' : 'same'
+  }
+  const ad = incoming?.date ?? null
+  const bd = stored?.date ?? null
+  if (ad && bd) return ad > bd ? 'newer' : ad < bd ? 'older' : 'same'
+  if (ad && !bd) return 'newer'
+  if (!ad && bd) return 'older'
+  return 'unknown'
+}
+
+/**
+ * The most recent order this product was seen in.
+ *
+ * `doc_ref` is the liquidación that classified it, `cost_ref` the cost sheet
+ * that priced it, and each only advances when a newer document arrives — so
+ * between them they already say where the product was last bought. This picks
+ * whichever is later.
+ *
+ * Returns null for a product nobody has imported from a document, which is the
+ * honest answer for one somebody typed in by hand.
+ */
+export const lastSeenOrder = (product) => {
+  const refs = [product?.doc_ref, product?.cost_ref].filter(Boolean)
+  if (refs.length === 0) return null
+  if (refs.length === 1) return refs[0]
+  const [a, b] = refs
+  return compareDocuments({ ref: a }, { ref: b }) === 'newer' ? a : b
+}
+
+/** Sort key for an order reference: series first, then number, blanks last. */
+export const orderSortKey = (reference) => {
+  const parsed = orderPriority(reference)
+  if (!parsed) return reference ? `zz${reference}` : 'zzzz'
+  return `${parsed.series}${String(parsed.number).padStart(8, '0')}`
+}
+
+/** Which columns record where a document type's values came from. */
+export const DATE_FIELD_FOR = { liquidacion: 'doc_date', proforma: 'doc_date', costo: 'cost_date' }
+export const REF_FIELD_FOR = { liquidacion: 'doc_ref', proforma: 'doc_ref', costo: 'cost_ref' }
+
+/**
+ * Work out what an import would do, without doing any of it.
+ *
+ * The rule is NEWEST DOCUMENT WINS, not first-one-there. Orders arrive out of
+ * order -- Milan 10's paperwork can land after Milan 11's -- and what we want
+ * on a product is the most recent price, whichever file turned up last. So a
+ * document is compared by its own date, not by when somebody imported it:
+ *
+ *   - a field nobody has filled is filled, whatever the date
+ *   - a NEWER document replaces what an older one put there
+ *   - an OLDER document leaves the newer value alone and says so
+ *   - two documents of the SAME date that disagree are a conflict for a person
+ *
+ * Undated documents are treated as older than anything dated, because a file we
+ * cannot place in time must not be allowed to overwrite one we can.
+ */
+export function planImport({ docType, rows, existing, docDate = null, docRef = null }) {
+  const byKey = new Map((existing ?? []).map((p) => [p.code_key, p]))
+  const extract =
+    docType === 'proforma' ? fromProformaRow : docType === 'costo' ? fromCostoRow : fromLiquidacionRow
+  const dateField = DATE_FIELD_FOR[docType] ?? 'doc_date'
+  const refField = REF_FIELD_FOR[docType] ?? 'doc_ref'
+
+  const added = []
+  const updated = []
+  const skipped = []
+  const failed = []
+  const conflicts = []
+  // Lines that arrived with no product code, and what became of them.
+  const uncoded = []
+  // The same code appears on more than one line of a single liquidación, so a
+  // file is deduped against itself as well as against the database.
+  const seenInFile = new Map()
+
+  for (const row of rows) {
+    const fields = extract(row)
+    let key = codeKey(fields.product_code)
+    const where = row.item ?? row.row ?? row.line_no
+
+    // A line with no product code still classifies goods, and that tariff code
+    // is worth keeping. Rather than dropping the line, look for a product whose
+    // description matches -- the cost sheet usually has the same goods under a
+    // real code -- and fall back to a description-keyed entry so nothing is
+    // lost. Whoever reviews it can give it a code later.
+    if (!key) {
+      if (docType !== 'liquidacion') {
+        skipped.push({ where, code: fields.product_code ?? null, reason: 'noCode' })
+        continue
+      }
+      const match = matchByDescription(fields.description, existing ?? [])
+      key = match ? match.code_key : descriptionKey(fields.description)
+      if (!key) {
+        skipped.push({ where, code: null, reason: 'noCode' })
+        continue
+      }
+      uncoded.push({ where, key, matched: Boolean(match) })
+    }
+
+    if (seenInFile.has(key)) {
+      skipped.push({ where, code: fields.product_code, reason: 'duplicateInFile', firstSeen: seenInFile.get(key) })
+      continue
+    }
+    seenInFile.set(key, where)
+
+    // A coded row may be the same goods as an uncoded entry an earlier
+    // liquidación left behind. Adopting it -- rather than adding a second row
+    // beside it -- is what makes the result the same whichever document is
+    // imported first.
+    let current = byKey.get(key)
+    let adopts = null
+    if (!current && !key.startsWith('desc:')) {
+      const orphan = matchByDescription(
+        fields.description,
+        (existing ?? []).filter((p) => (p.code_key ?? '').startsWith('desc:')),
+      )
+      if (orphan) {
+        current = orphan
+        adopts = { code_key: key, product_code: fields.product_code }
+      }
+    }
+
+    if (!current) {
+      added.push({ where, key, fields: { ...fields, [dateField]: docDate, [refField]: docRef } })
+      continue
+    }
+
+    const relation = compareDocuments(
+      { ref: docRef, date: docDate },
+      { ref: current[refField] ?? null, date: current[dateField] ?? null },
+    )
+    const newer = relation === 'newer'
+    const older = relation === 'older'
+
+    // Fills and refreshes are kept apart because they are written back with
+    // different guards: filling a blank is always safe, replacing a value is
+    // only safe while this document is still the newest one to have touched it.
+    const fills = {}
+    const refreshes = {}
+    let kept = 0
+
+    for (const [field, value] of Object.entries(fields)) {
+      if (isBlank(value) || field === 'product_code') continue
+
+      if (isBlank(current[field])) {
+        fills[field] = value
+        continue
+      }
+
+      const same =
+        String(current[field]) === String(value) ||
+        (Number.isFinite(Number(current[field])) &&
+          Number.isFinite(Number(value)) &&
+          Number(current[field]) === Number(value))
+      if (same) continue
+
+      if (newer) {
+        refreshes[field] = value
+      } else if (older) {
+        kept += 1
+      } else {
+        conflicts.push({ where, key, code: fields.product_code, field, existing: current[field], incoming: value })
+      }
+    }
+
+    // Giving an uncoded entry its real code is a fill, not an overwrite: there
+    // was nothing there before.
+    if (adopts) Object.assign(fills, adopts)
+
+    const changed = Object.keys(fills).length + Object.keys(refreshes).length
+    if (changed > 0) {
+      if (newer) {
+        if (docDate !== null) refreshes[dateField] = docDate
+        if (docRef !== null) refreshes[refField] = docRef
+      }
+      updated.push({
+        where,
+        key,
+        id: current.id,
+        fills,
+        refreshes,
+        refreshed: Object.keys(refreshes).filter((f) => f !== dateField && f !== refField).length,
+        dateField,
+        refField,
+        docDate,
+        docRef,
+      })
+    } else if (kept > 0) {
+      skipped.push({ where, code: fields.product_code, reason: 'olderDocument' })
+    } else {
+      skipped.push({ where, code: fields.product_code, reason: 'alreadyExists' })
+    }
+  }
+
+  return { added, updated, skipped, failed, conflicts, uncoded }
+}
+
+const localeFor = (language) => (language === 'es' ? 'es-ES' : 'en-GB')
+
+/**
+ * Money, with its currency named rather than assumed.
+ *
+ * USD and DOP figures sit in adjacent columns and are never converted, so a
+ * bare number here would be genuinely ambiguous.
+ */
+export const formatMoney = (amount, currency, language = 'en') => {
+  if (isBlank(amount)) return '—'
+  const value = Number(amount)
+  if (!Number.isFinite(value)) return '—'
+  try {
+    return new Intl.NumberFormat(localeFor(language), {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4,
+    }).format(value)
+  } catch {
+    return `${value.toFixed(2)} ${currency}`
+  }
+}
+
+export const formatPercent = (value, language = 'en') => {
+  if (isBlank(value)) return '—'
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  return `${new Intl.NumberFormat(localeFor(language), {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n)} %`
+}
+
+/**
+ * Which document type a chosen file is.
+ *
+ * A .pdf is a liquidación. A .xlsx is either a supplier proforma or one of our
+ * own cost sheets, and the two cannot be told apart by the file name -- both
+ * arrive called things like "LIQUIDACION ... MILAN 11.xlsx". The caller settles
+ * it by content: a proforma has a `No.`/`Code` header pair, a cost sheet has
+ * `Codigo`/`Descripcion`. This only narrows it down.
+ */
+export const detectDocType = (file) => {
+  const name = (file?.name ?? '').toLowerCase()
+  if (name.endsWith('.pdf')) return 'liquidacion'
+  if (name.endsWith('.xlsx')) return 'spreadsheet'
+  return null
+}
+
+/**
+ * A `dd/mm/yyyy` date as `yyyy-mm-dd`, which sorts and compares as text.
+ *
+ * The liquidación prints day-first. Parsing it into a Date only to format it
+ * back would invite a timezone to shift it across midnight.
+ */
+export const isoDate = (value) => {
+  const m = (value ?? '').toString().trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (!m) return null
+  const [, d, mo, y] = m
+  return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`
+}
+
+export const DOC_TYPES = ['liquidacion', 'proforma', 'costo']
+export const docTypeKey = (type) => `catalog.docTypes.${type}`
+export const PAGE_SIZE = 25

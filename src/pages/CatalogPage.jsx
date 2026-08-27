@@ -1,0 +1,321 @@
+import { useMemo, useState } from 'react'
+import { ArrowUpDown, ChevronLeft, ChevronRight, Pencil, Search, Upload } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { useI18n } from '../i18n'
+import { useCatalog } from '../hooks/useCatalog'
+import {
+  CURRENCY_OF,
+  PAGE_SIZE,
+  codeKey,
+  formatMoney,
+  formatProductCode,
+  formatPercent,
+  lastSeenOrder,
+  orderSortKey,
+} from '../lib/catalog'
+import { sectionDescriptionKey, sectionNameKey } from '../lib/sections'
+import CatalogImport from '../components/Catalog/CatalogImport'
+import ProductEditor from '../components/Catalog/ProductEditor'
+
+/** Columns, and how each one sorts. */
+const COLUMNS = [
+  { field: 'product_code', align: 'left', numeric: false },
+  { field: 'description', align: 'left', numeric: false },
+  { field: 'barcode', align: 'left', numeric: false },
+  { field: 'arancel', align: 'left', numeric: false },
+  { field: 'gravamen_pct', align: 'right', numeric: true },
+  { field: 'fob_usd', align: 'right', numeric: true },
+  { field: 'unit_price_dop', align: 'right', numeric: true },
+  { field: 'precio_lista', align: 'right', numeric: true },
+  // Not a stored column: worked out from whichever of doc_ref / cost_ref is
+  // the later order. See lastSeenOrder.
+  { field: 'lastSeen', align: 'left', numeric: false, derived: true },
+]
+
+export default function CatalogPage() {
+  const { t, language } = useI18n()
+  const { user } = useAuth()
+  const {
+    products,
+    loading,
+    error,
+    listProducts,
+    findImport,
+    applyImport,
+    updateProduct,
+  } = useCatalog()
+
+  const [query, setQuery] = useState('')
+  const [arancel, setArancel] = useState('')
+  const [sort, setSort] = useState({ field: 'product_code', dir: 'asc' })
+  const [page, setPage] = useState(0)
+  const [importing, setImporting] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [actionError, setActionError] = useState('')
+
+  const aranceles = useMemo(
+    () => [...new Set(products.map((p) => p.arancel).filter(Boolean))].sort(),
+    [products],
+  )
+
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    // A search that looks like a code is also matched against the normalised
+    // key, so typing 5915-03 finds the product stored as 591503.
+    const asKey = codeKey(needle)
+
+    const filtered = products.filter((p) => {
+      if (arancel && p.arancel !== arancel) return false
+      if (!needle) return true
+      return (
+        (p.product_code ?? '').toLowerCase().includes(needle) ||
+        (asKey && (p.code_key ?? '').includes(asKey)) ||
+        (p.description ?? '').toLowerCase().includes(needle) ||
+        (p.description_es ?? '').toLowerCase().includes(needle) ||
+        (p.description_en ?? '').toLowerCase().includes(needle) ||
+        (p.barcode ?? '').includes(needle.replace(/\D/g, '')) ||
+        (p.supplier_code ?? '').toLowerCase().includes(needle) ||
+        (p.model ?? '').toLowerCase().includes(needle) ||
+        (lastSeenOrder(p) ?? '').toLowerCase().includes(needle)
+      )
+    })
+
+    const column = COLUMNS.find((c) => c.field === sort.field)
+    const direction = sort.dir === 'asc' ? 1 : -1
+    return [...filtered].sort((a, b) => {
+      // Orders sort by their sequence, not their spelling: alphabetically
+      // "MILAN 9" would land after "MILAN 12".
+      if (sort.field === 'lastSeen') {
+        const l = lastSeenOrder(a)
+        const r = lastSeenOrder(b)
+        if (!l) return r ? 1 : 0
+        if (!r) return -1
+        return orderSortKey(l).localeCompare(orderSortKey(r)) * direction
+      }
+      const left = a[sort.field]
+      const right = b[sort.field]
+      // Blanks always sort last, whichever way the column is pointing: a column
+      // of empty cells at the top tells you nothing.
+      if (left == null || left === '') return right == null || right === '' ? 0 : 1
+      if (right == null || right === '') return -1
+      if (column?.numeric) return (Number(left) - Number(right)) * direction
+      return String(left).localeCompare(String(right)) * direction
+    })
+  }, [products, query, arancel, sort])
+
+  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE))
+  const current = Math.min(page, pageCount - 1)
+  const rows = visible.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE)
+
+  const toggleSort = (field) => {
+    setPage(0)
+    setSort((s) => (s.field === field ? { field, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' }))
+  }
+
+  const cell = (product, field) => {
+    if (field === 'lastSeen') return lastSeenOrder(product) || '—'
+    if (CURRENCY_OF[field]) return formatMoney(product[field], CURRENCY_OF[field], language)
+    if (field === 'gravamen_pct') return formatPercent(product[field], language)
+    // Formatted on the way out as well as on the way in, so rows imported
+    // before the hyphen rule existed read correctly without a migration.
+    if (field === 'product_code') return formatProductCode(product[field]) || '—'
+    return product[field] || '—'
+  }
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10">
+        <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="page-title">{t(sectionNameKey('catalog'))}</h1>
+            <p className="page-subtitle">{t(sectionDescriptionKey('catalog'))}</p>
+          </div>
+          <button type="button" onClick={() => setImporting(true)} className="btn-primary">
+            <Upload size={16} strokeWidth={2.25} />
+            {t('catalog.import.action')}
+          </button>
+        </header>
+
+        {(actionError || error) && (
+          <p role="alert" className="alert-error mb-4">
+            {actionError || error}
+          </p>
+        )}
+
+        <div className="mb-4 flex flex-wrap gap-3">
+          <div className="relative min-w-[16rem] flex-1">
+            <Search
+              size={15}
+              strokeWidth={2}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                setPage(0)
+              }}
+              placeholder={t('catalog.searchPlaceholder')}
+              aria-label={t('catalog.searchPlaceholder')}
+              className="input pl-9"
+            />
+          </div>
+          <select
+            value={arancel}
+            onChange={(e) => {
+              setArancel(e.target.value)
+              setPage(0)
+            }}
+            aria-label={t('catalog.fields.arancel')}
+            className="input w-auto min-w-[12rem]"
+          >
+            <option value="">{t('catalog.allAranceles')}</option>
+            {aranceles.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {loading ? (
+          <p className="py-12 text-center text-[15px] text-muted">{t('catalog.loading')}</p>
+        ) : products.length === 0 ? (
+          <div className="card card-pad text-center">
+            <p className="text-[15px] font-medium text-ink">{t('catalog.empty')}</p>
+            <p className="mt-1 text-[13px] text-muted">{t('catalog.emptyHint')}</p>
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="card card-pad text-center">
+            <p className="text-[15px] font-medium text-ink">{t('catalog.noMatches')}</p>
+            <p className="mt-1 text-[13px] text-muted">{t('catalog.noMatchesHint')}</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto rounded-xl border border-line">
+              <table className="w-full min-w-[64rem] text-[12px]">
+                <thead>
+                  <tr className="border-b border-line text-left text-muted">
+                    {COLUMNS.map((c) => (
+                      <th
+                        key={c.field}
+                        className={`px-3 py-2 font-medium ${c.align === 'right' ? 'text-right' : ''}`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleSort(c.field)}
+                          className={`inline-flex items-center gap-1 hover:text-ink ${
+                            sort.field === c.field ? 'text-ink' : ''
+                          }`}
+                        >
+                          {t(`catalog.fields.${c.field}`)}
+                          {CURRENCY_OF[c.field] && (
+                            <span className="text-[10px] text-muted">{CURRENCY_OF[c.field]}</span>
+                          )}
+                          <ArrowUpDown size={11} strokeWidth={2} />
+                        </button>
+                      </th>
+                    ))}
+                    <th className="w-10" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((product) => (
+                    <tr key={product.id} className="border-b border-line last:border-0">
+                      {COLUMNS.map((c) => (
+                        <td
+                          key={c.field}
+                          className={`px-3 py-2 ${c.align === 'right' ? 'text-right' : ''} ${
+                            c.field === 'product_code' ? 'whitespace-nowrap font-medium text-ink' : 'text-muted'
+                          }`}
+                        >
+                          {c.field === 'description' ? (
+                            <span className="block max-w-[22rem] truncate">{cell(product, c.field)}</span>
+                          ) : (
+                            cell(product, c.field)
+                          )}
+                        </td>
+                      ))}
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setEditing(product)}
+                          aria-label={t('catalog.edit.action')}
+                          title={t('catalog.edit.action')}
+                          className="btn-ghost btn-sm"
+                        >
+                          <Pencil size={13} strokeWidth={2} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="hint">
+                {t('catalog.showing', {
+                  from: current * PAGE_SIZE + 1,
+                  to: current * PAGE_SIZE + rows.length,
+                  total: visible.length,
+                })}
+              </p>
+              {pageCount > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={current === 0}
+                    aria-label={t('catalog.previous')}
+                    className="btn-ghost btn-sm"
+                  >
+                    <ChevronLeft size={15} strokeWidth={2} />
+                  </button>
+                  <span className="px-2 text-[12px] text-muted">
+                    {t('catalog.pageOf', { page: current + 1, pages: pageCount })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                    disabled={current >= pageCount - 1}
+                    aria-label={t('catalog.next')}
+                    className="btn-ghost btn-sm"
+                  >
+                    <ChevronRight size={15} strokeWidth={2} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {importing && (
+        <CatalogImport
+          onCheckImported={findImport}
+          onListProducts={listProducts}
+          onConfirm={({ plan, document }) => applyImport({ plan, document, userId: user.id })}
+          onClose={() => setImporting(false)}
+        />
+      )}
+
+      {editing && (
+        <ProductEditor
+          product={editing}
+          onSave={async (id, fields) => {
+            setActionError('')
+            try {
+              await updateProduct(id, fields)
+            } catch (err) {
+              setActionError(err.message)
+              throw err
+            }
+          }}
+          onClose={() => setEditing(null)}
+        />
+      )}
+    </div>
+  )
+}

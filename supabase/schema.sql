@@ -858,6 +858,205 @@ create policy "Uploaders and admins delete order files"
   using (bucket_id = 'order-files' and (owner = auth.uid() or public.is_admin()));
 
 -- ---------------------------------------------------------------------------
+-- catalog (the master product list)
+--
+-- Built from the documents an import actually travels on: the DGA liquidación
+-- supplies our code, the description, the FOB unit price, the partida
+-- arancelaria and the duty rate; the supplier's proforma supplies the barcode
+-- and the supplier's own code and model. Both are read, neither is trusted to
+-- overwrite the other.
+--
+-- `code_key` is the deduplication key: the product code reduced to its digits.
+-- The same article is written `591503` on a liquidación and `5915-03` on a
+-- proforma, and the master list carries dots where hyphens belong in a few
+-- rows -- all of which are one product. Storing the key alongside the code as
+-- written means a lookup never has to guess, and the unique constraint makes a
+-- duplicate impossible rather than merely unlikely.
+--
+-- `unit_price_dop` and `precio_lista` exist and stay null. They come from the
+-- internal cost sheet, which has not been specified yet; a column that is
+-- there and empty is honest, a column invented later is a migration.
+-- ---------------------------------------------------------------------------
+create table if not exists public.catalog (
+  id uuid primary key default gen_random_uuid(),
+  -- The code as the document wrote it, kept for display.
+  product_code text not null,
+  -- Digits only. The actual identity of the product.
+  code_key text not null unique,
+  description text,
+  -- Amounts are stored exactly as extracted. Nothing here is converted: the
+  -- exchange rate on a liquidación is recorded against the import, not applied.
+  fob_usd numeric(14, 4),
+  arancel text,
+  gravamen_pct numeric(6, 2),
+  barcode text,
+  -- From the proforma: the supplier's own identifiers, which are not ours.
+  supplier_code text,
+  model text,
+  description_en text,
+  description_es text,
+  -- From the internal cost sheet. Not populated yet -- see the note above.
+  unit_price_dop numeric(14, 4),
+  precio_lista numeric(14, 4),
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Which document last set each group of values, by the DOCUMENT's own date.
+--
+-- Orders are not imported in the order they happened: Milan 10's paperwork can
+-- arrive after Milan 11's. Without a date to compare, the importer can only
+-- choose between refusing to overwrite (leaving stale prices) and overwriting
+-- blindly (letting an old order undo a new one). With it, the newest document
+-- wins and an older one still fills in blanks.
+--
+-- Two columns because the two sources are independent: a liquidación or
+-- proforma sets `doc_date`, an internal cost sheet sets `cost_date`, and a new
+-- liquidación must not block an older cost sheet's peso figures.
+-- ...and WHICH order it came from, because a date is not always enough.
+--
+-- Orders run in a numbered series, and the number is what says which pricing is
+-- current: Milan 11 supersedes Milan 10, which supersedes Milan 9. A
+-- liquidación for an earlier order can be filed later, and a cost sheet carries
+-- no date of its own at all, so the reference decides first and the date is the
+-- fallback for documents from different series.
+-- Some liquidación lines carry no product code at all -- spare drivers, and the
+-- rechargeable bulbs on Milan 10. They still classify goods under a partida
+-- arancelaria, which is worth keeping, so they are stored with the code left
+-- empty rather than dropped or given an invented one. `code_key` still
+-- identifies them, from their description.
+alter table public.catalog alter column product_code drop not null;
+
+alter table public.catalog add column if not exists doc_ref text;
+alter table public.catalog add column if not exists cost_ref text;
+alter table public.catalog_imports add column if not exists doc_ref text;
+
+alter table public.catalog add column if not exists doc_date date;
+alter table public.catalog add column if not exists cost_date date;
+
+-- The list searches on all three of these, and `code_key` already has a unique
+-- index from the constraint above.
+create index if not exists catalog_barcode_idx on public.catalog (barcode);
+create index if not exists catalog_arancel_idx on public.catalog (arancel);
+
+drop trigger if exists catalog_touch_updated_at on public.catalog;
+create trigger catalog_touch_updated_at
+  before update on public.catalog
+  for each row execute procedure public.touch_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- catalog_imports (one row per document read)
+--
+-- `doc_key` is what stops the same document being imported twice: the
+-- declaración number for a liquidación, the invoice number for a proforma. It
+-- is unique, so a second attempt fails in the database rather than relying on
+-- the application to have checked.
+--
+-- `exchange_rate` is captured because the liquidación footer states it, as a
+-- pesos-per-dollar figure, and it belongs with the document. It is deliberately
+-- never used to convert anything: the printed rate is rounded to two decimals, and USD and DOP
+-- figures are both stored as they were extracted.
+-- ---------------------------------------------------------------------------
+create table if not exists public.catalog_imports (
+  id uuid primary key default gen_random_uuid(),
+  doc_type text not null check (doc_type in ('liquidacion', 'proforma', 'costo')),
+  doc_key text not null unique,
+  file_name text not null,
+  -- Liquidación identifiers.
+  declaracion text,
+  liquidacion text,
+  -- Proforma identifier.
+  invoice_no text,
+  exchange_rate numeric(12, 4),
+  line_count integer,
+  -- What the import did: added, updated, skipped, failed rows with reasons.
+  summary jsonb,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- catalog_sources (which documents a product came from)
+--
+-- Many-to-many on purpose: a product is normally created by a liquidación and
+-- then enriched with a barcode by a proforma, and both facts are worth keeping.
+-- ---------------------------------------------------------------------------
+create table if not exists public.catalog_sources (
+  catalog_id uuid not null references public.catalog(id) on delete cascade,
+  import_id uuid not null references public.catalog_imports(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (catalog_id, import_id)
+);
+
+-- The internal cost sheet joined later, and the table is already deployed.
+alter table public.catalog_imports drop constraint if exists catalog_imports_doc_type_check;
+alter table public.catalog_imports add constraint catalog_imports_doc_type_check
+  check (doc_type in ('liquidacion', 'proforma', 'costo'));
+alter table public.catalog_imports add column if not exists doc_date date;
+
+create index if not exists catalog_sources_import_idx on public.catalog_sources (import_id);
+
+-- ---------------------------------------------------------------------------
+-- catalog policies
+--
+-- The catalog is shared reference data rather than anybody's own rows, so any
+-- signed-in user may read it, add to it and correct it. Deleting is left to
+-- administrators: a product removed by accident takes its prices and its
+-- provenance with it, and re-importing will not bring back a hand-typed field.
+-- ---------------------------------------------------------------------------
+alter table public.catalog enable row level security;
+alter table public.catalog_imports enable row level security;
+alter table public.catalog_sources enable row level security;
+
+drop policy if exists "Authenticated users can view the catalog" on public.catalog;
+create policy "Authenticated users can view the catalog"
+  on public.catalog for select to authenticated using (true);
+
+drop policy if exists "Any signed-in user can add catalog products" on public.catalog;
+create policy "Any signed-in user can add catalog products"
+  on public.catalog for insert to authenticated
+  with check (created_by = auth.uid());
+
+drop policy if exists "Any signed-in user can edit catalog products" on public.catalog;
+create policy "Any signed-in user can edit catalog products"
+  on public.catalog for update to authenticated
+  using (true) with check (true);
+
+drop policy if exists "Admins delete catalog products" on public.catalog;
+create policy "Admins delete catalog products"
+  on public.catalog for delete to authenticated
+  using (public.is_admin());
+
+drop policy if exists "Authenticated users can view catalog imports" on public.catalog_imports;
+create policy "Authenticated users can view catalog imports"
+  on public.catalog_imports for select to authenticated using (true);
+
+drop policy if exists "Any signed-in user can record a catalog import" on public.catalog_imports;
+create policy "Any signed-in user can record a catalog import"
+  on public.catalog_imports for insert to authenticated
+  with check (created_by = auth.uid());
+
+drop policy if exists "Admins delete catalog imports" on public.catalog_imports;
+create policy "Admins delete catalog imports"
+  on public.catalog_imports for delete to authenticated
+  using (public.is_admin());
+
+drop policy if exists "Authenticated users can view catalog sources" on public.catalog_sources;
+create policy "Authenticated users can view catalog sources"
+  on public.catalog_sources for select to authenticated using (true);
+
+drop policy if exists "Any signed-in user can record a catalog source" on public.catalog_sources;
+create policy "Any signed-in user can record a catalog source"
+  on public.catalog_sources for insert to authenticated
+  with check (true);
+
+drop policy if exists "Admins delete catalog sources" on public.catalog_sources;
+create policy "Admins delete catalog sources"
+  on public.catalog_sources for delete to authenticated
+  using (public.is_admin());
+
+-- ---------------------------------------------------------------------------
 -- Bootstrap the first administrator (run once, after that account exists):
 --
 --   update public.profiles set role = 'admin' where email = 'you@example.com';
