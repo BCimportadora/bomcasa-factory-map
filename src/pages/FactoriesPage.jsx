@@ -115,7 +115,13 @@ export default function FactoriesPage() {
       const existing = existingByName.get(factoryNameKey(row.name))
 
       if (!existing) {
-        await createFactory({ ...row, created_by: user.id })
+        const created = await createFactory({ ...row, created_by: user.id })
+        // Into the map, not just the database. Without this the lookup only
+        // ever reflects the rows that existed before the import started, so a
+        // file naming the same factory twice inserts it twice — which is how
+        // the map ended up with a duplicate of nearly every supplier. The
+        // second mention now updates the row the first one created.
+        existingByName.set(factoryNameKey(row.name), created)
         summary.added += 1
       } else if (canManage(existing)) {
         await updateFactory(existing.id, row)
