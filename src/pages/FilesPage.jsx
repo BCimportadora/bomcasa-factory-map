@@ -7,6 +7,7 @@ import { useFactories } from '../hooks/useFactories'
 import { useOrders } from '../hooks/useOrders'
 import { useOrderFiles } from '../hooks/useOrderFiles'
 import { formatDate } from '../lib/orders'
+import { locationTypeKey } from '../lib/constants'
 import { sectionDescriptionKey, sectionNameKey } from '../lib/sections'
 import StatusBadge from '../components/Order/StatusBadge'
 import OrderFiles from '../components/Order/OrderFiles'
@@ -204,7 +205,14 @@ export default function FilesPage() {
         <Breadcrumb trail={[rootCrumb, { label: factoryLabel }]} />
 
         <header className="mb-6">
-          <h1 className="page-title">{factoryLabel}</h1>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="page-title">{factoryLabel}</h1>
+            {/* Which of the supplier's locations this is — without it, two
+                rows with the same name are indistinguishable once opened. */}
+            {factory?.location_type && factory.location_type !== 'factory' && (
+              <span className="badge-neutral">{t(locationTypeKey(factory.location_type))}</span>
+            )}
+          </div>
           <p className="page-subtitle">
             {unassigned ? t('files.unassignedHint') : t('files.factoryHint')}
           </p>
@@ -257,11 +265,16 @@ export default function FilesPage() {
   }
 
   // ---------------------------------------------------------------- route 1
+  // `factories` holds offices and warehouses as well as plants, so a supplier
+  // with two locations appears twice here. They are genuinely separate rows
+  // that can each carry orders — the fix is to label them, the way the factory
+  // map and list do, not to merge or hide them.
   const rows = [
     ...factories.map((factory) => ({
       id: factory.id,
       name: factory.name,
       city: factory.city,
+      locationType: factory.location_type,
       orders: ordersByFactory.get(factory.id) ?? [],
     })),
   ].sort((a, b) => a.name.localeCompare(b.name))
@@ -305,7 +318,16 @@ export default function FilesPage() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-semibold text-ink">{row.name}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-[15px] font-semibold text-ink">{row.name}</p>
+                      {/* Only flagged when it is not a plant — a badge on every
+                          row would carry no information. */}
+                      {row.locationType && row.locationType !== 'factory' && (
+                        <span className="badge-neutral flex-shrink-0">
+                          {t(locationTypeKey(row.locationType))}
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-0.5 text-[13px] text-muted">
                       {tCount('files.orderCount', row.orders.length)}
                       <span aria-hidden="true" className="mx-1.5">
