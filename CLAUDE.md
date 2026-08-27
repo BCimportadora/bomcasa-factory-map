@@ -79,6 +79,29 @@ and leaves the 3- and 4-digit legacy codes alone, and it runs on display as well
 as on write so rows imported before that rule read correctly without a
 migration.
 
+**A zero in the cost sheet's SELLING price columns means we do not sell it, and
+a zero in the master list means something else entirely.** `CONTENEDOR 1` — the
+only sheet the importer reads — writes `0` against goods that are bought but
+never sold, with `USO INTERNO` in `COMENTARIO` and a margin of `-1.00`; their
+landed `COSTO UNITARIO` is real, because the goods were paid for. `isNotSold`
+recognises those from the comment or from *every* selling price being zero
+(never one of them: a line still being priced can carry a single 0), and the
+catalog stores `internal_use` with the price left null, because `0.00` reads as
+"we sell this for nothing" and a figure invites arithmetic. The trap is the
+other sheet in the same workbook: `No tocar` is the 3,627-row master price book,
+and its zeros mean "new article, not listed yet" — on Milan 11 they are exactly
+the six rows marked `ITEM NUEVO`, all of which have real prices on
+`CONTENEDOR 1`. Reading the master list's zeros the same way would silently
+strip the prices off six live products. `findHeaderRow` requires `Codigo` and
+`Descripcion`, which `No tocar` does not have; keep it that way.
+
+`internal_use` is nullable with no default — null is "no cost sheet has said" —
+because `planImport`'s fill-a-blank guard tests for null, and a default of
+`false` would assert that every product a liquidación introduced is sold. The
+flag and `precio_lista` are ONE statement: a document not allowed to change the
+flag does not get to fill the price either, or an older sheet leaves the row
+saying both "never sold" and "9.00".
+
 **Which document supplies which field is not arbitrary, and moving one is a
 decision.** The liquidación gives the partida arancelaria and nothing priced —
 its FOB is rounded to two decimals for the declaration and its gravamen is one

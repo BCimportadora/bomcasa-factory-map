@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useI18n } from '../../i18n'
 import Modal from '../common/Modal'
-import { CURRENCY_OF, codeKey, lastSeenOrder } from '../../lib/catalog'
+import { CURRENCY_OF, codeKey, isInternalUse, lastSeenOrder } from '../../lib/catalog'
 
 /**
  * Correcting one product by hand.
@@ -33,6 +33,9 @@ export default function ProductEditor({ product, onSave, onClose }) {
     for (const f of [...TEXT_FIELDS, ...NUMBER_FIELDS]) initial[f] = product[f] ?? ''
     return initial
   })
+  // Read through isInternalUse rather than off the column, so a row imported
+  // before that column existed shows the box already ticked.
+  const [internalUse, setInternalUse] = useState(() => isInternalUse(product))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -65,6 +68,11 @@ export default function ProductEditor({ product, onSave, onClose }) {
         return setError(t('catalog.edit.notANumber', { field: t(`catalog.fields.${f}`) }))
       }
     }
+
+    // Ticking the box is a statement that this is never sold, so the list price
+    // goes with it rather than being left behind to contradict the badge.
+    payload.internal_use = internalUse
+    if (internalUse) payload.precio_lista = null
 
     setBusy(true)
     try {
@@ -131,6 +139,20 @@ export default function ProductEditor({ product, onSave, onClose }) {
             {field('unit_price_dop')}
             {field('precio_lista')}
           </div>
+
+          <label htmlFor="cat-internal_use" className="mt-4 flex items-start gap-2.5">
+            <input
+              id="cat-internal_use"
+              type="checkbox"
+              checked={internalUse}
+              onChange={(e) => setInternalUse(e.target.checked)}
+              className="mt-0.5 h-4 w-4 flex-shrink-0 accent-accent"
+            />
+            <span>
+              <span className="block text-[14px] text-ink">{t('catalog.fields.internal_use')}</span>
+              <span className="hint">{t('catalog.edit.internalUseHint')}</span>
+            </span>
+          </label>
         </div>
 
         {/* Where this product's values came from. Read-only: it is a record of

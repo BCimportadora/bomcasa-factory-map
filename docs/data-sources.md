@@ -504,10 +504,44 @@ Neither sample contains:
   Not derivable from either file.
 - **Precio de lista actual.** Absent from both.
 
-These come from a separate internal cost sheet. **Document C is very likely that file** — its
-`No tocar` sheet carries a DOP figure per article, and its other sheets (`CONTENEDOR 1`,
-`CUENTA T`, `REGISTRO`) were not examined. It has not been confirmed as the intended source, and
-it needs its own spec pass before anything reads it.
+These come from a separate internal cost sheet. **Document C is that file** — confirmed, and now
+read by the importer. The sheet it is read from is `CONTENEDOR 1`, not `No tocar`.
+
+### The two DOP figures in Document C are not the same figure
+
+This distinction cost a round of confusion and is worth stating plainly, because the two look
+alike and mean opposite things.
+
+| Sheet | What it is | What a `0` means |
+|---|---|---|
+| `CONTENEDOR 1` | This container's costing: one row per line shipped, with `COSTO UNITARIO`, `PRECIO VENTA S/ITBIS`, `PRECIO VENTA C/ITBIS`, `PRECIO LISTA ACTUAL` and `COMENTARIO` | **We do not sell it.** An internal-use item — a spare, packaging, a sample |
+| `No tocar` | The 3,627-row master price book for the whole business | **Not in the price book yet.** A new article that has never been listed |
+
+Measured on Milan 11: `CONTENEDOR 1` has exactly one zero-priced row — `8000-01 DRIVER LED DE
+REPUESTO`, `COMENTARIO = USO INTERNO`, all three selling prices `0`, `MARGEN BENEFICIOS = -1.00`
+— while its landed `COSTO UNITARIO` is a real 35.39. The six zeros in `No tocar` are a different
+set of articles entirely: `5915-05`, `5915-07`, `5915-14`, `5915-16`, `5915-25` and `5915-26`,
+which are exactly the six rows `CONTENEDOR 1` marks `ITEM NUEVO` — and all six carry real,
+non-zero list prices there.
+
+**The importer only ever reads `CONTENEDOR 1`.** The sheet is chosen by content: a header row
+holding `Codigo` and `Descripcion`. `No tocar` labels its columns `Número de artículo` /
+`Descripción del artículo`, so it cannot be picked by accident. Read the master list's zeros as
+"not sold" and six live products would lose their prices.
+
+### How a not-sold line is read
+
+Two independent signals, either sufficient:
+
+- `COMENTARIO` contains `USO INTERNO` (accent- and case-insensitive)
+- **every** selling price on the line is `0`
+
+All of them together, never any one alone: a line still being priced can carry a `0` in one
+column while the others are filled, and calling that "not sold" would invent a fact.
+
+The landed cost is kept — it is real, the goods were paid for and shipped. The list price is
+left empty and the fact is recorded separately, because storing `0.00` as a price says "we sell
+this for nothing", and a figure invites arithmetic in a way an absence does not.
 
 ---
 
@@ -521,6 +555,11 @@ it needs its own spec pass before anything reads it.
 - **Uncoded lines.** The LED drivers are spares for internal use, not catalog products. Import
   as a shipment line, do not create a product. Classify from the cost sheet's `COMENTARIO` /
   `8000-01` code, not from the missing code.
+- **Document C is the cost source**, and the sheet is `CONTENEDOR 1`. See
+  [Fields not available in either document](#fields-not-available-in-either-document).
+- **A `0` price on `CONTENEDOR 1` means we do not sell it** — confirmed. It is recorded as an
+  internal-use product with no selling price, never as a price of zero. The zeros on the
+  `No tocar` master list mean something different and are not read.
 
 No design decision is blocked on these any longer.
 
@@ -535,22 +574,29 @@ observed. The master article list also holds shapes that rule cannot describe:
 - Three keys that look like typos: `3901.03` alongside `3901-03`, and `62.05-01` alongside
   `6205-01` — dots where hyphens belong. Normalise dots to hyphens, or flag?
 
-**2. Are there other internal-use categories, and is `8000-01` the only catch-all code?** The
-drivers rule is settled, but the *detection* rule rests on two observations of `8000-01` — spare
-drivers here, POLYBAG on the superseded declaration. Is `8000-01` the single code for everything
-non-sellable, or are there others (packaging, samples, promotional stock)? And is `USO INTERNO`
-the only comment text that means this, or do variants appear? A list would let the importer
-classify without guessing.
+**2. Is `8000-01` one product or a bucket?** Detection no longer depends on the answer — an
+internal-use line is recognised from `COMENTARIO` and the zero selling prices, not from its code
+— so nothing is blocked. But the code itself is worth settling, because two documents describe
+`8000-01` differently:
+
+| Source | Description against `8000-01` |
+|---|---|
+| Milan 11 `CONTENEDOR 1` | `DRIVER LED DE REPUESTO` |
+| `No tocar` master list | `PRODUCTO PARA VENTAS DIRECTAS` |
+
+The superseded declaration used it for POLYBAG. If `8000-01` is a catch-all that several
+unrelated non-sellable things share, then the partida arancelaria now attached to it (`8504.10.00`,
+merged there from the drivers line — see `supabase/merge-catalog-products.sql`) is right for the
+drivers and wrong for whatever else lands on that code. If it is genuinely the drivers' own code
+and the master-list description is stale, nothing needs doing. **Tell me which.**
+
+Also still unknown: whether `USO INTERNO` is the only comment text that means this. Variants
+would need adding to the pattern in `src/lib/catalog.js`.
 
 **3. Should a liquidación line with an unknown code be rejected or accepted?** Every code here
 resolves. Tell me what to do when one does not — block the import, or import and flag for
 review?
 
-**4. Confirm Document C is the cost source.** If `LIQUIDACION COSTO MILANLUX ORDEN 11.xlsx` is
-the source of landed cost and precio de lista, say so and I will spec it. Its `No tocar` sheet
-holds a DOP figure per article whose meaning I have not confirmed — and 6 of the 16 articles in
-this order have `0` there, which needs an explanation before anything treats it as a price.
-
-**5. Should the sample files be committed?** They are currently outside the repo, and they
+**4. Should the sample files be committed?** They are currently outside the repo, and they
 contain supplier unit pricing and your full master cost list. My recommendation is to leave them
 out of git. Say if you want otherwise.

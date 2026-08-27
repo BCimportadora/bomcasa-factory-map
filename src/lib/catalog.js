@@ -18,6 +18,10 @@
  * reported for a person rather than silently resolved.
  */
 
+// Shared with the cost-sheet reader rather than reimplemented: the rule for
+// flattening a heading or a comment to something comparable is one rule.
+import { normalise } from './liquidation'
+
 /**
  * The deduplication key: digits only.
  *
@@ -87,6 +91,44 @@ export const matchByDescription = (description, products) => {
   return hits.length === 1 ? hits[0] : null
 }
 
+/** The selling prices on a cost-sheet line. Costs are deliberately not here. */
+const SELLING_PRICE_FIELDS = ['sale_price_ex_tax', 'sale_price_inc_tax', 'list_price']
+
+/**
+ * Whether a cost-sheet line is something we buy but never sell.
+ *
+ * Spare drivers, packaging, samples. They travel in the container, they carry a
+ * landed cost and a partida arancelaria, and they have no selling price because
+ * nobody is ever quoted one. The sheet says so two ways and either is enough:
+ * COMENTARIO reads USO INTERNO, or every selling price on the line is 0.
+ *
+ * The zero is the absence of a price, not a price of nothing — the same reading
+ * OrderDetail already applies when it renders a 0 as an em dash. Storing it as
+ * 0.00 would put "we sell this for nothing" into the catalog, which is worse
+ * than storing nothing at all: a figure invites arithmetic.
+ *
+ * ALL the selling prices, not any one of them. A line still being priced can
+ * carry a 0 in one column while the others are filled, and calling that "not
+ * sold" would be guessing at a fact the sheet has not stated.
+ */
+export const isNotSold = (row) => {
+  if (/\buso interno\b/.test(normalise(row?.comment))) return true
+  const prices = SELLING_PRICE_FIELDS.map((f) => row?.[f]).filter((v) => !isBlank(v))
+  return prices.length > 0 && prices.every((v) => Number(v) === 0)
+}
+
+/**
+ * The same fact read back off a stored product.
+ *
+ * `internal_use` is what the importer writes from now on. Rows imported before
+ * that column existed say it the only way they could — a `precio_lista` of
+ * exactly 0, which can only have come from a cost sheet's zero — so they read
+ * correctly without a migration. A real product never has a list price of 0.
+ */
+export const isInternalUse = (product) =>
+  product?.internal_use === true ||
+  (product?.internal_use == null && !isBlank(product?.precio_lista) && Number(product.precio_lista) === 0)
+
 /** Gravamen as a percentage of CIF, to two decimals. Null when CIF is zero. */
 export const gravamenPct = (gravamen, cif) => {
   const g = Number(gravamen)
@@ -109,6 +151,7 @@ export const EDITABLE_FIELDS = [
   'description_es',
   'unit_price_dop',
   'precio_lista',
+  'internal_use',
 ]
 
 /** Which of those hold money, and in which currency. Nothing is ever converted. */
@@ -214,15 +257,26 @@ const fromProformaRow = (row) => ({
  *
  * Both divisions are guarded: a line with no units, or a duty-free line whose
  * CIF is zero, yields null rather than Infinity or NaN.
+ *
+ * Goods we do not sell are the one place a figure is dropped rather than read.
+ * See isNotSold.
  */
-const fromCostoRow = (row) => ({
-  product_code: formatProductCode(row.product_code),
-  description: row.description,
-  fob_usd: perUnit(row.fob_total, row.units),
-  gravamen_pct: gravamenPct(row.duty, row.cif_local),
-  unit_price_dop: row.landed_unit_cost,
-  precio_lista: row.list_price,
-})
+const fromCostoRow = (row) => {
+  const notSold = isNotSold(row)
+  return {
+    product_code: formatProductCode(row.product_code),
+    description: row.description,
+    fob_usd: perUnit(row.fob_total, row.units),
+    gravamen_pct: gravamenPct(row.duty, row.cif_local),
+    // What it cost us landed. Real whether or not we ever sell it, so an
+    // internal-use line keeps it.
+    unit_price_dop: row.landed_unit_cost,
+    // What we sell it for. For internal-use goods that is not zero, it is
+    // nothing, so the field is left for the flag to explain.
+    precio_lista: notSold ? null : row.list_price,
+    internal_use: notSold,
+  }
+}
 
 /** A total divided by a count, to four decimals. Null unless both are usable. */
 const perUnit = (total, units) => {
@@ -437,6 +491,21 @@ export function planImport({ docType, rows, existing, docDate = null, docRef = n
       }
     }
 
+    // `internal_use` and `precio_lista` are one statement about a product, not
+    // two independent fields. An older document is normally still allowed to
+    // fill a blank -- but the blank on a not-sold product is deliberate, and
+    // filling it there would leave the row saying both "we never sell this" and
+    // "we sell it for 9.00". A document that is not allowed to change the flag
+    // does not get to supply the price either.
+    if (isInternalUse(current) && !newer) {
+      for (const field of ['precio_lista', 'internal_use']) {
+        if (field in fills) {
+          delete fills[field]
+          kept += 1
+        }
+      }
+    }
+
     // Giving an uncoded entry its real code is a fill, not an overwrite: there
     // was nothing there before.
     if (adopts) Object.assign(fills, adopts)
@@ -492,6 +561,18 @@ export const formatMoney = (amount, currency, language = 'en') => {
     return `${value.toFixed(2)} ${currency}`
   }
 }
+
+/**
+ * A catalog money figure, with zero read as no figure at all.
+ *
+ * Nothing in this table is ever legitimately worth 0 — not a FOB price, not a
+ * landed cost, not a list price — so a 0 here is the cost sheet's way of
+ * writing "none", and printing "DOP 0.00" would read as a real price. Applied
+ * on display so rows imported before that was understood read correctly
+ * without a migration.
+ */
+export const formatPrice = (amount, currency, language = 'en') =>
+  isBlank(amount) || Number(amount) === 0 ? '—' : formatMoney(amount, currency, language)
 
 export const formatPercent = (value, language = 'en') => {
   if (isBlank(value)) return '—'

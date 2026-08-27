@@ -426,6 +426,7 @@ export default {
       fob_usd: 'Precio FOB',
       unit_price_dop: 'Precio unitario',
       precio_lista: 'Precio de lista actual',
+      internal_use: 'Uso interno',
       supplier_code: 'Código del proveedor',
       model: 'Modelo',
       description_en: 'Descripción (inglés)',
@@ -491,6 +492,8 @@ export default {
       pricedFrom: 'Priced from',
       costSheet: 'From the internal cost sheet',
       costSheetHint: 'Imported from the cost sheet. Correct them here if a sheet got one wrong.',
+      internalUseHint:
+        'Something we buy but never sell — a spare part, packaging, a sample. It keeps its tariff code and its landed cost, and shows no selling price.',
       codeRequired: 'A product code is required.',
       codeNeedsDigits: 'The product code must contain at least one digit.',
       barcodeLength: 'A barcode must be exactly 13 digits.',

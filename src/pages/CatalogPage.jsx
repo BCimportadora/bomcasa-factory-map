@@ -7,9 +7,10 @@ import {
   CURRENCY_OF,
   PAGE_SIZE,
   codeKey,
-  formatMoney,
+  formatPrice,
   formatProductCode,
   formatPercent,
+  isInternalUse,
   lastSeenOrder,
   orderSortKey,
 } from '../lib/catalog'
@@ -114,7 +115,13 @@ export default function CatalogPage() {
 
   const cell = (product, field) => {
     if (field === 'lastSeen') return lastSeenOrder(product) || '—'
-    if (CURRENCY_OF[field]) return formatMoney(product[field], CURRENCY_OF[field], language)
+    // Where the selling price would be, say why there isn't one. An em dash
+    // here reads as "nobody has filled this in yet", which is a different
+    // thing and would send someone looking for a price that does not exist.
+    if (field === 'precio_lista' && isInternalUse(product)) {
+      return <span className="badge-neutral">{t('catalog.fields.internal_use')}</span>
+    }
+    if (CURRENCY_OF[field]) return formatPrice(product[field], CURRENCY_OF[field], language)
     if (field === 'gravamen_pct') return formatPercent(product[field], language)
     // Formatted on the way out as well as on the way in, so rows imported
     // before the hyphen rule existed read correctly without a migration.

@@ -935,6 +935,20 @@ alter table public.catalog_imports add column if not exists doc_ref text;
 alter table public.catalog add column if not exists doc_date date;
 alter table public.catalog add column if not exists cost_date date;
 
+-- Goods we buy but never sell: spare drivers, packaging, samples.
+--
+-- They belong in the catalog -- they carry a partida arancelaria and a real
+-- landed cost -- but they have no selling price, and the cost sheet says so by
+-- writing 0 in the PRECIO VENTA and PRECIO LISTA columns with USO INTERNO in
+-- COMENTARIO. Storing that 0 as `precio_lista` would put "we sell this for
+-- nothing" into the catalog, so the fact is recorded here and the price is left
+-- null.
+--
+-- Nullable with no default on purpose. Null means no cost sheet has said either
+-- way, which is what the importer's fill-a-blank guard tests for; a default of
+-- false would assert that every product introduced by a liquidación is sold.
+alter table public.catalog add column if not exists internal_use boolean;
+
 -- The list searches on all three of these, and `code_key` already has a unique
 -- index from the constraint above.
 create index if not exists catalog_barcode_idx on public.catalog (barcode);

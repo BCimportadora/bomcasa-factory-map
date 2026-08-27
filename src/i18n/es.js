@@ -427,6 +427,7 @@ export default {
       fob_usd: 'Precio FOB',
       unit_price_dop: 'Precio unitario',
       precio_lista: 'Precio de lista actual',
+      internal_use: 'Uso interno',
       supplier_code: 'Código del proveedor',
       model: 'Modelo',
       description_en: 'Descripción (inglés)',
@@ -492,6 +493,8 @@ export default {
       pricedFrom: 'Precios de',
       costSheet: 'De la hoja de costos interna',
       costSheetHint: 'Se importan de la hoja de costos. Corrígelos aquí si una hoja trae algo mal.',
+      internalUseHint:
+        'Algo que compramos pero nunca vendemos: un repuesto, un empaque, una muestra. Conserva su partida arancelaria y su costo puesto en almacén, y no muestra precio de venta.',
       codeRequired: 'El código del producto es obligatorio.',
       codeNeedsDigits: 'El código del producto debe tener al menos un dígito.',
       barcodeLength: 'Un código de barra debe tener exactamente 13 dígitos.',
