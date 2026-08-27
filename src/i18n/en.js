@@ -270,6 +270,9 @@ export default {
     showPanel: 'Show the factory list',
     showPanelShort: 'Factories',
     name: 'Factory name',
+    nickname: 'Nickname',
+    nicknameHint:
+      'What we actually call this supplier — "Milan" for Shanghai Milanlux. Orders and files show this instead of the full name, and searching for it finds them.',
     address: 'Address',
     city: 'City',
     province: 'Province',
@@ -283,7 +286,7 @@ export default {
     products: 'Products',
     capacity: 'Capacity',
     notes: 'Notes',
-    searchPlaceholder: 'Search by name, city, product…',
+    searchPlaceholder: 'Search by name, nickname, city, product…',
     allProvinces: 'All provinces',
     empty: 'No factories found.',
     loading: 'Loading factories…',

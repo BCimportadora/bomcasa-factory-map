@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { pathLegs, pathLengthKm, pointPairs } from '../lib/distance'
 import { fetchRoadMatrix } from '../lib/routing'
+import { factoryLabel } from '../lib/factories'
 
 /**
  * How a distance is measured.
@@ -34,7 +35,7 @@ export const MEASURE_MODES = ['path', 'pairs']
 export const factoryPoint = (factory) => ({
   kind: 'factory',
   key: `factory:${factory.id}`,
-  name: factory.name,
+  name: factoryLabel(factory),
   latitude: factory.latitude,
   longitude: factory.longitude,
 })

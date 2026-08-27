@@ -3,6 +3,7 @@ import { isValidLocationType } from './constants'
 
 const EXPORT_COLUMNS = [
   'name',
+  'nickname',
   'address',
   'city',
   'province',
@@ -57,6 +58,13 @@ export function parseFactoriesCsv(file) {
           if (Number.isNaN(lat) || Number.isNaN(lng)) errors.push(`Row ${i + 2}: invalid latitude/longitude`)
           return {
             name: row.name?.trim() ?? '',
+            // Only when the file actually carries the column. Every other field
+            // treats an absent column as an empty value, which is right for
+            // columns that have always existed -- but a CSV exported before
+            // nicknames did has no such column, and reading that as "clear it"
+            // would strip the nickname off every supplier the first time
+            // somebody re-imported an old file.
+            ...(row.nickname === undefined ? {} : { nickname: row.nickname.trim() }),
             address: row.address?.trim() ?? '',
             city: row.city?.trim() ?? '',
             province: row.province?.trim() ?? '',

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ChevronRight, Factory, FolderOpen, Paperclip } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n'
+import { factoryLabel } from '../lib/factories'
 import { useFactories } from '../hooks/useFactories'
 import { useOrders } from '../hooks/useOrders'
 import { useOrderFiles } from '../hooks/useOrderFiles'
@@ -134,13 +135,13 @@ export default function FilesPage() {
       )
     }
 
-    const factoryLabel = factory?.name ?? t('files.unassigned')
+    const supplierName = factory ? factoryLabel(factory) : t('files.unassigned')
     return (
       <Shell>
         <Breadcrumb
           trail={[
             rootCrumb,
-            { label: factoryLabel, to: `/files/${factoryId}` },
+            { label: supplierName, to: `/files/${factoryId}` },
             { label: order.reference },
           ]}
         />
@@ -149,7 +150,7 @@ export default function FilesPage() {
           <div className="min-w-0">
             <h1 className="page-title">{order.reference}</h1>
             <p className="page-subtitle">
-              {factoryLabel}
+              {supplierName}
               {formatDate(order.order_date, language) && (
                 <> · {formatDate(order.order_date, language)}</>
               )}
@@ -199,14 +200,14 @@ export default function FilesPage() {
       )
     }
 
-    const factoryLabel = unassigned ? t('files.unassigned') : factory.name
+    const supplierName = unassigned ? t('files.unassigned') : factoryLabel(factory)
     return (
       <Shell>
-        <Breadcrumb trail={[rootCrumb, { label: factoryLabel }]} />
+        <Breadcrumb trail={[rootCrumb, { label: supplierName }]} />
 
         <header className="mb-6">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="page-title">{factoryLabel}</h1>
+            <h1 className="page-title">{supplierName}</h1>
             {/* Which of the supplier's locations this is — without it, two
                 rows with the same name are indistinguishable once opened. */}
             {factory?.location_type && factory.location_type !== 'factory' && (
@@ -272,7 +273,7 @@ export default function FilesPage() {
   const rows = [
     ...factories.map((factory) => ({
       id: factory.id,
-      name: factory.name,
+      name: factoryLabel(factory),
       city: factory.city,
       locationType: factory.location_type,
       orders: ordersByFactory.get(factory.id) ?? [],

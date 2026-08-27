@@ -11,6 +11,7 @@ const LOOKS_LIKE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const emptyFactory = {
   name: '',
+  nickname: '',
   address: '',
   city: '',
   province: '',
@@ -85,6 +86,12 @@ export default function FactoryForm({ initialValues, onSubmit, onCancel, submitt
       )}
 
       {field('name', 'factories.name', { required: true, autoFocus: true })}
+
+      <div>
+        {field('nickname', 'factories.nickname')}
+        <p className="mt-1.5 hint">{t('factories.nicknameHint')}</p>
+      </div>
+
       {field('address', 'factories.address')}
 
       <div className="grid gap-4 sm:grid-cols-2">

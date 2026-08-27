@@ -1,5 +1,6 @@
 import { Anchor, ArrowRight, Factory, Pencil, Trash2 } from 'lucide-react'
 import { useI18n } from '../../i18n'
+import { factoryLabel } from '../../lib/factories'
 import {
   daysUntil,
   formatDate,
@@ -90,7 +91,7 @@ export default function OrderCard({
           <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-muted">
             <span className="inline-flex items-center gap-1.5">
               <Factory size={13} strokeWidth={1.75} />
-              {factory?.name ?? t('orders.noFactory')}
+              {factory ? factoryLabel(factory) : t('orders.noFactory')}
             </span>
             {port && (
               <span className="inline-flex items-center gap-1.5">

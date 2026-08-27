@@ -224,6 +224,33 @@ only; the stored bytes are untouched either way, which matters because these
 documents feed the catalog importer and must come back exactly as the customs
 agent or supplier sent them.
 
+**A factory has two names and only one of them is its identity.** `name` is the
+legal one and stays the key: the CSV import matches on `factoryNameKey(name)`,
+so renaming a supplier there still creates a duplicate, and nothing was made
+safer by adding `nickname`. The nickname is a display alias — `factoryLabel()`
+prefers it everywhere a person reads a supplier (orders, files, the list, the
+map popup, the measure panel) while the legal name stays visible underneath,
+because that is what a customs agent needs.
+
+The reason it earns its place is `guessFactory`: an order reference IS the
+nickname plus a number, so "KLIK 76" resolves to Ningbo Kolny — which the old
+rule, looking for the word inside the legal name, could never do. Exact
+nickname match first, substring-of-legal-name only as the fallback for
+suppliers nobody has nicknamed.
+
+Two rows matching is usually ONE company with a plant and a sales office, so
+`soleOrPlant` picks the plant rather than giving up; only a genuine tie between
+different suppliers returns null and makes a person choose. There is
+deliberately no unique constraint on `nickname` in the database — that office
+row is a legitimate second holder of the same nickname.
+
+**The nickname is the one CSV column that is absent-means-untouched.** Every
+other field in `parseFactoriesCsv` reads a missing column as an empty value,
+which is right for columns that have always existed. A CSV exported before
+nicknames has no such column, and treating that as "clear it" would strip the
+nickname off every supplier the first time somebody re-imported an old file. A
+column that is present but blank still clears it, which is how you clear one.
+
 **`useFactories` and `useOrders` name their realtime channel with a fixed
 string.** So two live instances of either hook collide on one Supabase channel
 and throw `cannot add postgres_changes callbacks ... after subscribe()`. That

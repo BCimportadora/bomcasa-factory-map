@@ -188,6 +188,16 @@ alter table public.factories add column if not exists email text;
 -- warehouse beside a port. Defaulting to 'factory' keeps existing rows correct.
 alter table public.factories add column if not exists location_type text not null default 'factory';
 
+-- What people here actually call this supplier: "Milan" for Shanghai Milanlux.
+--
+-- `name` stays the identity -- it is the legal name, it goes on paperwork, and
+-- the CSV import matches on it. The nickname is a display alias, so it is
+-- nullable and carries no constraint: a supplier nobody has shortened simply
+-- reads under its full name. Two suppliers sharing a nickname is not rejected
+-- here either; the code that resolves one requires a unique match and gives up
+-- rather than guessing, which is the safer place for that rule to live.
+alter table public.factories add column if not exists nickname text;
+
 do $$
 begin
   if not exists (select 1 from pg_constraint where conname = 'factories_location_type_check') then

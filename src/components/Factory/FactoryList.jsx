@@ -1,5 +1,6 @@
 import { useI18n } from '../../i18n'
 import { locationTypeKey } from '../../lib/constants'
+import { factoryLabel } from '../../lib/factories'
 
 export default function FactoryList({ factories, onSelect, onEdit, onDelete, canManage }) {
   const { t } = useI18n()
@@ -14,7 +15,9 @@ export default function FactoryList({ factories, onSelect, onEdit, onDelete, can
         <li key={f.id} className="group px-4 py-3 transition-colors hover:bg-canvas">
           <button onClick={() => onSelect(f)} className="block w-full text-left">
             <div className="flex items-start justify-between gap-2">
-              <p className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">{f.name}</p>
+              <p className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">
+                {factoryLabel(f)}
+              </p>
               {/* Only flagged when it is not a plant — a badge on every row
                   would carry no information. */}
               {f.location_type && f.location_type !== 'factory' && (
@@ -23,6 +26,11 @@ export default function FactoryList({ factories, onSelect, onEdit, onDelete, can
                 </span>
               )}
             </div>
+            {/* Only when the nickname displaced it. Repeating the name under
+                itself would be noise on every row that has no nickname. */}
+            {f.nickname?.trim() && (
+              <p className="truncate text-[12px] text-muted">{f.name}</p>
+            )}
             <p className="truncate text-[13px] text-muted">
               {[f.city, f.province].filter(Boolean).join(', ') || t('common.none')}
             </p>

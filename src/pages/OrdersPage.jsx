@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { FileSpreadsheet, Plus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n'
+import { factoryLabel } from '../lib/factories'
 import { useOrders } from '../hooks/useOrders'
 import { useFactories } from '../hooks/useFactories'
 import { ORDER_VIEWS, byDate, formatMoney, orderTotal, statusKey, viewEmptyKey } from '../lib/orders'
@@ -61,7 +62,11 @@ export default function OrdersPage({ view }) {
           order.reference,
           order.container_no,
           order.bl_number,
+          // Both names, not just the one on screen: people search for the
+          // supplier they are thinking of, which is not always the one the
+          // card happens to be showing.
           factoriesById.get(order.factory_id)?.name,
+          factoriesById.get(order.factory_id)?.nickname,
           ...(order.order_items ?? []).map((item) => item.product),
         ]
           .filter(Boolean)
@@ -178,7 +183,7 @@ export default function OrdersPage({ view }) {
             <option value="">{t('orders.allFactories')}</option>
             {factories.map((factory) => (
               <option key={factory.id} value={factory.id}>
-                {factory.name}
+                {factoryLabel(factory)}
               </option>
             ))}
           </select>

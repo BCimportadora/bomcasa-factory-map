@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useI18n } from '../../i18n'
+import { factoryLabel } from '../../lib/factories'
 import { CURRENCIES, ORDER_STATUSES, statusKey } from '../../lib/orders'
 import { FOB_PORTS } from '../../lib/ports'
 import OrderItemsEditor, { emptyItem } from './OrderItemsEditor'
@@ -134,7 +135,7 @@ export default function OrderForm({ initialValues, factories, onSubmit, onCancel
             <option value="">{t('orders.noFactory')}</option>
             {factories.map((factory) => (
               <option key={factory.id} value={factory.id}>
-                {factory.name}
+                {factoryLabel(factory)}
               </option>
             ))}
           </>,

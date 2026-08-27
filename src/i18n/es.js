@@ -271,6 +271,9 @@ export default {
     showPanel: 'Mostrar la lista de fábricas',
     showPanelShort: 'Fábricas',
     name: 'Nombre de la fábrica',
+    nickname: 'Apodo',
+    nicknameHint:
+      'Como le decimos realmente a este proveedor: "Milan" para Shanghai Milanlux. Los pedidos y los archivos muestran esto en vez del nombre completo, y al buscarlo los encuentra.',
     address: 'Dirección',
     city: 'Ciudad',
     province: 'Provincia',
@@ -284,7 +287,7 @@ export default {
     products: 'Productos',
     capacity: 'Capacidad',
     notes: 'Notas',
-    searchPlaceholder: 'Buscar por nombre, ciudad, producto…',
+    searchPlaceholder: 'Buscar por nombre, apodo, ciudad, producto…',
     allProvinces: 'Todas las provincias',
     empty: 'No se encontraron fábricas.',
     loading: 'Cargando fábricas…',

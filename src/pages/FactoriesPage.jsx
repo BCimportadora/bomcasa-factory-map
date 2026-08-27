@@ -10,6 +10,7 @@ import FactoryForm from '../components/Factory/FactoryForm'
 import Modal from '../components/common/Modal'
 import { useFactories } from '../hooks/useFactories'
 import { factoryNameKey } from '../lib/csv'
+import { factoryLabel, matchesAlias } from '../lib/factories'
 import { factoryPoint, portPoint, useMeasure, wantsPairs } from '../hooks/useMeasure'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n'
@@ -41,8 +42,14 @@ export default function FactoriesPage() {
   const filteredFactories = useMemo(() => {
     const q = query.trim().toLowerCase()
     return factories.filter((f) => {
+      // Either name counts. The nickname goes through matchesAlias rather than
+      // a plain substring test so "milan" finds "Milán" and "MILAN" alike --
+      // typing an accent nobody typed when the record was created should not
+      // decide whether a supplier can be found.
       const matchesQuery =
-        !q || [f.name, f.city, f.province, f.products].some((field) => field?.toLowerCase().includes(q))
+        !q ||
+        matchesAlias(f, q) ||
+        [f.city, f.province, f.products].some((field) => field?.toLowerCase().includes(q))
       const matchesProvince = !province || f.province === province
       return matchesQuery && matchesProvince
     })
@@ -64,7 +71,7 @@ export default function FactoriesPage() {
   }
 
   const handleDelete = async (factory) => {
-    if (!confirm(t('factories.deleteConfirm', { name: factory.name }))) return
+    if (!confirm(t('factories.deleteConfirm', { name: factoryLabel(factory) }))) return
     try {
       await deleteFactory(factory.id)
     } catch (err) {

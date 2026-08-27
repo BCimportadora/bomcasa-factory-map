@@ -5,21 +5,24 @@ import Modal from '../common/Modal'
 import { readWorkbook, isSupported } from '../../lib/xlsxReader'
 import { parseLiquidation, normalise } from '../../lib/liquidation'
 import { formatMoney } from '../../lib/orders'
+import { factoryLabel, matchFactoryByAlias } from '../../lib/factories'
 
 /**
  * Guess which factory a liquidation belongs to from its reference.
  *
  * The sheets are named after the supplier and a sequence number -- "MILAN 11"
  * for Shanghai Milanlux -- so the alphabetic part is matched against the factory
- * list. It is only a default: the preview lets it be changed before anything is
- * written, because a wrong guess here would attach a container to the wrong
- * supplier.
+ * list. That word IS the nickname: an order reference is how people here say
+ * the supplier's name, which is exactly what the nickname records, so a
+ * supplier that has one is matched on it outright rather than by hunting for
+ * the word inside a legal name. See matchFactoryByAlias.
+ *
+ * It is only a default either way: the preview lets it be changed before
+ * anything is written, because a wrong guess here would attach a container to
+ * the wrong supplier.
  */
-export const guessFactory = (reference, factories) => {
-  const word = normalise(reference).replace(/[0-9]+/g, '').trim()
-  if (word.length < 3) return null
-  return factories.find((factory) => normalise(factory.name).includes(word)) ?? null
-}
+export const guessFactory = (reference, factories) =>
+  matchFactoryByAlias(normalise(reference).replace(/[0-9]+/g, '').trim(), factories)
 
 /** Match an existing order by reference, so a re-import updates rather than duplicates. */
 export const matchOrder = (reference, orders) => {
@@ -236,7 +239,7 @@ export default function LiquidationImport({ orders, factories, onImport, onClose
                 <option value="">{t('orders.noFactory')}</option>
                 {factories.map((factory) => (
                   <option key={factory.id} value={factory.id}>
-                    {factory.name}
+                    {factoryLabel(factory)}
                   </option>
                 ))}
               </select>

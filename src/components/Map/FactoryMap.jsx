@@ -7,6 +7,7 @@ import MeasureLayer from './MeasureLayer'
 import PortMarker from './PortMarker'
 import { useI18n } from '../../i18n'
 import { locationTypeKey } from '../../lib/constants'
+import { factoryLabel } from '../../lib/factories'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
@@ -79,7 +80,10 @@ function FactoryPopup({ factory, onEdit, onDelete, canManage }) {
 
   return (
     <div className="min-w-[190px] space-y-1.5">
-      <p className="text-[14px] font-semibold text-ink">{factory.name}</p>
+      <p className="text-[14px] font-semibold text-ink">{factoryLabel(factory)}</p>
+      {/* The legal name still belongs here -- it is what the paperwork
+          says -- but under the name people recognise, not instead of it. */}
+      {factory.nickname?.trim() && <p className="text-[12px] text-muted">{factory.name}</p>}
       <p className="text-[13px] text-muted">
         {[factory.city, factory.province].filter(Boolean).join(', ')}
       </p>

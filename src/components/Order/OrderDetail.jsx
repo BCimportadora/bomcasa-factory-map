@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, FileSpreadsheet } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useI18n } from '../../i18n'
+import { factoryLabel } from '../../lib/factories'
 import { useOrderFiles } from '../../hooks/useOrderFiles'
 import Modal from '../common/Modal'
 import OrderFiles from './OrderFiles'
@@ -99,7 +100,7 @@ export default function OrderDetail({ order, factory, onClose }) {
     <Modal size="wide" title={order.reference} onClose={onClose}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-[13px] text-muted">
-          {factory?.name ?? t('orders.noFactory')}
+          {factory ? factoryLabel(factory) : t('orders.noFactory')}
           {port && <> · {t('ports.namedPort', { name: port.name })}</>}
         </div>
         <StatusBadge status={order.status} />
