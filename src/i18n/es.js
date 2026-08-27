@@ -609,6 +609,9 @@ export default {
     importError: 'No pudimos importar esa hoja.',
     unsupportedBrowser: 'Este navegador no puede abrir archivos .xlsx. Prueba con Chrome, Edge, Firefox o Safari.',
 
+    willFile: 'La hoja se archivará con este pedido, en Archivos.',
+    fileNotStored: 'Los costos se importaron, pero la hoja no se archivó.',
+    fileNotStoredHint: 'El pedido y sus líneas están guardados. Solo falló la subida del archivo -- puedes adjuntarlo a mano desde el pedido, en Archivos.',
     reference: 'Pedido',
     lines: 'Líneas',
     units: 'Unidades',

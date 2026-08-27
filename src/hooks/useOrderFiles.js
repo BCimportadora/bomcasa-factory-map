@@ -6,6 +6,57 @@ import { STORAGE_BUCKET, filePath, mimeForFile } from '../lib/orderFiles'
 const SIGNED_URL_SECONDS = 60
 
 /**
+ * Upload a batch of files to one order and record the rows.
+ *
+ * The object goes to Storage first and the row second, so a failure between the
+ * two leaves an object nobody can see rather than a row pointing at nothing -- a
+ * row with no object renders as a file that cannot be downloaded, which looks
+ * like data loss. Anything already uploaded when a later file fails is removed
+ * again, or it would sit in the bucket forever.
+ *
+ * `upsert: false` so a key collision fails loudly instead of overwriting
+ * somebody else's paperwork. The content type is derived from the extension,
+ * not read from the browser -- see lib/orderFiles.js.
+ *
+ * Exported on its own, outside the hook, so the liquidation importer can attach
+ * its source spreadsheet without mounting a second realtime subscription just to
+ * make one call.
+ */
+export async function attachFilesToOrder(orderId, fileList, userId, docType = 'other') {
+  const uploaded = []
+  try {
+    for (const file of [...fileList]) {
+      const path = filePath(orderId, file)
+      const { error } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(path, file, { contentType: mimeForFile(file), upsert: false })
+      if (error) throw error
+      uploaded.push({
+        order_id: orderId,
+        storage_path: path,
+        file_name: file.name,
+        mime_type: mimeForFile(file),
+        size_bytes: file.size,
+        doc_type: docType,
+        created_by: userId,
+      })
+    }
+  } catch (err) {
+    if (uploaded.length > 0) {
+      await supabase.storage.from(STORAGE_BUCKET).remove(uploaded.map((row) => row.storage_path))
+    }
+    throw err
+  }
+
+  const { error } = await supabase.from('order_files').insert(uploaded)
+  if (error) {
+    await supabase.storage.from(STORAGE_BUCKET).remove(uploaded.map((row) => row.storage_path))
+    throw error
+  }
+  return uploaded.length
+}
+
+/**
  * The files attached to orders.
  *
  * Loads every row rather than one order at a time: the Files section needs a
@@ -52,50 +103,8 @@ export function useOrderFiles(orderId = null) {
     }
   }, [fetchFiles, orderId])
 
-  /**
-   * Upload a batch to one order.
-   *
-   * The object goes to Storage first and the row second, so a failure between
-   * the two leaves an object nobody can see rather than a row pointing at
-   * nothing -- a row with no object renders as a file that cannot be
-   * downloaded, which looks like data loss. Anything already uploaded when a
-   * later file fails is removed again, or it would sit in the bucket forever.
-   *
-   * `upsert: false` so a key collision fails loudly instead of overwriting
-   * somebody else's paperwork. The content type is derived from the extension,
-   * not read from the browser -- see lib/orderFiles.js.
-   */
   const addFiles = async (targetOrderId, fileList, userId, docType = 'other') => {
-    const uploaded = []
-    try {
-      for (const file of [...fileList]) {
-        const path = filePath(targetOrderId, file)
-        const { error } = await supabase.storage
-          .from(STORAGE_BUCKET)
-          .upload(path, file, { contentType: mimeForFile(file), upsert: false })
-        if (error) throw error
-        uploaded.push({
-          order_id: targetOrderId,
-          storage_path: path,
-          file_name: file.name,
-          mime_type: mimeForFile(file),
-          size_bytes: file.size,
-          doc_type: docType,
-          created_by: userId,
-        })
-      }
-    } catch (err) {
-      if (uploaded.length > 0) {
-        await supabase.storage.from(STORAGE_BUCKET).remove(uploaded.map((row) => row.storage_path))
-      }
-      throw err
-    }
-
-    const { error } = await supabase.from('order_files').insert(uploaded)
-    if (error) {
-      await supabase.storage.from(STORAGE_BUCKET).remove(uploaded.map((row) => row.storage_path))
-      throw error
-    }
+    await attachFilesToOrder(targetOrderId, fileList, userId, docType)
     await fetchFiles()
   }
 

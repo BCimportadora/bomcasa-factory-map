@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { splitLine } from '../lib/liquidation'
+import { attachFilesToOrder } from './useOrderFiles'
+import { MAX_FILE_BYTES, isAllowedFile } from '../lib/orderFiles'
 
 /** Columns that live on `orders`. Anything else on a form value is ignored. */
 const ORDER_COLUMNS = [
@@ -145,7 +147,10 @@ export function useOrders() {
    * columns, so the existing USD total on the card keeps working: units times
    * the FOB unit price is exactly the line's FOB total.
    */
-  const importLiquidation = async (parsed, { orderId, factoryId, userId, currency = 'USD' }) => {
+  const importLiquidation = async (
+    parsed,
+    { orderId, factoryId, userId, currency = 'USD', file = null },
+  ) => {
     const orderValues = {
       reference: parsed.reference,
       factory_id: factoryId || null,
@@ -216,8 +221,28 @@ export function useOrders() {
       if (error) throw error
     }
 
+    // Keep the sheet itself with the order it produced. Until now only
+    // `liquidation.file_name` survived the import, which names a document
+    // nobody can open -- and this is the paperwork the catalog importer will
+    // want to read back later.
+    //
+    // Deliberately after the lines are written and deliberately not fatal: the
+    // order and its costs are already saved by this point, and failing the
+    // whole import over a storage hiccup would send someone back to re-import a
+    // sheet that in fact went in. The caller reports it instead.
+    let fileError = null
+    if (file) {
+      try {
+        if (!isAllowedFile(file)) throw new Error('unsupportedType')
+        if (file.size > MAX_FILE_BYTES) throw new Error('tooLarge')
+        await attachFilesToOrder(id, [file], userId, 'liquidacion')
+      } catch (err) {
+        fileError = err.message ?? String(err)
+      }
+    }
+
     await fetchOrders()
-    return id
+    return { id, fileError }
   }
 
   /** Advancing an order along the lifecycle touches nothing else. */

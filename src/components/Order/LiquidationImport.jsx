@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { AlertTriangle, FileSpreadsheet, Upload } from 'lucide-react'
+import { AlertTriangle, FileSpreadsheet, Paperclip, Upload } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import Modal from '../common/Modal'
 import { readWorkbook, isSupported } from '../../lib/xlsxReader'
@@ -41,10 +41,14 @@ export default function LiquidationImport({ orders, factories, onImport, onClose
   const input = useRef(null)
 
   const [parsed, setParsed] = useState(null)
+  // Held so the sheet itself can be filed against the order it creates, not
+  // just its name. Reading the workbook does not consume the File.
+  const [source, setSource] = useState(null)
   const [factoryId, setFactoryId] = useState('')
   const [targetOrderId, setTargetOrderId] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [fileWarning, setFileWarning] = useState('')
 
   const supported = isSupported()
 
@@ -59,11 +63,13 @@ export default function LiquidationImport({ orders, factories, onImport, onClose
       const workbook = await readWorkbook(file)
       const result = parseLiquidation(workbook, { fileName: file.name })
       setParsed(result)
+      setSource(file)
       setFactoryId(guessFactory(result.reference, factories)?.id ?? '')
       setTargetOrderId(matchOrder(result.reference, orders)?.id ?? '')
     } catch (err) {
       setError(err.message ?? t('liquidation.readError'))
       setParsed(null)
+      setSource(null)
     } finally {
       setBusy(false)
     }
@@ -72,8 +78,20 @@ export default function LiquidationImport({ orders, factories, onImport, onClose
   const handleConfirm = async () => {
     setBusy(true)
     setError('')
+    setFileWarning('')
     try {
-      await onImport(parsed, { orderId: targetOrderId || null, factoryId: factoryId || null })
+      const result = await onImport(parsed, {
+        orderId: targetOrderId || null,
+        factoryId: factoryId || null,
+        file: source,
+      })
+      // The costs are in either way. If only the sheet failed to file, say so
+      // and stay open -- closing on a warning nobody read would leave someone
+      // believing the document was stored when it was not.
+      if (result?.fileError) {
+        setFileWarning(t('liquidation.fileNotStored'))
+        return
+      }
       onClose()
     } catch (err) {
       setError(err.message ?? t('liquidation.importError'))
@@ -94,6 +112,19 @@ export default function LiquidationImport({ orders, factories, onImport, onClose
         <p role="alert" className="alert-error mb-4">
           {error}
         </p>
+      )}
+
+      {fileWarning && (
+        <div
+          role="alert"
+          className="mb-4 flex gap-2.5 rounded-xl border border-warning/30 bg-warning/5 px-3.5 py-3"
+        >
+          <AlertTriangle size={16} className="mt-0.5 flex-shrink-0 text-warning" />
+          <div>
+            <p className="text-[13px] font-medium text-ink">{fileWarning}</p>
+            <p className="hint mt-0.5">{t('liquidation.fileNotStoredHint')}</p>
+          </div>
+        </div>
       )}
 
       {!parsed ? (
@@ -142,6 +173,12 @@ export default function LiquidationImport({ orders, factories, onImport, onClose
             <p className="hint mt-3">
               {t('liquidation.readFrom', { sheet: parsed.sheetName, file: parsed.fileName })}
             </p>
+            {source && (
+              <p className="hint mt-1 flex items-center gap-1.5">
+                <Paperclip size={11} strokeWidth={2} />
+                {t('liquidation.willFile')}
+              </p>
+            )}
           </div>
 
           {totalWarnings.length > 0 && (
@@ -227,13 +264,24 @@ export default function LiquidationImport({ orders, factories, onImport, onClose
           </div>
 
           <div className="mt-5 flex justify-end gap-2">
-            <button type="button" onClick={() => setParsed(null)} className="btn-secondary">
-              {t('liquidation.chooseAnother')}
-            </button>
-            <button type="button" onClick={handleConfirm} disabled={busy} className="btn-primary">
-              <Upload size={16} strokeWidth={2} />
-              {busy ? t('common.saving') : t('liquidation.confirm')}
-            </button>
+            {/* Once the costs are in, importing again achieves nothing — the
+                only thing left to do is close and, if wanted, attach the sheet
+                by hand from the order's files. */}
+            {fileWarning ? (
+              <button type="button" onClick={onClose} className="btn-primary">
+                {t('common.close')}
+              </button>
+            ) : (
+              <>
+                <button type="button" onClick={() => setParsed(null)} className="btn-secondary">
+                  {t('liquidation.chooseAnother')}
+                </button>
+                <button type="button" onClick={handleConfirm} disabled={busy} className="btn-primary">
+                  <Upload size={16} strokeWidth={2} />
+                  {busy ? t('common.saving') : t('liquidation.confirm')}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

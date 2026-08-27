@@ -608,6 +608,9 @@ export default {
     importError: 'We could not import that sheet.',
     unsupportedBrowser: 'This browser cannot open .xlsx files. Try Chrome, Edge, Firefox or Safari.',
 
+    willFile: 'The sheet will be filed with this order, under Files.',
+    fileNotStored: 'The costs were imported, but the sheet itself was not filed.',
+    fileNotStoredHint: 'The order and its lines are saved. Only the spreadsheet failed to upload -- you can attach it by hand from the order under Files.',
     reference: 'Order',
     lines: 'Lines',
     units: 'Units',
