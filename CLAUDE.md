@@ -107,6 +107,34 @@ A module-level queue collects the paths and signs them in one call at the end of
 the tick, keyed by path so duplicates collapse too. Do not "simplify" it back
 into a per-component request.
 
+**There are two private buckets, and widening one to replace the other is the
+wrong fix.** `innovations` is images only at 10MB and holds unreleased product
+designs; `order-files` is 25MB and holds customs paperwork. They have separate
+`storage.objects` policies for a reason — one set of rules over both means a
+mistake in either exposes the other. Both are `public = false`.
+
+**Order file uploads send a content type derived from the file extension, never
+`file.type`.** The bucket enforces its `allowed_mime_types` against whatever
+content type the upload carries, and `application/octet-stream` is deliberately
+not on the list. Windows reports `.xlsx` as `application/octet-stream` when
+Excel is not installed, and `.csv` arrives as `text/plain`,
+`application/vnd.ms-excel` or `''` depending on the machine — so trusting the
+browser makes uploads fail on some people's laptops and succeed on others,
+which is the worst kind of bug to be told about second-hand.
+`MIME_BY_EXTENSION` in `src/lib/orderFiles.js` is the map. This is metadata
+only; the stored bytes are untouched either way, which matters because these
+documents feed the catalog importer and must come back exactly as the customs
+agent or supplier sent them.
+
+**`useFactories` and `useOrders` name their realtime channel with a fixed
+string.** So two live instances of either hook collide on one Supabase channel
+and throw `cannot add postgres_changes callbacks ... after subscribe()`. That
+never happens in the application, because the pages that use them are separate
+routes — but it does happen the moment anything renders two at once, and the
+error names the channel rather than the mount, so it reads like a Supabase
+fault. `useOrderFiles` avoids it by putting the order id in the channel name;
+keep that if a second file list is ever mounted beside the first.
+
 **Promotion to the ready-to-order section is enforced in the database.**
 `enforce_innovation_update_rules` rejects a `stage` change from a non-admin, and
 rejects a move to `ready` unless the label is `done`. The button in the detail
