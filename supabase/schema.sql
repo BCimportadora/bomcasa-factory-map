@@ -760,6 +760,104 @@ create policy "Authors and admins delete suggestions"
   using (created_by = auth.uid() or public.is_admin());
 
 -- ---------------------------------------------------------------------------
+-- order_files (import paperwork attached to an order)
+--
+-- One row per uploaded document, hanging off the existing orders table. There
+-- is deliberately no supplier or order table here: the Files section is a view
+-- over factories -> orders -> files, not a parallel data model.
+--
+-- `storage_path` is the collision-safe key inside the bucket; `file_name` is
+-- what the person uploading called it, kept separately because two people will
+-- upload `packing list.pdf` on the same order and neither may overwrite the
+-- other. Downloads re-attach `file_name`, so the original name comes back.
+--
+-- `doc_type` is a plain label for filtering. Nothing parses the file to derive
+-- it, and nothing should: these documents feed the catalog importer later and
+-- must stay byte-identical to what the customs agent or supplier sent.
+-- ---------------------------------------------------------------------------
+create table if not exists public.order_files (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references public.orders(id) on delete cascade,
+  storage_path text not null unique,
+  file_name text not null,
+  mime_type text,
+  size_bytes bigint,
+  doc_type text not null default 'other'
+    check (doc_type in ('liquidacion', 'proforma', 'packing_list', 'bl', 'barcodes', 'other')),
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+-- Every listing in this section is "the files for one order", and the order
+-- detail modal asks the same question.
+create index if not exists order_files_order_id_idx on public.order_files (order_id);
+
+alter table public.order_files enable row level security;
+
+drop policy if exists "Authenticated users can view all order files" on public.order_files;
+create policy "Authenticated users can view all order files"
+  on public.order_files for select to authenticated using (true);
+
+drop policy if exists "Authenticated users attach their own order files" on public.order_files;
+create policy "Authenticated users attach their own order files"
+  on public.order_files for insert to authenticated
+  with check (created_by = auth.uid());
+
+-- Matches the rule used for factories and orders: you may remove what you
+-- added, an administrator may remove anything.
+drop policy if exists "Uploaders and admins delete order files" on public.order_files;
+create policy "Uploaders and admins delete order files"
+  on public.order_files for delete to authenticated
+  using (created_by = auth.uid() or public.is_admin());
+
+-- ---------------------------------------------------------------------------
+-- Storage for order paperwork.
+--
+-- A SECOND bucket rather than reusing `innovations`: that one is images only at
+-- 10MB and holds unreleased product designs. Widening it to accept 25MB
+-- spreadsheets would put customs paperwork and confidential designs under one
+-- set of policies, and a mistake in either would expose the other.
+--
+-- PRIVATE, like `innovations` -- a public bucket serves every object to anyone
+-- who guesses the URL, and these carry supplier pricing and B/L numbers. The
+-- application reads them through short-lived signed URLs.
+--
+-- The MIME allowlist is enforced against the content type sent on upload. The
+-- client sends a canonical type derived from the file extension rather than the
+-- browser's guess, because browsers report .xlsx as application/octet-stream
+-- and .csv as application/vnd.ms-excel often enough that trusting the guess
+-- makes uploads fail at random. See src/lib/orderFiles.js.
+-- ---------------------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('order-files', 'order-files', false, 26214400,
+        array['application/pdf',
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              'application/vnd.ms-excel',
+              'text/csv',
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              'image/jpeg',
+              'image/png'])
+on conflict (id) do update
+  set public = false,
+      file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Authenticated users read order files" on storage.objects;
+create policy "Authenticated users read order files"
+  on storage.objects for select to authenticated
+  using (bucket_id = 'order-files');
+
+drop policy if exists "Authenticated users upload order files" on storage.objects;
+create policy "Authenticated users upload order files"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'order-files');
+
+drop policy if exists "Uploaders and admins delete order files" on storage.objects;
+create policy "Uploaders and admins delete order files"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'order-files' and (owner = auth.uid() or public.is_admin()));
+
+-- ---------------------------------------------------------------------------
 -- Bootstrap the first administrator (run once, after that account exists):
 --
 --   update public.profiles set role = 'admin' where email = 'you@example.com';

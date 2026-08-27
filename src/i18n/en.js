@@ -46,6 +46,7 @@ export default {
     groups: {
       maps: 'Maps',
       orders: 'Orders',
+      documents: 'Documents',
       innovations: 'Innovations',
       workspace: 'Workspace',
     },
@@ -69,6 +70,11 @@ export default {
       name: 'Orders ready & in transit',
       short: 'Ready & in transit',
       description: 'Finished orders waiting to ship and shipments already on the water.',
+    },
+    files: {
+      name: 'Files',
+      short: 'Files',
+      description: 'Import paperwork filed by factory and order: liquidaciones, proformas, packing lists, B/Ls.',
     },
     innovationsDevelopment: {
       name: 'Innovations in development',
@@ -369,6 +375,63 @@ export default {
         empty: 'Nothing ready or on the water',
       },
     },
+  },
+
+  files: {
+    loading: 'Loading files...',
+
+    heading: 'Files',
+    headingHint: 'Stored exactly as uploaded. Nothing here is opened or changed.',
+    upload: 'Upload',
+    name: 'File',
+    size: 'Size',
+    uploaded: 'Uploaded',
+    uploadedBy: 'By',
+    download: 'Download',
+    delete: 'Delete',
+
+    docType: 'Type',
+    docTypes: {
+      liquidacion: 'Liquidación',
+      proforma: 'Proforma',
+      packing_list: 'Packing list',
+      bl: 'Bill of lading',
+      barcodes: 'Barcodes',
+      other: 'Other',
+    },
+
+    noFiles: 'No files yet',
+    noFilesHint: 'Upload the liquidación, proforma, packing list or B/L for this order.',
+    noOrders: 'No orders yet',
+    noOrdersHint: 'Orders placed with this factory will appear here, ready for their paperwork.',
+    noFactories: 'No factories yet',
+    noFactoriesHint: 'Add a factory on the factory map and its orders will show up here.',
+
+    unassigned: 'Unassigned orders',
+    unassignedHint: 'Orders with no factory set. Their paperwork is kept here so nothing is lost.',
+    factoryHint: 'Orders placed with this factory, newest first.',
+    noDate: 'No date',
+
+    factoryMissing: 'Factory not found',
+    factoryMissingHint: 'It may have been removed. Go back to choose another.',
+    orderMissing: 'Order not found',
+    orderMissingHint: 'It may have been removed. Go back to choose another.',
+
+    backToOrders: 'Back to orders',
+    backToFactories: 'Back to factories',
+
+    orderCountOne: '1 order',
+    orderCountOther: '{{count}} orders',
+    fileCountOne: '1 file',
+    fileCountOther: '{{count}} files',
+
+    tooLarge: '"{{name}}" is larger than {{max}}.',
+    wrongType: '"{{name}}" is not a supported file type. Use PDF, Excel, CSV, Word, JPG or PNG.',
+    uploadError: 'We could not upload that file.',
+    downloadError: 'We could not prepare that download.',
+    deleteError: 'We could not delete that file.',
+    deleteTitle: 'Delete this file?',
+    deleteMessage: 'The file will be removed from the order and from storage. This cannot be undone.',
   },
 
   innovations: {

@@ -46,6 +46,7 @@ export default {
     groups: {
       maps: 'Mapas',
       orders: 'Pedidos',
+      documents: 'Documentos',
       innovations: 'Innovaciones',
       workspace: 'Espacio de trabajo',
     },
@@ -69,6 +70,11 @@ export default {
       name: 'Pedidos listos y en tránsito',
       short: 'Listos y en tránsito',
       description: 'Pedidos terminados a la espera de embarque y envíos ya en camino.',
+    },
+    files: {
+      name: 'Archivos',
+      short: 'Archivos',
+      description: 'Documentos de importación por fábrica y pedido: liquidaciones, proformas, packing lists, B/L.',
     },
     innovationsDevelopment: {
       name: 'Innovaciones en desarrollo',
@@ -370,6 +376,63 @@ export default {
         empty: 'Nada listo ni en tránsito',
       },
     },
+  },
+
+  files: {
+    loading: 'Cargando archivos...',
+
+    heading: 'Archivos',
+    headingHint: 'Se guardan tal cual se subieron. Aquí no se abre ni se modifica nada.',
+    upload: 'Subir',
+    name: 'Archivo',
+    size: 'Tamaño',
+    uploaded: 'Subido',
+    uploadedBy: 'Por',
+    download: 'Descargar',
+    delete: 'Eliminar',
+
+    docType: 'Tipo',
+    docTypes: {
+      liquidacion: 'Liquidación',
+      proforma: 'Proforma',
+      packing_list: 'Packing list',
+      bl: 'Conocimiento de embarque',
+      barcodes: 'Códigos de barra',
+      other: 'Otro',
+    },
+
+    noFiles: 'Todavía no hay archivos',
+    noFilesHint: 'Sube la liquidación, la proforma, el packing list o el B/L de este pedido.',
+    noOrders: 'Todavía no hay pedidos',
+    noOrdersHint: 'Los pedidos hechos a esta fábrica aparecerán aquí, listos para sus documentos.',
+    noFactories: 'Todavía no hay fábricas',
+    noFactoriesHint: 'Agrega una fábrica en el mapa y sus pedidos aparecerán aquí.',
+
+    unassigned: 'Pedidos sin fábrica',
+    unassignedHint: 'Pedidos sin fábrica asignada. Sus documentos se guardan aquí para no perderlos.',
+    factoryHint: 'Pedidos hechos a esta fábrica, del más reciente al más antiguo.',
+    noDate: 'Sin fecha',
+
+    factoryMissing: 'Fábrica no encontrada',
+    factoryMissingHint: 'Puede que se haya eliminado. Vuelve atrás para elegir otra.',
+    orderMissing: 'Pedido no encontrado',
+    orderMissingHint: 'Puede que se haya eliminado. Vuelve atrás para elegir otro.',
+
+    backToOrders: 'Volver a los pedidos',
+    backToFactories: 'Volver a las fábricas',
+
+    orderCountOne: '1 pedido',
+    orderCountOther: '{{count}} pedidos',
+    fileCountOne: '1 archivo',
+    fileCountOther: '{{count}} archivos',
+
+    tooLarge: '"{{name}}" supera los {{max}}.',
+    wrongType: '"{{name}}" no es un tipo de archivo admitido. Usa PDF, Excel, CSV, Word, JPG o PNG.',
+    uploadError: 'No pudimos subir ese archivo.',
+    downloadError: 'No pudimos preparar esa descarga.',
+    deleteError: 'No pudimos eliminar ese archivo.',
+    deleteTitle: '¿Eliminar este archivo?',
+    deleteMessage: 'El archivo se quitará del pedido y del almacenamiento. Esta acción no se puede deshacer.',
   },
 
   innovations: {

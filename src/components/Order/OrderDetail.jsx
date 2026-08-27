@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { ChevronDown, FileSpreadsheet } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 import { useI18n } from '../../i18n'
+import { useOrderFiles } from '../../hooks/useOrderFiles'
 import Modal from '../common/Modal'
+import OrderFiles from './OrderFiles'
 import StatusBadge from './StatusBadge'
 import { formatMoney, formatQuantity, orderTotal } from '../../lib/orders'
 import { getPort } from '../../lib/ports'
@@ -79,7 +82,12 @@ function LineBreakdown({ breakdown, orderCurrency, landedCurrency }) {
  */
 export default function OrderDetail({ order, factory, onClose }) {
   const { t, language, tCount } = useI18n()
+  const { user } = useAuth()
   const [expanded, setExpanded] = useState(null)
+  // Scoped to this order, so opening a detail modal does not pull every file
+  // row in the database. Same hook and same component as the Files section —
+  // there is one set of files, shown in two places.
+  const { files, addFiles, removeFile, signedUrlFor } = useOrderFiles(order.id)
 
   const items = order.order_items ?? []
   const port = getPort(order.fob_port)
@@ -212,6 +220,16 @@ export default function OrderDetail({ order, factory, onClose }) {
       </div>
 
       <p className="hint mt-2">{tCount('orders.lineCount', items.length)}</p>
+
+      <div className="mt-6 border-t border-line pt-5">
+        <OrderFiles
+          files={files}
+          onUpload={(chosen, docType) => addFiles(order.id, chosen, user?.id, docType)}
+          onDelete={removeFile}
+          onDownload={signedUrlFor}
+          compact
+        />
+      </div>
     </Modal>
   )
 }

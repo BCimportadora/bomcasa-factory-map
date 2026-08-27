@@ -2,6 +2,7 @@ import {
   Anchor,
   ClipboardList,
   Factory,
+  FolderOpen,
   Lightbulb,
   MessageSquarePlus,
   PackageCheck,
@@ -24,7 +25,7 @@ import {
  * complete class names; building them from fragments would leave them out of
  * the stylesheet.
  */
-export const SECTION_GROUPS = ['maps', 'orders', 'innovations', 'workspace']
+export const SECTION_GROUPS = ['maps', 'orders', 'documents', 'innovations', 'workspace']
 
 export const SECTIONS = [
   {
@@ -58,6 +59,14 @@ export const SECTIONS = [
     icon: Truck,
     ready: true,
     tone: 'bg-emerald-500/10 text-emerald-600',
+  },
+  {
+    id: 'files',
+    path: '/files',
+    group: 'documents',
+    icon: FolderOpen,
+    ready: true,
+    tone: 'bg-orange-500/10 text-orange-600',
   },
   {
     id: 'innovationsDevelopment',

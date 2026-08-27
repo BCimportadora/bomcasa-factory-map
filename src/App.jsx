@@ -9,6 +9,7 @@ import FactoriesPage from './pages/FactoriesPage'
 import PeoplePage from './pages/PeoplePage'
 import PortsPage from './pages/PortsPage'
 import OrdersPage from './pages/OrdersPage'
+import FilesPage from './pages/FilesPage'
 import InnovationsPage from './pages/InnovationsPage'
 import InnovationsPrintPage from './pages/InnovationsPrintPage'
 import SuggestionsPage from './pages/SuggestionsPage'
@@ -86,6 +87,15 @@ function AppRoutes() {
         path="/orders/in-transit"
         element={protectedPage(<OrdersPage view="inTransit" />)}
       />
+
+      {/*
+        Files drills down factory -> order -> documents. One page renders all
+        three levels from the route params, because they share the same data and
+        splitting them would mean three subscriptions to the same tables.
+      */}
+      <Route path="/files" element={protectedPage(<FilesPage />)} />
+      <Route path="/files/:factoryId" element={protectedPage(<FilesPage />)} />
+      <Route path="/files/:factoryId/:orderId" element={protectedPage(<FilesPage />)} />
 
       {/* Two views of one innovations table; see lib/innovations.js. */}
       <Route
