@@ -135,6 +135,30 @@ error names the channel rather than the mount, so it reads like a Supabase
 fault. `useOrderFiles` avoids it by putting the order id in the channel name;
 keep that if a second file list is ever mounted beside the first.
 
+**Never decide whether to insert a row from realtime-backed state.** The list a
+hook exposes — `factories`, `orders`, `innovations` — is only refreshed when its
+subscription fires, and `createX` does not refetch, so a component reads
+whatever its closure captured at render time. That is fine for display and
+wrong for "does this already exist?". The CSV import answered that question from
+`factories` and so re-inserted all 29 suppliers when run a second time, or when
+run before the first load had landed: the map ended up with a duplicate of very
+nearly every factory, and undoing it needed a data repair
+(`supabase/merge-duplicate-factories.sql`) rather than a code change. Ask the
+database when the answer has to be true — `listFactories()` in `useFactories`
+returns the rows instead of pushing them into state, and any future bulk import
+should do the same.
+
+**Merging duplicate factories is not a `delete`.** `orders.factory_id` and
+`innovation_quotes.factory_id` are both `on delete set null`, so removing a
+duplicate row silently blanks the supplier on everything attached to it instead
+of moving it. Repoint both first, assert nothing still references the losing
+rows, and only then delete — which is the order the merge script uses. It is
+also one `do $$ … $$` block rather than a `begin`/`commit` script with a temp
+table, because the Supabase SQL editor goes through a connection pooler and
+consecutive statements are not guaranteed to share a session: the temp table
+disappears between them and the next statement fails with `relation … does not
+exist`.
+
 **Promotion to the ready-to-order section is enforced in the database.**
 `enforce_innovation_update_rules` rejects a `stage` change from a non-admin, and
 rejects a move to `ready` unless the label is `done`. The button in the detail
