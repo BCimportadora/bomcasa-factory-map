@@ -169,7 +169,18 @@ of ours uses.
 The invoice states a real unit price and the catalog deliberately ignores it:
 every figure with a currency on it still comes from our own cost sheet, which
 derives the same number after the goods landed and is the only document that
-also knows what they cost us here.
+also knows what they cost us here. Which is why EITHER SHEET ALONE is accepted:
+no money is read from this document, so `PL` on its own carries the full set.
+What a lone `PL` loses is the order number, not a field — this supplier marks
+its later blocks with the S/C alone and prints the PO only in the sheet header.
+
+**`Number(null)` is 0, and that made a missing figure read as a real zero.**
+`perUnit` and `gravamenPct` both divide, and both used to guard only with
+`Number.isFinite`, which a null passes. So an invoice line with no volume came
+out as a CBM of `0.000000` — a figure somebody would plan a container with —
+and a null gravamen as `0.00 %`, which is a real and different answer, because
+the Milan bulbs genuinely are duty-free. Both now test `isBlank` first, which
+stops a null and still lets a true zero through.
 
 **A supplier proforma's header is two rows deep, and the sub-headings are
 BELOW.** The top row carries `No.`, `Code` and the merged group headings

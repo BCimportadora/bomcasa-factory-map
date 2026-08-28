@@ -132,6 +132,10 @@ export const isInternalUse = (product) =>
 
 /** Gravamen as a percentage of CIF, to two decimals. Null when CIF is zero. */
 export const gravamenPct = (gravamen, cif) => {
+  // Same trap as perUnit: a duty rate nobody stated must not read as 0.00 %,
+  // which is a real and different answer -- the Milan bulbs genuinely are
+  // duty-free. `isBlank` lets a true zero through and stops a null.
+  if (isBlank(gravamen) || isBlank(cif)) return null
   const g = Number(gravamen)
   const c = Number(cif)
   if (!Number.isFinite(g) || !Number.isFinite(c) || c === 0) return null
@@ -337,6 +341,11 @@ const fromCostoRow = (row) => {
  * lives past the third place.
  */
 const perUnit = (total, units, decimals = 4) => {
+  // A missing total is not a total of nothing. `Number(null)` is 0 and passes
+  // every finiteness test after it, so without this guard a line whose volume
+  // the document never stated comes out as a CBM of 0.000000 -- a figure
+  // somebody would then plan a container with.
+  if (isBlank(total) || isBlank(units)) return null
   const t = Number(total)
   const u = Number(units)
   if (!Number.isFinite(t) || !Number.isFinite(u) || u === 0) return null

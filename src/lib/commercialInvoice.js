@@ -207,21 +207,34 @@ const hasField = (sheet, field) => {
 /**
  * Turn the workbook into blocks, one per order the file carries.
  *
- * The invoice is the spine: it defines the blocks and their order numbers. The
- * packing list is merged onto it by contract and product code, so a line the
- * invoice carries with no packing counterpart -- an item shipped by air, say --
- * keeps its identity and simply has no CBM.
+ * The invoice is the spine where there is one: it defines the blocks and their
+ * order numbers, and the packing list is merged onto it by contract and product
+ * code -- so a line the invoice carries with no packing counterpart, an item
+ * shipped by air say, keeps its identity and simply has no CBM.
+ *
+ * EITHER SHEET ALONE IS ENOUGH. The two carry the same identity columns, and
+ * the catalog takes nothing from the invoice that the packing list lacks: no
+ * money is read from this document at all, so a packing list on its own gives
+ * the full set. A packing list alone does lose something, but it is the order
+ * number rather than a field -- this supplier marks its later blocks with the
+ * S/C number only, and the PO appears just in the sheet's own header. Those
+ * blocks come back with no reference, and the importer says so.
  */
 export function parseCommercialInvoice(workbook, { fileName } = {}) {
   const warnings = []
 
   const invoiceSheet = workbook.sheets.find((s) => hasField(s, 'unit_price'))
-  if (!invoiceSheet) throw new Error('noInvoiceSheet')
   const packingSheet = workbook.sheets.find((s) => s !== invoiceSheet && hasField(s, 'volume_cbm'))
+  // Whichever is present leads. Both anchor on a `Code for Box` heading, which
+  // is what tells this supplier's paperwork apart from a proforma or one of our
+  // own cost sheets.
+  const spineSheet = invoiceSheet ?? packingSheet
+  if (!spineSheet) throw new Error('noInvoiceSheet')
+  if (!invoiceSheet) warnings.push('packingListOnly')
   if (!packingSheet) warnings.push('noPackingList')
 
-  const invoice = readSheet(invoiceSheet)
-  const packing = packingSheet ? readSheet(packingSheet) : null
+  const invoice = readSheet(spineSheet)
+  const packing = packingSheet && packingSheet !== spineSheet ? readSheet(packingSheet) : null
 
   // Packing figures, keyed by contract and code. Keyed on the contract too
   // because the same article appears under more than one order in this file,
@@ -248,7 +261,7 @@ export function parseCommercialInvoice(workbook, { fileName } = {}) {
 
   return {
     fileName: fileName ?? null,
-    invoiceSheet: invoiceSheet.name,
+    invoiceSheet: invoiceSheet?.name ?? null,
     packingSheet: packingSheet?.name ?? null,
     supplierName: invoice.identity.supplierName,
     contractNo: invoice.identity.contractNo,
