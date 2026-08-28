@@ -995,7 +995,7 @@ create trigger catalog_touch_updated_at
 -- ---------------------------------------------------------------------------
 create table if not exists public.catalog_imports (
   id uuid primary key default gen_random_uuid(),
-  doc_type text not null check (doc_type in ('liquidacion', 'proforma', 'costo')),
+  doc_type text not null check (doc_type in ('liquidacion', 'proforma', 'invoice', 'costo')),
   doc_key text not null unique,
   file_name text not null,
   -- Liquidación identifiers.
@@ -1024,10 +1024,15 @@ create table if not exists public.catalog_sources (
   primary key (catalog_id, import_id)
 );
 
--- The internal cost sheet joined later, and the table is already deployed.
+-- Document types are added here as they are built -- the internal cost sheet
+-- first, then the supplier's commercial invoice. THIS pair is what changes a
+-- database that already exists: the `create table` above is guarded by `if not
+-- exists`, so editing its inline check alone reaches a fresh project and
+-- nothing else, and the import fails on the old constraint with
+-- "violates check constraint catalog_imports_doc_type_check".
 alter table public.catalog_imports drop constraint if exists catalog_imports_doc_type_check;
 alter table public.catalog_imports add constraint catalog_imports_doc_type_check
-  check (doc_type in ('liquidacion', 'proforma', 'costo'));
+  check (doc_type in ('liquidacion', 'proforma', 'invoice', 'costo'));
 alter table public.catalog_imports add column if not exists doc_date date;
 
 create index if not exists catalog_sources_import_idx on public.catalog_sources (import_id);
