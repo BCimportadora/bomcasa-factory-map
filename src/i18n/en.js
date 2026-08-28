@@ -457,6 +457,22 @@ export default {
 
     print: {
       action: 'Print',
+      company: 'BOMCASA IMPORTADORA SA',
+      sectionCountOne: '1 product',
+      sectionCountOther: '{{count}} products',
+      columns: {
+        product_code: 'NUESTRO CODIGO',
+        supplier_code: 'CODIGO ELLOS',
+        description_en: 'DESCRIPCION INGLES',
+        description: 'DESCRIPCION',
+        barcode: 'CODIGO DE BARRAS',
+        arancel: 'CODIGO ARANCEL',
+        gravamen_pct: 'ARANCEL',
+        fob_usd: 'COSTO FOB',
+        unit_price_dop: 'COSTO UNITARIO',
+        precio_lista: 'PRECIO DE LISTA',
+      },
+
       everything: 'Entire catalog',
       bySupplier: 'By supplier',
       back: 'Back to the catalog',

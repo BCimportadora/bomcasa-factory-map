@@ -314,8 +314,12 @@ lives in the query string (`?supplier=…`), not in state, so a link to one
 supplier's price sheet opens the same thing for whoever is sent it.
 
 **The catalog sheet's `@page` rule is injected by the component, not written in
-`index.css`.** `@page { margin: 0 }` is what removes the browser's own header
-and footer — the date, the page title, the URL and "1/4" — by leaving no margin
+`index.css`.** It carries two declarations. `size: landscape` turns the paper,
+because the sheet reproduces the column set of the company's own
+`CODIGOS INTERRUPTORES` workbook -- ten columns, two of them descriptions --
+which does not fit portrait. The keyword is bare rather than `A4 landscape` so
+whoever prints keeps their own paper size. `margin: 0` is what removes the
+browser's own header and footer — the date, the page title, the URL and "1/4" — by leaving no margin
 for them to sit in; there is no other way to suppress them from a page. It
 cannot go in `index.css` because `@page` takes no selector and would then apply
 to the innovations sheet too, which is laid out for the global 14mm. A `<style>`

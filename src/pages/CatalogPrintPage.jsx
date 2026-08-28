@@ -18,8 +18,21 @@ import {
 /** Which supplier to print, or 'all'. Matches the filter's own value. */
 const NO_SUPPLIER = 'none'
 
+/**
+ * The columns, in the order and under the headings of the company's own
+ * "CODIGOS INTERRUPTORES" workbook, which is the sheet people here already read.
+ *
+ * Four of that workbook's columns are not here, because the catalog does not
+ * hold them: IMAGEN, CBM UNITARIO, CANTIDAD POR CAJA, and the run of historic
+ * COSTO columns (03.2021, 09.2022, 05.23, 10.23...). The catalog keeps one FOB
+ * cost, the current one, because that is what the newest order established --
+ * a price history would be a different feature. The last two columns are ours
+ * and not the workbook's: what the goods land at and what we sell them for.
+ */
 const ALL_COLUMNS = [
   'product_code',
+  'supplier_code',
+  'description_en',
   'description',
   'barcode',
   'arancel',
@@ -31,6 +44,9 @@ const ALL_COLUMNS = [
 
 /** The ones that read as figures, and belong right-aligned. */
 const NUMERIC = new Set(['gravamen_pct', 'fob_usd', 'unit_price_dop', 'precio_lista'])
+
+/** Codes and figures must not wrap; the two descriptions are what may. */
+const NOWRAP = new Set([...NUMERIC, 'product_code', 'supplier_code', 'barcode', 'arancel'])
 
 /**
  * The catalog on paper.
@@ -51,7 +67,7 @@ const NUMERIC = new Set(['gravamen_pct', 'fob_usd', 'unit_price_dop', 'precio_li
  * whole thing on purpose.
  */
 export default function CatalogPrintPage() {
-  const { t, language } = useI18n()
+  const { t, tCount, language } = useI18n()
   const [params, setParams] = useSearchParams()
   const { products, loading } = useCatalog()
   const { factories } = useFactories()
@@ -77,14 +93,41 @@ export default function CatalogPrintPage() {
     return list
   }, [products, supplierFor, t])
 
+  const byCode = (a, b) =>
+    (a.product_code ?? '').localeCompare(b.product_code ?? '', undefined, { numeric: true })
+
   const rows = useMemo(() => {
     const wanted = products.filter(
       (p) => !selected || (supplierFor(p)?.id ?? NO_SUPPLIER) === selected,
     )
-    return [...wanted].sort((a, b) =>
-      (a.product_code ?? '').localeCompare(b.product_code ?? '', undefined, { numeric: true }),
-    )
+    return [...wanted].sort(byCode)
   }, [products, selected, supplierFor])
+
+  /**
+   * The rows broken into headed blocks, the way the company's own workbook
+   * breaks its list into BLANCO, MODULOS NEGROS and the rest.
+   *
+   * Our sections are suppliers, which is the division that means something
+   * here: it is who to call about a price. One supplier's sheet is a single
+   * unnamed block -- repeating the name above every row of a list that is
+   * already titled with it would be noise.
+   */
+  const sections = useMemo(() => {
+    if (selected) return [{ key: 'only', label: null, rows }]
+    const found = new Map()
+    for (const product of rows) {
+      const factory = supplierFor(product)
+      const key = factory?.id ?? NO_SUPPLIER
+      const label = factory ? factoryLabel(factory) : t('catalog.noSupplier')
+      if (!found.has(key)) found.set(key, { key, label, rows: [] })
+      found.get(key).rows.push(product)
+    }
+    return [...found.values()].sort((a, b) => {
+      // Products nobody can attribute go last, whatever they are called.
+      if ((a.key === NO_SUPPLIER) !== (b.key === NO_SUPPLIER)) return a.key === NO_SUPPLIER ? 1 : -1
+      return a.label.localeCompare(b.label)
+    })
+  }, [rows, selected, supplierFor, t])
 
   const heading = selected
     ? suppliers.find((s) => s.id === selected)?.label ?? t('catalog.noSupplier')
@@ -175,12 +218,15 @@ export default function CatalogPrintPage() {
         padding does not, which is why the top and bottom margins are carried
         by the repeating thead and tfoot below.
       */}
-      <style>{'@media print { @page { margin: 0 } }'}</style>
+      <style>{'@media print { @page { size: landscape; margin: 0 } }'}</style>
 
-      <div className="mx-auto max-w-5xl px-8 py-8 print:max-w-none print:px-[11mm] print:py-0">
-        <header className="mb-5 print:mb-0 print:pt-[10mm]">
-          <h1 className="text-[22px] font-semibold tracking-[-0.01em] print:text-[15px]">{heading}</h1>
-          <p className="mt-0.5 text-[12px] text-neutral-600 print:text-[9px]">
+      <div className="mx-auto max-w-5xl px-8 py-8 print:max-w-none print:px-[10mm] print:py-0">
+        <header className="mb-5 print:mb-0 print:pt-[9mm]">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 print:text-[9px]">
+            {t('catalog.print.company')}
+          </p>
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em] print:text-[14px]">{heading}</h1>
+          <p className="mt-0.5 text-[12px] text-neutral-600 print:text-[8px]">
             {t('catalog.print.subtitle', { count: rows.length, date: printedOn })}
           </p>
         </header>
@@ -203,28 +249,47 @@ export default function CatalogPrintPage() {
                       NUMERIC.has(field) ? 'text-right' : ''
                     }`}
                   >
-                    {t(`catalog.fields.${field}`)}
+                    {t(`catalog.print.columns.${field}`)}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody>
-              {rows.map((product) => (
-                // `break-inside: avoid` so a row is never split across sheets.
-                <tr key={product.id} className="break-inside-avoid border-b border-neutral-200">
-                  {columns.map((field) => (
+            {/* One tbody per section rather than one per table, so the
+                section heading travels with its first rows across a break. */}
+            {sections.map((section) => (
+              <tbody key={section.key}>
+                {section.label && (
+                  <tr className="break-inside-avoid">
                     <td
-                      key={field}
-                      className={`px-1.5 py-1 align-top print:py-[2px] ${
-                        field === 'product_code' ? 'whitespace-nowrap font-medium' : ''
-                      } ${NUMERIC.has(field) ? 'whitespace-nowrap text-right' : ''}`}
+                      colSpan={columns.length}
+                      className="border-b border-neutral-400 pb-1 pt-4 text-[12px] font-semibold uppercase tracking-wide print:pb-0.5 print:pt-2.5 print:text-[9px]"
                     >
-                      {cell(product, field)}
+                      {section.label}
+                      <span className="ml-2 font-normal normal-case text-neutral-500">
+                        {tCount('catalog.print.sectionCount', section.rows.length)}
+                      </span>
                     </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
+                  </tr>
+                )}
+                {section.rows.map((product) => (
+                  // `break-inside: avoid` so a row is never split across sheets.
+                  <tr key={product.id} className="break-inside-avoid border-b border-neutral-200">
+                    {columns.map((field) => (
+                      <td
+                        key={field}
+                        className={`px-1.5 py-1 align-top print:py-[2px] ${
+                          field === 'product_code' ? 'font-medium' : ''
+                        } ${NOWRAP.has(field) ? 'whitespace-nowrap' : ''} ${
+                          NUMERIC.has(field) ? 'text-right' : ''
+                        }`}
+                      >
+                        {cell(product, field)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            ))}
             {/* An empty band that repeats at the foot of every sheet, so the
                 last row never runs into the paper's unprintable edge now that
                 the page itself has no margin. */}
