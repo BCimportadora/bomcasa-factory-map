@@ -396,6 +396,8 @@ export default {
     searchPlaceholder: 'Buscar código, descripción o código de barra',
     noCode: 'Sin código de producto',
     allAranceles: 'Todas las partidas',
+    allSuppliers: 'Todos los proveedores',
+    noSupplier: 'Sin proveedor',
 
     admin: {
       title: 'Ajustes del catálogo',
@@ -428,6 +430,7 @@ export default {
       arancel: 'Partida arancelaria',
       gravamen_pct: 'Gravamen',
       fob_usd: 'Precio FOB',
+      supplier: 'Proveedor',
       unit_price_dop: 'Precio unitario',
       precio_lista: 'Precio de lista actual',
       internal_use: 'Uso interno',
@@ -451,6 +454,16 @@ export default {
       selectivo: 'Columna Selectivo contra la fila de Totales',
       itbis: 'Columna ITBIS contra la fila de Totales',
       total: 'Columna Total contra la fila de Totales',
+    },
+
+    print: {
+      action: 'Imprimir',
+      everything: 'Catálogo completo',
+      bySupplier: 'Por proveedor',
+      back: 'Volver al catálogo',
+      subtitle: '{{count}} productos · impreso el {{date}}',
+      footnote:
+        'Los precios siguen la orden más reciente en la que apareció cada producto. Los marcados Uso interno se compran pero no se venden.',
     },
 
     import: {

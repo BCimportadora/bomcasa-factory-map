@@ -21,6 +21,7 @@
 // Shared with the cost-sheet reader rather than reimplemented: the rule for
 // flattening a heading or a comment to something comparable is one rule.
 import { normalise } from './liquidation'
+import { aliasKey, matchFactoryByAlias } from './factories'
 
 /**
  * The deduplication key: digits only.
@@ -354,6 +355,46 @@ export const lastSeenOrder = (product) => {
   if (refs.length === 1) return refs[0]
   const [a, b] = refs
   return compareDocuments({ ref: a }, { ref: b }) === 'newer' ? a : b
+}
+
+/**
+ * Which supplier a product came from, worked out rather than stored.
+ *
+ * There is deliberately no `factory_id` on `catalog`. A product's supplier is
+ * already recorded, once, on the order it arrived on — and the reference of
+ * that order is what `doc_ref` and `cost_ref` hold. Copying the supplier onto
+ * every product as well would give the same fact two homes, and the day
+ * somebody corrects the supplier on an order the catalog would still be
+ * carrying the old answer.
+ *
+ * Two ways to resolve it, in this order:
+ *
+ *   1. The `orders` row with that exact reference. Authoritative: a person
+ *      confirmed that supplier when the liquidación was imported.
+ *   2. Failing that, the reference's word against the supplier nicknames —
+ *      "MILAN 11" is Milan plus a number. This catches products whose order
+ *      predates the platform, or was never created as an order at all.
+ *
+ * Null for a product nobody imported from a document, which is the honest
+ * answer for one typed in by hand.
+ */
+export const supplierIndex = ({ orders, factories }) => {
+  const byId = new Map((factories ?? []).map((f) => [f.id, f]))
+  const byReference = new Map()
+  for (const order of orders ?? []) {
+    const key = aliasKey(order?.reference)
+    const factory = byId.get(order?.factory_id)
+    if (key && factory && !byReference.has(key)) byReference.set(key, factory)
+  }
+
+  return (product) => {
+    const reference = lastSeenOrder(product)
+    if (!reference) return null
+    return (
+      byReference.get(aliasKey(reference)) ??
+      matchFactoryByAlias(reference.replace(/[0-9]+/g, '').trim(), factories ?? [])
+    )
+  }
 }
 
 /** Sort key for an order reference: series first, then number, blanks last. */

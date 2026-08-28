@@ -13,6 +13,7 @@ import FilesPage from './pages/FilesPage'
 import CatalogPage from './pages/CatalogPage'
 import InnovationsPage from './pages/InnovationsPage'
 import InnovationsPrintPage from './pages/InnovationsPrintPage'
+import CatalogPrintPage from './pages/CatalogPrintPage'
 import SuggestionsPage from './pages/SuggestionsPage'
 import AdminAccountsPage from './pages/AdminAccountsPage'
 import AdminCatalogPage from './pages/AdminCatalogPage'
@@ -113,7 +114,7 @@ function AppRoutes() {
       />
 
       {/*
-        The print sheet skips AppLayout on purpose: a sidebar and a theme are
+        The print sheets skip AppLayout on purpose: a sidebar and a theme are
         exactly what should not end up on the paper.
       */}
       <Route
@@ -122,6 +123,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <ErrorBoundary>
               <InnovationsPrintPage />
+            </ErrorBoundary>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/catalog/print"
+        element={
+          <ProtectedRoute>
+            <ErrorBoundary>
+              <CatalogPrintPage />
             </ErrorBoundary>
           </ProtectedRoute>
         }

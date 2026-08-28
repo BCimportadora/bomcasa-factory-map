@@ -304,12 +304,27 @@ quotes with a temporary `key` and `saveDetails` translates those to real ids
 after the variations come back — joined on `line_no`, since the order rows are
 returned in is not guaranteed.
 
-**The print sheet is the one screen that ignores the theme.** `/innovations/print`
-hard-codes black on white and skips `AppLayout` entirely, and `@media print` in
-`index.css` forces `background: #fff` past the dark tokens. Printing a night-mode
-page either wastes a cartridge on a black rectangle or, with backgrounds off,
-prints pale grey text on white. This is a deliberate exception to the
-colours-are-tokens rule below, not an oversight.
+**The print sheets are the screens that ignore the theme.** `/innovations/print`
+and `/catalog/print` hard-code black on white and skip `AppLayout` entirely, and
+`@media print` in `index.css` forces `background: #fff` past the dark tokens.
+Printing a night-mode page either wastes a cartridge on a black rectangle or,
+with backgrounds off, prints pale grey text on white. This is a deliberate
+exception to the colours-are-tokens rule below, not an oversight. What to print
+lives in the query string (`?supplier=…`), not in state, so a link to one
+supplier's price sheet opens the same thing for whoever is sent it.
+
+**A catalog product's supplier is derived, not stored.** There is deliberately
+no `factory_id` on `catalog`: the supplier is already recorded once, on the
+order the paperwork came from, and `doc_ref` / `cost_ref` hold that order's
+reference. `supplierIndex` resolves it from the `orders` row with that exact
+reference — authoritative, because a person confirmed the supplier at import —
+and falls back to matching the reference's word against the nicknames, which is
+what covers orders that predate the platform. Storing it as well would give one
+fact two homes, and correcting the supplier on an order would leave the catalog
+still holding the old answer. The cost is that CatalogPage mounts `useFactories`
+and `useOrders` alongside `useCatalog`; that is safe only because these are all
+page-level and no two of those pages render at once — see the fixed-channel note
+below.
 
 **Making a section real takes two edits, not one.** Flip `ready` in
 `src/lib/sections.js` *and* add an explicit route in `App.jsx`. The generated

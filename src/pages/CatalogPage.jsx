@@ -1,8 +1,21 @@
-import { useMemo, useState } from 'react'
-import { ArrowUpDown, ChevronLeft, ChevronRight, Pencil, Search, Upload } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  ArrowUpDown,
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Printer,
+  Search,
+  Upload,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n'
 import { useCatalog } from '../hooks/useCatalog'
+import { useFactories } from '../hooks/useFactories'
+import { useOrders } from '../hooks/useOrders'
+import { factoryLabel } from '../lib/factories'
 import {
   CURRENCY_OF,
   PAGE_SIZE,
@@ -13,6 +26,7 @@ import {
   isInternalUse,
   lastSeenOrder,
   orderSortKey,
+  supplierIndex,
 } from '../lib/catalog'
 import { sectionDescriptionKey, sectionNameKey } from '../lib/sections'
 import CatalogImport from '../components/Catalog/CatalogImport'
@@ -28,10 +42,14 @@ const COLUMNS = [
   { field: 'fob_usd', align: 'right', numeric: true },
   { field: 'unit_price_dop', align: 'right', numeric: true },
   { field: 'precio_lista', align: 'right', numeric: true },
-  // Not a stored column: worked out from whichever of doc_ref / cost_ref is
-  // the later order. See lastSeenOrder.
+  // Neither of these is stored. Both are worked out from whichever of doc_ref
+  // and cost_ref is the later order -- see lastSeenOrder and supplierIndex.
+  { field: 'supplier', align: 'left', numeric: false, derived: true },
   { field: 'lastSeen', align: 'left', numeric: false, derived: true },
 ]
+
+/** The value the supplier filter uses for products whose supplier is unknown. */
+const NO_SUPPLIER = 'none'
 
 export default function CatalogPage() {
   const { t, language } = useI18n()
@@ -45,9 +63,15 @@ export default function CatalogPage() {
     applyImport,
     updateProduct,
   } = useCatalog()
+  // A product's supplier is not stored on it -- it is the supplier of the order
+  // its paperwork came from. Both lists are needed to work that out.
+  const { factories } = useFactories()
+  const { orders } = useOrders()
 
   const [query, setQuery] = useState('')
   const [arancel, setArancel] = useState('')
+  const [supplierId, setSupplierId] = useState('')
+  const [printOpen, setPrintOpen] = useState(false)
   const [sort, setSort] = useState({ field: 'product_code', dir: 'asc' })
   const [page, setPage] = useState(0)
   const [importing, setImporting] = useState(false)
@@ -59,6 +83,54 @@ export default function CatalogPage() {
     [products],
   )
 
+  // Escape closes the print menu. The backdrop behind it catches a click
+  // anywhere, but a menu that only a mouse can dismiss is a menu somebody gets
+  // stuck in.
+  useEffect(() => {
+    if (!printOpen) return undefined
+    const onKey = (event) => {
+      if (event.key === 'Escape') setPrintOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [printOpen])
+
+  const supplierFor = useMemo(() => supplierIndex({ orders, factories }), [orders, factories])
+
+  /** The supplier's name for searching, sorting and display; '' when unknown. */
+  const supplierLabel = useCallback(
+    (product) => {
+      const factory = supplierFor(product)
+      return factory ? factoryLabel(factory) : ''
+    },
+    [supplierFor],
+  )
+
+  /**
+   * The suppliers the catalog actually holds products for, with a count.
+   *
+   * Built from the products rather than from the factory list, so the filter
+   * never offers a supplier that would return an empty table -- and so the
+   * counts add up to the catalog in front of you.
+   */
+  const suppliers = useMemo(() => {
+    const found = new Map()
+    let unknown = 0
+    for (const product of products) {
+      const factory = supplierFor(product)
+      if (!factory) {
+        unknown += 1
+        continue
+      }
+      const entry = found.get(factory.id)
+      if (entry) entry.count += 1
+      else found.set(factory.id, { id: factory.id, label: factoryLabel(factory), count: 1 })
+    }
+    const list = [...found.values()].sort((a, b) => a.label.localeCompare(b.label))
+    if (unknown > 0) list.push({ id: NO_SUPPLIER, label: t('catalog.noSupplier'), count: unknown })
+    return list
+  }, [products, supplierFor, t])
+
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase()
     // A search that looks like a code is also matched against the normalised
@@ -67,6 +139,7 @@ export default function CatalogPage() {
 
     const filtered = products.filter((p) => {
       if (arancel && p.arancel !== arancel) return false
+      if (supplierId && (supplierFor(p)?.id ?? NO_SUPPLIER) !== supplierId) return false
       if (!needle) return true
       return (
         (p.product_code ?? '').toLowerCase().includes(needle) ||
@@ -77,7 +150,8 @@ export default function CatalogPage() {
         (p.barcode ?? '').includes(needle.replace(/\D/g, '')) ||
         (p.supplier_code ?? '').toLowerCase().includes(needle) ||
         (p.model ?? '').toLowerCase().includes(needle) ||
-        (lastSeenOrder(p) ?? '').toLowerCase().includes(needle)
+        (lastSeenOrder(p) ?? '').toLowerCase().includes(needle) ||
+        supplierLabel(p).toLowerCase().includes(needle)
       )
     })
 
@@ -93,6 +167,9 @@ export default function CatalogPage() {
         if (!r) return -1
         return orderSortKey(l).localeCompare(orderSortKey(r)) * direction
       }
+      if (sort.field === 'supplier') {
+        return supplierLabel(a).localeCompare(supplierLabel(b)) * direction
+      }
       const left = a[sort.field]
       const right = b[sort.field]
       // Blanks always sort last, whichever way the column is pointing: a column
@@ -102,7 +179,7 @@ export default function CatalogPage() {
       if (column?.numeric) return (Number(left) - Number(right)) * direction
       return String(left).localeCompare(String(right)) * direction
     })
-  }, [products, query, arancel, sort])
+  }, [products, query, arancel, supplierId, sort, supplierFor, supplierLabel])
 
   const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE))
   const current = Math.min(page, pageCount - 1)
@@ -115,6 +192,7 @@ export default function CatalogPage() {
 
   const cell = (product, field) => {
     if (field === 'lastSeen') return lastSeenOrder(product) || '—'
+    if (field === 'supplier') return supplierLabel(product) || '—'
     // Where the selling price would be, say why there isn't one. An em dash
     // here reads as "nobody has filled this in yet", which is a different
     // thing and would send someone looking for a price that does not exist.
@@ -137,10 +215,73 @@ export default function CatalogPage() {
             <h1 className="page-title">{t(sectionNameKey('catalog'))}</h1>
             <p className="page-subtitle">{t(sectionDescriptionKey('catalog'))}</p>
           </div>
-          <button type="button" onClick={() => setImporting(true)} className="btn-primary">
-            <Upload size={16} strokeWidth={2.25} />
-            {t('catalog.import.action')}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Two ways to print, because they are two different jobs: one
+                supplier's sheet to take to a meeting, or the whole book. The
+                supplier list is the same one the filter offers. */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setPrintOpen((open) => !open)}
+                aria-expanded={printOpen}
+                aria-haspopup="menu"
+                className="btn-secondary"
+              >
+                <Printer size={16} strokeWidth={2.25} />
+                {t('catalog.print.action')}
+              </button>
+
+              {printOpen && (
+                <>
+                  {/* Catches the click that closes the menu, and nothing else. */}
+                  <div
+                    className="fixed inset-0 z-40"
+                    role="presentation"
+                    onClick={() => setPrintOpen(false)}
+                  />
+                  <div
+                    role="menu"
+                    className="absolute right-0 z-50 mt-1.5 max-h-80 w-64 overflow-y-auto rounded-xl border border-line bg-surface py-1 shadow-overlay"
+                  >
+                    <Link
+                      role="menuitem"
+                      to="/catalog/print"
+                      onClick={() => setPrintOpen(false)}
+                      className="block px-3.5 py-2 text-[13px] font-medium text-ink hover:bg-canvas"
+                    >
+                      {t('catalog.print.everything')}
+                      <span className="ml-1.5 text-muted">({products.length})</span>
+                    </Link>
+
+                    {suppliers.length > 0 && (
+                      <>
+                        <p className="mt-1 border-t border-line px-3.5 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted">
+                          {t('catalog.print.bySupplier')}
+                        </p>
+                        {suppliers.map((supplier) => (
+                          <Link
+                            key={supplier.id}
+                            role="menuitem"
+                            to={`/catalog/print?supplier=${encodeURIComponent(supplier.id)}`}
+                            onClick={() => setPrintOpen(false)}
+                            className="block px-3.5 py-2 text-[13px] text-ink hover:bg-canvas"
+                          >
+                            {supplier.label}
+                            <span className="ml-1.5 text-muted">({supplier.count})</span>
+                          </Link>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <button type="button" onClick={() => setImporting(true)} className="btn-primary">
+              <Upload size={16} strokeWidth={2.25} />
+              {t('catalog.import.action')}
+            </button>
+          </div>
         </header>
 
         {(actionError || error) && (
@@ -184,6 +325,30 @@ export default function CatalogPage() {
               </option>
             ))}
           </select>
+
+          <div className="relative">
+            <Building2
+              size={15}
+              strokeWidth={2}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+            />
+            <select
+              value={supplierId}
+              onChange={(e) => {
+                setSupplierId(e.target.value)
+                setPage(0)
+              }}
+              aria-label={t('catalog.fields.supplier')}
+              className="input w-auto min-w-[13rem] pl-9"
+            >
+              <option value="">{t('catalog.allSuppliers')}</option>
+              {suppliers.map((supplier) => (
+                <option key={supplier.id} value={supplier.id}>
+                  {supplier.label} ({supplier.count})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {loading ? (

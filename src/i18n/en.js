@@ -395,6 +395,8 @@ export default {
     searchPlaceholder: 'Search code, description or barcode',
     noCode: 'No product code',
     allAranceles: 'All tariff codes',
+    allSuppliers: 'All suppliers',
+    noSupplier: 'No supplier',
 
     admin: {
       title: 'Catalog settings',
@@ -427,6 +429,7 @@ export default {
       arancel: 'Partida arancelaria',
       gravamen_pct: 'Gravamen',
       fob_usd: 'Precio FOB',
+      supplier: 'Proveedor',
       unit_price_dop: 'Precio unitario',
       precio_lista: 'Precio de lista actual',
       internal_use: 'Uso interno',
@@ -450,6 +453,16 @@ export default {
       selectivo: 'Selectivo column against the Totales row',
       itbis: 'ITBIS column against the Totales row',
       total: 'Total column against the Totales row',
+    },
+
+    print: {
+      action: 'Print',
+      everything: 'Entire catalog',
+      bySupplier: 'By supplier',
+      back: 'Back to the catalog',
+      subtitle: '{{count}} products · printed {{date}}',
+      footnote:
+        'Prices follow the most recent order each product appeared on. Products marked Uso interno are bought but not sold.',
     },
 
     import: {
