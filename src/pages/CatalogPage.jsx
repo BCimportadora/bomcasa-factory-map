@@ -42,6 +42,8 @@ const COLUMNS = [
   { field: 'fob_usd', align: 'right', numeric: true },
   { field: 'unit_price_dop', align: 'right', numeric: true },
   { field: 'precio_lista', align: 'right', numeric: true },
+  { field: 'cbm_unit', align: 'right', numeric: true },
+  { field: 'units_per_box', align: 'right', numeric: true },
   // Neither of these is stored. Both are worked out from whichever of doc_ref
   // and cost_ref is the later order -- see lastSeenOrder and supplierIndex.
   { field: 'supplier', align: 'left', numeric: false, derived: true },

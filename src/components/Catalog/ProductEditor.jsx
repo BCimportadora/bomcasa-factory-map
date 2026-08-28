@@ -24,7 +24,14 @@ const TEXT_FIELDS = [
   'description_en',
   'description_es',
 ]
-const NUMBER_FIELDS = ['fob_usd', 'gravamen_pct', 'unit_price_dop', 'precio_lista']
+const NUMBER_FIELDS = [
+  'fob_usd',
+  'gravamen_pct',
+  'unit_price_dop',
+  'precio_lista',
+  'cbm_unit',
+  'units_per_box',
+]
 
 export default function ProductEditor({ product, onSave, onClose }) {
   const { t } = useI18n()
@@ -128,6 +135,15 @@ export default function ProductEditor({ product, onSave, onClose }) {
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {field('description_en')}
           {field('description_es')}
+        </div>
+
+        <div className="mt-5 border-t border-line pt-4">
+          <p className="label mb-0">{t('catalog.edit.packing')}</p>
+          <p className="hint mb-3">{t('catalog.edit.packingHint')}</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {field('cbm_unit')}
+            {field('units_per_box')}
+          </div>
         </div>
 
         <div className="mt-5 border-t border-line pt-4">

@@ -39,13 +39,24 @@ const ALL_COLUMNS = [
   'fob_usd',
   'unit_price_dop',
   'precio_lista',
+  'cbm_unit',
+  'units_per_box',
 ]
 
 /** The money columns. The workbook prints these in bold; so do we. */
 const MONEY = new Set(['fob_usd', 'unit_price_dop', 'precio_lista'])
 
 /** Codes and figures must not wrap; the two descriptions are what may. */
-const NOWRAP = new Set([...MONEY, 'gravamen_pct', 'product_code', 'supplier_code', 'barcode', 'arancel'])
+const NOWRAP = new Set([
+  ...MONEY,
+  'gravamen_pct',
+  'product_code',
+  'supplier_code',
+  'barcode',
+  'arancel',
+  'cbm_unit',
+  'units_per_box',
+])
 
 /**
  * Relative column widths, taken from the workbook's own column settings --
@@ -69,6 +80,8 @@ const WIDTH = {
   fob_usd: 5,
   unit_price_dop: 5,
   precio_lista: 5,
+  cbm_unit: 6,
+  units_per_box: 6,
 }
 
 /**
@@ -85,6 +98,8 @@ const ALIGN = {
   fob_usd: 'text-right',
   unit_price_dop: 'text-right',
   precio_lista: 'text-right',
+  cbm_unit: 'text-right',
+  units_per_box: 'text-center',
 }
 
 /**
@@ -224,6 +239,10 @@ export default function CatalogPrintPage() {
     // two on the peso figures, which is how pesos are written.
     if (field === 'fob_usd') return figure(product[field], 3)
     if (field === 'unit_price_dop' || field === 'precio_lista') return figure(product[field], 2)
+    // Five places, as the workbook's CBM UNITARIO column carries -- a bulb is
+    // 0.00050 m3 and the whole column lives past the third decimal.
+    if (field === 'cbm_unit') return figure(product[field], 5)
+    if (field === 'units_per_box') return figure(product[field], 0)
     return product[field] || '—'
   }
 

@@ -38,6 +38,7 @@ const COLUMN_MAP = [
   ['qty', 'quantity'],
   ['pcs ctn', 'pcs_per_carton'],
   ['ctns', 'cartons'],
+  ['cbm ctn', 'cbm_per_carton'],
   ['unit price', 'unit_price'],
   ['amount', 'amount'],
 ]
@@ -59,7 +60,17 @@ const decimal = (value) => {
 }
 
 /** Sub-headings that mark the second row of a two-deep header. */
-const SUB_HEADINGS = new Set(['english', 'spanish', 'q ty', 'qty', 'pcs ctn', 'ctns', 'unit price', 'amount'])
+const SUB_HEADINGS = new Set([
+  'english',
+  'spanish',
+  'q ty',
+  'qty',
+  'pcs ctn',
+  'ctns',
+  'cbm ctn',
+  'unit price',
+  'amount',
+])
 
 /**
  * Find the header, which is two rows deep.
@@ -180,6 +191,10 @@ export function parseProforma(workbook, { fileName } = {}) {
       quantity: decimal(value('quantity')),
       unit_price: decimal(value('unit_price')),
       amount: decimal(value('amount')),
+      // How the goods are packed. Both are per CARTON on this document; the
+      // catalog wants the CBM per unit, and divides.
+      pcs_per_carton: decimal(value('pcs_per_carton')),
+      cbm_per_carton: decimal(value('cbm_per_carton')),
     })
   }
 

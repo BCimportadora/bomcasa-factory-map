@@ -959,6 +959,17 @@ alter table public.catalog add column if not exists cost_date date;
 -- false would assert that every product introduced by a liquidación is sold.
 alter table public.catalog add column if not exists internal_use boolean;
 
+-- How the goods are packed, which only the supplier's proforma states: no
+-- liquidación or cost sheet carries either figure.
+--
+-- The proforma quotes both per CARTON. `units_per_box` is that carton count as
+-- it stands; `cbm_unit` is CBM/CTN divided by it, because a cubic metre per
+-- unit is what a container is planned with and what the company's own CODIGOS
+-- workbook prints. Six decimals because every one of these figures lives past
+-- the third place -- a bulb is 0.0005 m3.
+alter table public.catalog add column if not exists cbm_unit numeric(12, 6);
+alter table public.catalog add column if not exists units_per_box integer;
+
 -- The list searches on all three of these, and `code_key` already has a unique
 -- index from the constraint above.
 create index if not exists catalog_barcode_idx on public.catalog (barcode);

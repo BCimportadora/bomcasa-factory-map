@@ -36,6 +36,9 @@ export async function applyCatalogImport({ plan, document, userId }) {
       // Only a cost sheet knows this, so it stays null for a product a
       // liquidación or a proforma introduced -- null being "nobody has said".
       internal_use: fields.internal_use ?? null,
+      // ...and only a proforma knows these two.
+      cbm_unit: fields.cbm_unit ?? null,
+      units_per_box: fields.units_per_box ?? null,
       doc_date: fields.doc_date ?? null,
       cost_date: fields.cost_date ?? null,
       doc_ref: fields.doc_ref ?? null,

@@ -431,6 +431,8 @@ export default {
       gravamen_pct: 'Gravamen',
       fob_usd: 'Precio FOB',
       supplier: 'Proveedor',
+      cbm_unit: 'CBM unitario',
+      units_per_box: 'Cantidad por caja',
       unit_price_dop: 'Precio unitario',
       precio_lista: 'Precio de lista actual',
       internal_use: 'Uso interno',
@@ -472,6 +474,8 @@ export default {
         fob_usd: 'COSTO FOB (US$)',
         unit_price_dop: 'COSTO UNITARIO (RD$)',
         precio_lista: 'PRECIO DE LISTA (RD$)',
+        cbm_unit: 'CBM UNITARIO',
+        units_per_box: 'CANTIDAD POR CAJA',
       },
 
       everything: 'Catálogo completo',
@@ -523,6 +527,9 @@ export default {
       lastSeen: 'Visto por última vez en',
       tariffFrom: 'Partida arancelaria de',
       pricedFrom: 'Precios de',
+      packing: 'Cómo viene empacado',
+      packingHint:
+        'De la proforma del proveedor, el único documento que los trae. El CBM unitario es su CBM/CTN dividido entre su PCS/CTN.',
       costSheet: 'De la hoja de costos interna',
       costSheetHint: 'Se importan de la hoja de costos. Corrígelos aquí si una hoja trae algo mal.',
       internalUseHint:

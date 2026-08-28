@@ -105,7 +105,12 @@ saying both "never sold" and "9.00".
 **Which document supplies which field is not arbitrary, and moving one is a
 decision.** The liquidación gives the partida arancelaria and nothing priced —
 its FOB is rounded to two decimals for the declaration and its gravamen is one
-shipment's duty. The proforma gives the barcode. Every money figure and the duty
+shipment's duty. The proforma gives the barcode, and the two packing figures:
+it is the only document that states either. Both are quoted there per CARTON,
+and `cbm_unit` is derived — `CBM/CTN / PCS/CTN` — because a cubic metre per
+unit is what a container is planned with and what the company's own CODIGOS
+workbook prints. Storing the carton volume as well would be a third fact that
+is only the product of the other two. Every money figure and the duty
 rate come from our own cost sheet, two of them derived rather than read:
 `fob_usd = COSTO TOTAL / unidades recibidas` and `gravamen_pct = Gravamen /
 CIF pesos * 100`. That the gravamen derived from the cost sheet matches the one

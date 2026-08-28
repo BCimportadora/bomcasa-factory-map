@@ -152,6 +152,8 @@ export const EDITABLE_FIELDS = [
   'description_es',
   'unit_price_dop',
   'precio_lista',
+  'cbm_unit',
+  'units_per_box',
   'internal_use',
 ]
 
@@ -236,7 +238,20 @@ const fromLiquidacionRow = (row) => ({
   arancel: row.arancel || null,
 })
 
-/** From the proforma: the barcode, and the supplier's own identifiers. */
+/**
+ * From the proforma: the barcode, the supplier's own identifiers, and how the
+ * goods are packed.
+ *
+ * The packing figures are the proforma's alone -- no liquidación or cost sheet
+ * states them. Both are quoted per CARTON there, and one of the two is derived
+ * rather than read:
+ *
+ *   cbm_unit = CBM/CTN / PCS/CTN
+ *
+ * because a cubic metre per unit is what a container is planned with, and it is
+ * what the company's own CODIGOS workbook prints. Storing the carton figure as
+ * well would be a third fact that is only the product of the other two.
+ */
 const fromProformaRow = (row) => ({
   product_code: formatProductCode(row.supplier_code),
   barcode: row.barcode,
@@ -244,7 +259,15 @@ const fromProformaRow = (row) => ({
   model: row.model,
   description_en: row.description_en,
   description_es: row.description_es,
+  units_per_box: wholeNumber(row.pcs_per_carton),
+  cbm_unit: perUnit(row.cbm_per_carton, row.pcs_per_carton, 6),
 })
+
+/** A count, as a count. Pieces in a carton are never a fraction of a piece. */
+const wholeNumber = (value) => {
+  const n = Number(value)
+  return Number.isFinite(n) && n > 0 ? String(Math.round(n)) : null
+}
 
 /**
  * From the internal cost sheet: every figure with a currency on it, plus the
@@ -279,12 +302,19 @@ const fromCostoRow = (row) => {
   }
 }
 
-/** A total divided by a count, to four decimals. Null unless both are usable. */
-const perUnit = (total, units) => {
+/**
+ * A total divided by a count. Null unless both are usable.
+ *
+ * The precision is per caller: four decimals is right for a unit price in
+ * dollars, and far too coarse for a cubic metre per unit, where every figure
+ * lives past the third place.
+ */
+const perUnit = (total, units, decimals = 4) => {
   const t = Number(total)
   const u = Number(units)
   if (!Number.isFinite(t) || !Number.isFinite(u) || u === 0) return null
-  return (Math.round((t / u) * 10000) / 10000).toFixed(4)
+  const scale = 10 ** decimals
+  return (Math.round((t / u) * scale) / scale).toFixed(decimals)
 }
 
 const isBlank = (value) => value === null || value === undefined || value === ''
