@@ -191,6 +191,15 @@ columns in silence: the prices and the Spanish description come back empty and
 everything else looks perfect. The invoice number is under its label too, not
 beside it — the cell to the right is the next label.
 
+**`t()` returns the KEY when a string is missing, so it can never be the left
+side of a `||` fallback.** That is right for our own labels — a missing one
+shows up in development instead of rendering blank — and wrong for text that
+came from somewhere else. An error thrown by a library carries a sentence, so
+`t(`catalog.errors.${err.message}`) || err.message` finds nothing, hands back
+the key it was given, and shows the user
+`catalog.errors.Setting up fake worker failed: …` with the prefix attached.
+`tOr(key, fallback)` is the way to ask for a translation that may not exist.
+
 **A Vite `?url` import must be STATIC.** `import workerUrl from
 'pdfjs-dist/build/pdf.worker.min.mjs?url'` works; `await import('...?url')`
 resolves in a production build and 404s in dev, surfacing as "Failed to fetch

@@ -80,7 +80,7 @@ export default function CatalogImport({
   onConfirm,
   onClose,
 }) {
-  const { t, tCount } = useI18n()
+  const { t, tOr, tCount } = useI18n()
   const input = useRef(null)
 
   const [busy, setBusy] = useState(false)
@@ -293,7 +293,10 @@ export default function CatalogImport({
 
       setState({ docType, parsed, plan, document, validation })
     } catch (err) {
-      setError(t(`catalog.errors.${err.message}`, {}) || err.message)
+      // A parser throws a short key we have a string for; anything else --
+      // pdf.js failing to start its worker, say -- throws a sentence, and the
+      // sentence is what helps.
+      setError(tOr(`catalog.errors.${err.message}`, err.message))
     } finally {
       setBusy(false)
     }

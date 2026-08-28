@@ -66,13 +66,34 @@ export function I18nProvider({ children }) {
     [language],
   )
 
+  /**
+   * Translate if there is a string for this key, otherwise return the fallback.
+   *
+   * For text that is not always ours. An error thrown by a library carries a
+   * sentence as its message, not a key, so `t()` correctly finds nothing and --
+   * by the rule above -- hands back the key it was given. A caller writing
+   * `t(`x.${err.message}`) || err.message` therefore never reaches its fallback,
+   * and the user is shown `catalog.errors.Setting up fake worker failed: ...`
+   * with the prefix still attached. This is the way to ask.
+   */
+  const tOr = useCallback(
+    (key, fallback, values) => {
+      const raw = lookup(BUNDLES[language], key) ?? lookup(BUNDLES[DEFAULT_LANGUAGE], key)
+      return typeof raw === 'string' ? interpolate(raw, values) : fallback
+    },
+    [language],
+  )
+
   /** Count-aware helper: t('people.countOne' | 'people.countOther'). */
   const tCount = useCallback(
     (baseKey, count) => t(count === 1 ? `${baseKey}One` : `${baseKey}Other`, { count }),
     [t],
   )
 
-  const value = useMemo(() => ({ language, setLanguage, t, tCount }), [language, setLanguage, t, tCount])
+  const value = useMemo(
+    () => ({ language, setLanguage, t, tOr, tCount }),
+    [language, setLanguage, t, tOr, tCount],
+  )
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
 }
