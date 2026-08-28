@@ -263,6 +263,33 @@ const fromProformaRow = (row) => ({
   cbm_unit: perUnit(row.cbm_per_carton, row.pcs_per_carton, 6),
 })
 
+/**
+ * From a supplier's commercial invoice and packing list: identity, the barcode
+ * and how the goods were packed.
+ *
+ * No money, deliberately. The invoice states a unit price and it is a real one,
+ * but every figure with a currency on it comes from our own cost sheet -- which
+ * derives the same number after the goods have actually landed, and is the one
+ * document that also knows what they cost us here. Taking the price from two
+ * places would mean two answers to one question.
+ *
+ * Both packing figures are derived, because the document states totals per line
+ * rather than per unit:
+ *
+ *   units_per_box = Quanity (PCS) / Package (CTNS)
+ *   cbm_unit      = Volume (CBM)  / Quanity (PCS)
+ */
+const fromInvoiceRow = (row) => ({
+  product_code: formatProductCode(row.product_code),
+  barcode: row.barcode,
+  supplier_code: row.supplier_code,
+  description_en: row.description_en,
+  units_per_box: wholeNumber(
+    row.quantity && row.cartons ? Number(row.quantity) / Number(row.cartons) : null,
+  ),
+  cbm_unit: perUnit(row.volume_cbm, row.quantity, 6),
+})
+
 /** A count, as a count. Pieces in a carton are never a fraction of a piece. */
 const wholeNumber = (value) => {
   const n = Number(value)
@@ -435,8 +462,18 @@ export const orderSortKey = (reference) => {
 }
 
 /** Which columns record where a document type's values came from. */
-export const DATE_FIELD_FOR = { liquidacion: 'doc_date', proforma: 'doc_date', costo: 'cost_date' }
-export const REF_FIELD_FOR = { liquidacion: 'doc_ref', proforma: 'doc_ref', costo: 'cost_ref' }
+export const DATE_FIELD_FOR = {
+  liquidacion: 'doc_date',
+  proforma: 'doc_date',
+  invoice: 'doc_date',
+  costo: 'cost_date',
+}
+export const REF_FIELD_FOR = {
+  liquidacion: 'doc_ref',
+  proforma: 'doc_ref',
+  invoice: 'doc_ref',
+  costo: 'cost_ref',
+}
 
 /**
  * Work out what an import would do, without doing any of it.
@@ -457,7 +494,13 @@ export const REF_FIELD_FOR = { liquidacion: 'doc_ref', proforma: 'doc_ref', cost
 export function planImport({ docType, rows, existing, docDate = null, docRef = null }) {
   const byKey = new Map((existing ?? []).map((p) => [p.code_key, p]))
   const extract =
-    docType === 'proforma' ? fromProformaRow : docType === 'costo' ? fromCostoRow : fromLiquidacionRow
+    docType === 'proforma'
+      ? fromProformaRow
+      : docType === 'invoice'
+        ? fromInvoiceRow
+        : docType === 'costo'
+          ? fromCostoRow
+          : fromLiquidacionRow
   const dateField = DATE_FIELD_FOR[docType] ?? 'doc_date'
   const refField = REF_FIELD_FOR[docType] ?? 'doc_ref'
 
@@ -684,6 +727,6 @@ export const isoDate = (value) => {
   return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`
 }
 
-export const DOC_TYPES = ['liquidacion', 'proforma', 'costo']
+export const DOC_TYPES = ['liquidacion', 'proforma', 'invoice', 'costo']
 export const docTypeKey = (type) => `catalog.docTypes.${type}`
 export const PAGE_SIZE = 25

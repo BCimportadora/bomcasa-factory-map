@@ -148,6 +148,29 @@ a phantom line item and the row-count check fails against a document that parsed
 almost perfectly. Find the Totales row once, read rows up to and including its
 page, and ignore everything after.
 
+**One supplier invoice can carry lines from SEVERAL orders, and reading it as
+one order is a silent pricing error.** `#77 PIPL ORDER OF YQ-BQ-2603034.xlsx`
+invoices order 77 and also ships one line left over from 75 and one from 76,
+each under its own `PO.` and `S/C NO.` heading part-way down the sheet. Filing
+those two under 77 would tell the catalog they are the newest word on those
+products, which is exactly the mistake the newest-order rule exists to prevent.
+`parseCommercialInvoice` splits the sheet into blocks and `CatalogImport` plans
+one per block, NEWEST FIRST — feeding each block's additions into the list the
+next is planned against, or a product shipped under two orders is planned as an
+insert twice and the second collides on the unique `code_key`.
+
+The blocks are keyed on the S/C number rather than the PO, because that is what
+both sheets carry: `PL` marks its later blocks with the S/C alone and no PO line
+at all. And on this document `Code for Box` is OUR article code while `Item No.`
+is the supplier's — the opposite way round from the Milan proforma, where `Code`
+is ours. Reading them the other way files every product under a code no document
+of ours uses.
+
+The invoice states a real unit price and the catalog deliberately ignores it:
+every figure with a currency on it still comes from our own cost sheet, which
+derives the same number after the goods landed and is the only document that
+also knows what they cost us here.
+
 **A supplier proforma's header is two rows deep, and the sub-headings are
 BELOW.** The top row carries `No.`, `Code` and the merged group headings
 (`QUANTITY`, `FOB PRICE`); the row under it carries `Q'TY`, `UNIT PRICE`,

@@ -445,6 +445,7 @@ export default {
     docTypes: {
       liquidacion: 'Liquidación',
       proforma: 'Proforma',
+      invoice: 'Factura comercial',
       costo: 'Hoja de costos',
     },
 
@@ -488,6 +489,16 @@ export default {
 
     import: {
       action: 'Importar documento',
+      supplier: 'Proveedor',
+      supplierUnknown: 'No identificado: elige uno',
+      supplierFrom: 'El documento dice {{name}}',
+      orderBlocksOne: 'Este archivo trae 1 orden',
+      orderBlocksOther: 'Este archivo trae {{count}} órdenes',
+      blockLines: '{{count}} líneas · S/C {{contract}}',
+      noReference: 'Sin referencia de orden',
+      noReferenceHint:
+        'Sin apodo del proveedor no hay referencia con la cual archivar estos productos, así que no aparecerán en ninguna sección de proveedor. Ponle un apodo al proveedor en el mapa de fábricas, o elige otro proveedor.',
+
       title: 'Importar un documento al catálogo',
       intro: 'Lee una liquidación de la DGA (PDF), una proforma del proveedor o una de nuestras hojas de costos (Excel). No se guarda nada hasta que confirmes. Los precios siguen el documento más reciente, así que importar un pedido antiguo no deshace uno nuevo.',
       choose: 'Elegir un archivo PDF o .xlsx',
@@ -542,6 +553,8 @@ export default {
     },
 
     errors: {
+      noInvoiceSheet: 'Este libro no tiene una hoja de factura comercial que reconozcamos.',
+      noInvoiceRows: 'La factura no tiene líneas de producto con código de artículo.',
       unsupportedFile: 'Solo se pueden importar liquidaciones .pdf y proformas .xlsx.',
       unsupportedBrowser: 'Este navegador no puede abrir archivos .xlsx. Prueba con Chrome, Edge, Firefox o Safari.',
       emptyPdf: 'Ese PDF no tiene páginas.',

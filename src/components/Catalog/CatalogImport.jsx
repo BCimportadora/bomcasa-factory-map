@@ -6,6 +6,8 @@ import { readWorkbook, isSupported as xlsxSupported } from '../../lib/xlsxReader
 import { readLiquidacion } from '../../lib/liquidacionPdf'
 import { parseProforma } from '../../lib/proforma'
 import { parseLiquidation } from '../../lib/liquidation'
+import { parseCommercialInvoice } from '../../lib/commercialInvoice'
+import { factoryLabel, matchFactoryByName } from '../../lib/factories'
 import {
   detectDocType,
   docTypeKey,
@@ -13,6 +15,24 @@ import {
   planImport,
   validateLiquidacion,
 } from '../../lib/catalog'
+
+/**
+ * The order reference a supplier's invoice block belongs to.
+ *
+ * The document says "PO.202603-77" and names the supplier in full at the top of
+ * the page; we call that order "KLIK 77". So the reference is the supplier's
+ * nickname and the PO's number -- which is what makes the products land in that
+ * supplier's section, since the catalog works a product's supplier out from
+ * this reference and nothing else.
+ *
+ * Null when the supplier has no nickname, because there would be nothing to
+ * build the reference from and an invented one would not match the order.
+ */
+export const invoiceReference = (factory, orderNumber) => {
+  const nickname = factory?.nickname?.trim()
+  if (!nickname || orderNumber == null) return null
+  return `${nickname.toUpperCase()} ${orderNumber}`
+}
 
 /** Rows the catalog can be built from, out of one parsed liquidación. */
 const liquidacionRows = (parsed) =>
@@ -34,6 +54,16 @@ function lastSixDigits(description) {
   return found.length ? found[found.length - 1] : null
 }
 
+/** Several plans read as one, for the summary figures at the top. */
+const mergePlans = (plans) => ({
+  added: plans.flatMap((p) => p.added),
+  updated: plans.flatMap((p) => p.updated),
+  skipped: plans.flatMap((p) => p.skipped),
+  failed: plans.flatMap((p) => p.failed ?? []),
+  conflicts: plans.flatMap((p) => p.conflicts),
+  uncoded: plans.flatMap((p) => p.uncoded ?? []),
+})
+
 function Figure({ label, value, tone = '' }) {
   return (
     <div>
@@ -43,7 +73,13 @@ function Figure({ label, value, tone = '' }) {
   )
 }
 
-export default function CatalogImport({ onCheckImported, onListProducts, onConfirm, onClose }) {
+export default function CatalogImport({
+  factories = [],
+  onCheckImported,
+  onListProducts,
+  onConfirm,
+  onClose,
+}) {
   const { t, tCount } = useI18n()
   const input = useRef(null)
 
@@ -51,6 +87,105 @@ export default function CatalogImport({ onCheckImported, onListProducts, onConfi
   const [error, setError] = useState('')
   const [state, setState] = useState(null) // { docType, parsed, plan, document, validation }
   const [alreadyImported, setAlreadyImported] = useState(null)
+  // A commercial invoice is imported per order block, and the supplier it names
+  // decides every block's reference -- so it is confirmed before anything runs.
+  const [supplierId, setSupplierId] = useState('')
+
+  /**
+   * Plan a commercial invoice: one plan per order the file carries.
+   *
+   * The blocks are planned NEWEST FIRST, and each block's additions are fed
+   * into the list the next block is planned against. Without that, a product
+   * the invoice ships under two orders -- 3401-50 arrives under both 77 and 75
+   * here -- would be planned as an insert twice and the second would collide on
+   * the unique code. Newest first also means the older block finds the row
+   * already there and is ranked older against it, which is the same answer it
+   * would give if the two orders had been imported as separate files.
+   */
+  const planInvoice = async (invoice, file) => {
+    const factory = matchFactoryByName(invoice.supplierName, factories)
+    setSupplierId(factory?.id ?? '')
+
+    const keys = invoice.blocks.map((b) => `invoice:${b.contractNo ?? file.name}`)
+    for (const key of keys) {
+      const seen = await onCheckImported(key)
+      if (seen) {
+        setAlreadyImported(seen)
+        return null
+      }
+    }
+
+    const existing = await onListProducts()
+    return {
+      docType: 'invoice',
+      parsed: invoice,
+      fileName: file.name,
+      existing,
+      factory,
+      validation: null,
+      ...planBlocks(invoice, factory, existing, file.name),
+    }
+  }
+
+  /** The per-order plans, and the merged view of them the summary reads. */
+  const planBlocks = (invoice, factory, existing, fileName) => {
+    let known = existing
+    const ordered = [...invoice.blocks].sort(
+      (a, b) => (b.orderNumber ?? 0) - (a.orderNumber ?? 0),
+    )
+
+    const blocks = ordered.map((block) => {
+      const reference = invoiceReference(factory, block.orderNumber)
+      const plan = planImport({
+        docType: 'invoice',
+        rows: block.lines,
+        existing: known,
+        docDate: invoice.date,
+        docRef: reference,
+      })
+      known = [
+        ...known,
+        ...plan.added.map((a) => ({ id: null, code_key: a.key, ...a.fields })),
+      ]
+      return {
+        ...block,
+        reference,
+        plan,
+        document: {
+          doc_type: 'invoice',
+          doc_key: `invoice:${block.contractNo ?? fileName}`,
+          file_name: fileName,
+          invoice_no: block.contractNo ?? null,
+          doc_ref: reference,
+          doc_date: invoice.date,
+          line_count: block.lines.length,
+        },
+      }
+    })
+
+    return {
+      blocks,
+      plan: mergePlans(blocks.map((b) => b.plan)),
+      document: blocks[0].document,
+    }
+  }
+
+  /**
+   * Re-plan against a different supplier.
+   *
+   * The supplier decides every block's reference, and the reference is what
+   * files the products under an order -- so changing it has to redo the plans,
+   * not just relabel them. Planned against the same snapshot of the catalog the
+   * first pass used, so switching back and forth cannot drift.
+   */
+  const changeSupplier = (id) => {
+    setSupplierId(id)
+    setState((prev) => {
+      if (!prev?.blocks) return prev
+      const factory = factories.find((f) => f.id === id) ?? null
+      return { ...prev, factory, ...planBlocks(prev.parsed, factory, prev.existing, prev.fileName) }
+    })
+  }
 
   const handleFile = async (event) => {
     const file = event.target.files?.[0]
@@ -97,6 +232,18 @@ export default function CatalogImport({ onCheckImported, onListProducts, onConfi
       } else {
         if (!xlsxSupported()) throw new Error('unsupportedBrowser')
         const workbook = await readWorkbook(file)
+
+        // A supplier's commercial invoice is tried first: it is the only one of
+        // the three whose header names a "Code for Box", so it can be told
+        // apart with certainty rather than by elimination.
+        try {
+          const invoice = parseCommercialInvoice(workbook, { fileName: file.name })
+          setState(await planInvoice(invoice, file))
+          return
+        } catch (err) {
+          if (err.message !== 'noInvoiceSheet' && err.message !== 'noInvoiceRows') throw err
+        }
+
         // A supplier proforma and one of our own cost sheets are both .xlsx and
         // are named alike. Try the proforma shape first; if the sheet has no
         // No./Code header pair it is a cost sheet, which is read by the parser
@@ -150,7 +297,16 @@ export default function CatalogImport({ onCheckImported, onListProducts, onConfi
     setBusy(true)
     setError('')
     try {
-      await onConfirm({ plan: state.plan, document: state.document })
+      if (state.blocks) {
+        // One import record per order, so each block's products carry the
+        // reference of the order they actually shipped on. Newest first, the
+        // same order they were planned in.
+        for (const block of state.blocks) {
+          await onConfirm({ plan: block.plan, document: block.document })
+        }
+      } else {
+        await onConfirm({ plan: state.plan, document: state.document })
+      }
       onClose()
     } catch (err) {
       setError(err.message ?? t('catalog.errors.importFailed'))
@@ -170,6 +326,9 @@ export default function CatalogImport({ onCheckImported, onListProducts, onConfi
    * figure is to say what the document contained.
    */
   const showsGravamen = (state?.plan.added ?? []).some((a) => a.fields.gravamen_pct != null)
+  // Same reasoning for the tariff code: a commercial invoice classifies
+  // nothing, so the column would be forty-three em dashes.
+  const showsArancel = (state?.plan.added ?? []).some((a) => a.fields.arancel)
 
   const tariffs = (() => {
     if (state?.docType !== 'liquidacion') return null
@@ -253,6 +412,56 @@ export default function CatalogImport({ onCheckImported, onListProducts, onConfi
               )}
             </p>
           </div>
+
+          {/* Which supplier, and which orders. Both are read off the document,
+              and both are shown before anything is written -- the reference
+              built here is what files each product under its order, so a wrong
+              supplier would put a whole shipment in the wrong section. */}
+          {state.blocks && (
+            <div className="mt-3 rounded-xl border border-line px-3.5 py-3">
+              <label htmlFor="inv-supplier" className="label">
+                {t('catalog.import.supplier')}
+              </label>
+              <select
+                id="inv-supplier"
+                value={supplierId}
+                onChange={(e) => changeSupplier(e.target.value)}
+                className="select text-[14px]"
+              >
+                <option value="">{t('catalog.import.supplierUnknown')}</option>
+                {factories.map((factory) => (
+                  <option key={factory.id} value={factory.id}>
+                    {factoryLabel(factory)}
+                  </option>
+                ))}
+              </select>
+              <p className="hint mt-1.5">
+                {t('catalog.import.supplierFrom', { name: state.parsed.supplierName ?? '—' })}
+              </p>
+
+              <p className="label mb-1 mt-3">
+                {tCount('catalog.import.orderBlocks', state.blocks.length)}
+              </p>
+              <ul className="space-y-1">
+                {state.blocks.map((block) => (
+                  <li key={block.document.doc_key} className="flex flex-wrap items-baseline gap-x-2 text-[13px]">
+                    <span className="font-medium text-ink">
+                      {block.reference ?? t('catalog.import.noReference')}
+                    </span>
+                    <span className="text-muted">
+                      {t('catalog.import.blockLines', {
+                        count: block.lines.length,
+                        contract: block.contractNo ?? '—',
+                      })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {state.blocks.some((b) => !b.reference) && (
+                <p className="hint mt-2 text-warning">{t('catalog.import.noReferenceHint')}</p>
+              )}
+            </div>
+          )}
 
           {tariffs && (
             <div className="mt-3 rounded-xl border border-line px-3.5 py-3">
@@ -341,10 +550,13 @@ export default function CatalogImport({ onCheckImported, onListProducts, onConfi
                   <tr className="border-b border-line text-left text-muted">
                     <th className="px-3 py-2 font-medium">{t('catalog.fields.product_code')}</th>
                     <th className="px-3 py-2 font-medium">{t('catalog.fields.description')}</th>
-                    <th className="px-3 py-2 font-medium">{t('catalog.fields.arancel')}</th>
                     {/* Only where the document actually supplies it. A
-                        liquidación never does — the duty rate comes off the
-                        cost sheet — and a column of em dashes says nothing. */}
+                        liquidación never supplies a duty rate — that comes off
+                        the cost sheet — and an invoice supplies no tariff code
+                        at all. A column of em dashes says nothing. */}
+                    {showsArancel && (
+                      <th className="px-3 py-2 font-medium">{t('catalog.fields.arancel')}</th>
+                    )}
                     {showsGravamen && (
                       <th className="px-3 py-2 text-right font-medium">
                         {t('catalog.fields.gravamen_pct')}
@@ -357,9 +569,16 @@ export default function CatalogImport({ onCheckImported, onListProducts, onConfi
                     <tr key={a.key} className="border-b border-line last:border-0">
                       <td className="whitespace-nowrap px-3 py-1.5 text-ink">{a.fields.product_code}</td>
                       <td className="max-w-[20rem] truncate px-3 py-1.5 text-muted">
-                        {a.fields.description ?? a.fields.description_es ?? '—'}
+                        {a.fields.description ??
+                          a.fields.description_es ??
+                          a.fields.description_en ??
+                          '—'}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-1.5 text-muted">{a.fields.arancel ?? '—'}</td>
+                      {showsArancel && (
+                        <td className="whitespace-nowrap px-3 py-1.5 text-muted">
+                          {a.fields.arancel ?? '—'}
+                        </td>
+                      )}
                       {showsGravamen && (
                         <td className="px-3 py-1.5 text-right text-ink">
                           {a.fields.gravamen_pct != null ? `${a.fields.gravamen_pct} %` : '—'}

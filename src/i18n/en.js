@@ -444,6 +444,7 @@ export default {
     docTypes: {
       liquidacion: 'Liquidación',
       proforma: 'Proforma',
+      invoice: 'Commercial invoice',
       costo: 'Cost sheet',
     },
 
@@ -487,6 +488,16 @@ export default {
 
     import: {
       action: 'Import document',
+      supplier: 'Supplier',
+      supplierUnknown: 'Not identified — choose one',
+      supplierFrom: 'The document names {{name}}',
+      orderBlocksOne: 'This file carries 1 order',
+      orderBlocksOther: 'This file carries {{count}} orders',
+      blockLines: '{{count}} lines · S/C {{contract}}',
+      noReference: 'No order reference',
+      noReferenceHint:
+        'Without a supplier nickname there is no reference to file these products under, so they will not appear in any supplier section. Give the supplier a nickname on the factory map, or pick a different supplier.',
+
       title: 'Import a document into the catalog',
       intro: 'Reads a DGA liquidación (PDF), a supplier proforma or one of our cost sheets (Excel). Nothing is saved until you confirm. Prices follow the newest document, so importing an older order will not undo a newer one.',
       choose: 'Choose a PDF or .xlsx file',
@@ -541,6 +552,8 @@ export default {
     },
 
     errors: {
+      noInvoiceSheet: 'This workbook has no commercial-invoice sheet we recognise.',
+      noInvoiceRows: 'The invoice has no product lines with an article code.',
       unsupportedFile: 'Only .pdf liquidaciones and .xlsx proformas can be imported.',
       unsupportedBrowser: 'This browser cannot open .xlsx files. Try Chrome, Edge, Firefox or Safari.',
       emptyPdf: 'That PDF has no pages.',

@@ -468,6 +468,7 @@ export default function CatalogPage() {
 
       {importing && (
         <CatalogImport
+          factories={factories}
           onCheckImported={findImport}
           onListProducts={listProducts}
           onConfirm={({ plan, document }) => applyImport({ plan, document, userId: user.id })}

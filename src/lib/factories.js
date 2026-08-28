@@ -70,6 +70,21 @@ export const matchFactoryByAlias = (word, factories) => {
   return soleOrPlant((factories ?? []).filter((f) => aliasKey(f.name).includes(needle)))
 }
 
+/**
+ * The supplier whose LEGAL name this is, or null.
+ *
+ * For documents that name the company in full -- a commercial invoice puts
+ * "WenZhou YueQiu BakeLite Electric Appliances Co.,LTD." at the top of every
+ * page. That is the opposite direction from matchFactoryByAlias, which is given
+ * a short word and hunts for it inside the name; here the whole name is stated
+ * and only an exact match will do.
+ */
+export const matchFactoryByName = (name, factories) => {
+  const needle = aliasKey(name)
+  if (needle.length < 6) return null
+  return soleOrPlant((factories ?? []).filter((f) => aliasKey(f.name) === needle))
+}
+
 /** Whether a search box's text matches this supplier's either name. */
 export const matchesAlias = (factory, query) => {
   const needle = aliasKey(query)
