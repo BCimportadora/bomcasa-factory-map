@@ -19,13 +19,18 @@ const ORDER_COLUMNS = [
   'eta',
   'container_no',
   'bl_number',
+  // The air part's own paperwork, beside the sea part's. Null on the orders
+  // that arrived in one piece, which is most of them.
+  'air_awb',
+  'air_etd',
+  'air_eta',
   'notes',
 ]
 
-const ITEM_COLUMNS = ['product', 'quantity', 'unit', 'unit_price']
+const ITEM_COLUMNS = ['product', 'quantity', 'unit', 'unit_price', 'shipment']
 
 /** A date column left blank must go to the database as null, not ''. */
-const DATE_COLUMNS = new Set(['order_date', 'ready_date', 'etd', 'eta'])
+const DATE_COLUMNS = new Set(['order_date', 'ready_date', 'etd', 'eta', 'air_etd', 'air_eta'])
 const NUMERIC_COLUMNS = new Set(['quantity', 'unit_price'])
 
 const clean = (value, column) => {

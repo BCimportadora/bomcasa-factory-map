@@ -324,6 +324,15 @@ export default {
     readyDate: 'Ready at factory',
     etd: 'ETD',
     eta: 'ETA',
+    airSection: 'Air shipment',
+    airSectionHint: 'When part of the order flew rather than sailing. Leave empty if it all came in the container.',
+    airAwb: 'Air waybill (AWB)',
+    airEtd: 'Air ETD',
+    airEta: 'Air ETA',
+    shipments: {
+      sea: 'By sea',
+      air: 'By air',
+    },
     containerNo: 'Container',
     blNumber: 'Bill of lading',
     notes: 'Notes',
@@ -372,6 +381,9 @@ export default {
       quantity: 'Quantity',
       unit: 'Unit',
       unitPrice: 'Unit price',
+      shipment: 'How it travelled',
+      countOne: '1 line',
+      countOther: '{{count}} lines',
       add: 'Add line',
       remove: 'Remove this line',
     },
@@ -488,6 +500,17 @@ export default {
 
     import: {
       action: 'Import document',
+      airQuestionOne: '1 item is not travelling in the container',
+      airQuestionOther: '{{count}} items are not travelling in the container',
+      airQuestionHint: 'Does this order have an air shipment?',
+      airNotPacked: 'invoiced but not on the packing list',
+      airNoted: 'marked by air on the document',
+      airYes: 'Yes, part of it flew',
+      airNo: 'No, it should all be in the container',
+      airYesHint:
+        'These import with no CBM or carton count, which is right — the packing list does not cover them. Mark their lines as air on the order, and fill in the AWB and its dates there.',
+      airNoHint:
+        'Then the packing list is missing lines the invoice bills. Worth checking with the supplier before importing — the products will come in without packing figures either way.',
       supplier: 'Supplier',
       supplierUnknown: 'Not identified — choose one',
       supplierFrom: 'The document names {{name}}',

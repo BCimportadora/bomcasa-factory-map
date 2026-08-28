@@ -139,3 +139,23 @@ export const byDate = (field) => (a, b) => {
   if (!right) return -1
   return left < right ? -1 : left > right ? 1 : 0
 }
+
+/**
+ * How a line travelled. An order can arrive in two parts and still be one
+ * order: a container by sea, and whatever was needed sooner on a plane.
+ *
+ * `sea` first because it is the default and what almost every line does.
+ */
+export const SHIPMENTS = ['sea', 'air']
+
+export const shipmentKey = (value) => `orders.shipments.${value}`
+
+/** The lines of an order split into the two parts, air last and only if any. */
+export const byShipment = (items) => {
+  const sea = (items ?? []).filter((i) => (i.shipment ?? 'sea') !== 'air')
+  const air = (items ?? []).filter((i) => i.shipment === 'air')
+  return air.length === 0 ? [{ mode: 'sea', items: sea, only: true }] : [
+    { mode: 'sea', items: sea, only: false },
+    { mode: 'air', items: air, only: false },
+  ]
+}

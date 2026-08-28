@@ -63,6 +63,28 @@ const CONTRACT = /s\s*\/?\s*c\s*no\.?\s*([A-Za-z0-9][A-Za-z0-9-]*)/i
 /** `Date: 2026.03.18` -> `2026-03-18`, which sorts and compares as text. */
 const DATE_LINE = /date\s*:?\s*(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/i
 
+/**
+ * The note a supplier writes beside a line that is not travelling by sea.
+ *
+ * Both spellings are in one file: `By air-2000PCS` on the invoice and
+ * `2000pcs by air` on the packing list. The note is looked for in EVERY cell of
+ * the row rather than in a Remark column, because on this document it sits one
+ * column past the labelled one -- the labelled Remark holds the general terms.
+ */
+const AIR_NOTE = /(?:by\s*air\D{0,4}(\d[\d,]*)\s*(?:pcs)?)|(?:(\d[\d,]*)\s*(?:pcs)?\s*by\s*air)/i
+
+const airNote = (row) => {
+  for (const value of row.cells.values()) {
+    const raw = String(value ?? '')
+    const m = raw.match(AIR_NOTE)
+    if (m) {
+      const qty = (m[1] ?? m[2] ?? '').replace(/,/g, '')
+      return { note: raw.trim().replace(/\s+/g, ' '), quantity: qty ? Number(qty) : null }
+    }
+  }
+  return null
+}
+
 const num = (value) => {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null
   if (typeof value !== 'string') return null
@@ -192,6 +214,10 @@ function readSheet(sheet) {
       unit_price: num(get(row, 'unit_price')),
       cartons: num(get(row, 'cartons')),
       volume_cbm: num(get(row, 'volume_cbm')),
+      // Read but never stored: the quantities in these notes do not always
+      // agree with the invoiced ones -- 3409-89 is invoiced 600 and noted
+      // "1080PCS BY AIR" -- so the note is shown to a person and left at that.
+      air: airNote(row),
     })
   }
 
@@ -251,7 +277,19 @@ export function parseCommercialInvoice(workbook, { fileName } = {}) {
     orderNumber: block.orderNumber,
     lines: block.lines.map((line) => {
       const p = packed.get(`${block.contractNo ?? ''}|${line.product_code}`)
-      return { ...line, cartons: line.cartons ?? p?.cartons ?? null, volume_cbm: line.volume_cbm ?? p?.volume_cbm ?? null }
+      return {
+        ...line,
+        cartons: line.cartons ?? p?.cartons ?? null,
+        volume_cbm: line.volume_cbm ?? p?.volume_cbm ?? null,
+        // Either sheet may carry the note; the invoice's wins because it is
+        // where the supplier writes it first.
+        air: line.air ?? p?.air ?? null,
+        // Whether the container is actually carrying it. A line the invoice
+        // bills and the packing list omits is not in the container at all --
+        // on this file that is 3408-85, invoiced at a quantity of nothing and
+        // noted "By air-2000PCS".
+        onPackingList: packing ? Boolean(p) : null,
+      }
     }),
   }))
 
@@ -259,8 +297,27 @@ export function parseCommercialInvoice(workbook, { fileName } = {}) {
   if (!invoice.identity.supplierName) warnings.push('noSupplierName')
   if (blocks.some((b) => b.orderNumber === null)) warnings.push('noOrderNumber')
 
+  // Lines the container is not carrying, or that the supplier has marked as
+  // flying. The importer puts these to a person: a line missing from the
+  // packing list is either an air shipment or a document that disagrees with
+  // itself, and only somebody who knows the order can say which.
+  const flying = blocks.flatMap((block) =>
+    block.lines
+      .filter((line) => line.onPackingList === false || line.air)
+      .map((line) => ({
+        orderNumber: block.orderNumber,
+        product_code: line.product_code,
+        description_en: line.description_en,
+        quantity: line.quantity,
+        note: line.air?.note ?? null,
+        airQuantity: line.air?.quantity ?? null,
+        onPackingList: line.onPackingList,
+      })),
+  )
+
   return {
     fileName: fileName ?? null,
+    flying,
     invoiceSheet: invoiceSheet?.name ?? null,
     packingSheet: packingSheet?.name ?? null,
     supplierName: invoice.identity.supplierName,

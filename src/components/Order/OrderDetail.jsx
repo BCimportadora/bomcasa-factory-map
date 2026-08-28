@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, FileSpreadsheet } from 'lucide-react'
+import { ChevronDown, FileSpreadsheet, Plane, Ship } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useI18n } from '../../i18n'
 import { factoryLabel } from '../../lib/factories'
@@ -7,7 +7,7 @@ import { useOrderFiles } from '../../hooks/useOrderFiles'
 import Modal from '../common/Modal'
 import OrderFiles from './OrderFiles'
 import StatusBadge from './StatusBadge'
-import { formatMoney, formatQuantity, orderTotal } from '../../lib/orders'
+import { byShipment, formatMoney, formatQuantity, orderTotal, shipmentKey } from '../../lib/orders'
 import { getPort } from '../../lib/ports'
 
 /** The charge components of one line, in the order the sheet computes them. */
@@ -91,6 +91,8 @@ export default function OrderDetail({ order, factory, onClose }) {
   const { files, addFiles, removeFile, signedUrlFor } = useOrderFiles(order.id)
 
   const items = order.order_items ?? []
+  // The two parts of the order, or just the one when nothing flew.
+  const sections = byShipment(items)
   const port = getPort(order.fob_port)
   const landedCurrency = order.landed_currency ?? 'DOP'
   const hasLanded = items.some((item) => item.landed_total != null)
@@ -160,8 +162,27 @@ export default function OrderDetail({ order, factory, onClose }) {
               <th className="w-8" />
             </tr>
           </thead>
-          <tbody>
-            {items.map((item) => {
+          {sections.map((section) => (
+          <tbody key={section.mode}>
+            {/* Only when the order actually came in two parts. A banner over
+                every line of a single-part order would say nothing. */}
+            {!section.only && (
+              <tr>
+                <td
+                  colSpan={hasLanded ? 7 : 4}
+                  className="border-y border-line bg-canvas px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-muted"
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    {section.mode === 'air' ? <Plane size={12} /> : <Ship size={12} />}
+                    {t(shipmentKey(section.mode))}
+                    <span className="font-normal normal-case">
+                      · {tCount('orders.items.count', section.items.length)}
+                    </span>
+                  </span>
+                </td>
+              </tr>
+            )}
+            {section.items.map((item) => {
               const open = expanded === item.id
               return (
                 <tr key={item.id} className="border-b border-line last:border-0 align-top">
@@ -217,6 +238,7 @@ export default function OrderDetail({ order, factory, onClose }) {
               )
             })}
           </tbody>
+          ))}
         </table>
       </div>
 

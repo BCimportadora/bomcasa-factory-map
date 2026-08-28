@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { AlertTriangle, FileSpreadsheet, Upload } from 'lucide-react'
+import { AlertTriangle, FileSpreadsheet, Plane, Upload } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import Modal from '../common/Modal'
 import { readWorkbook, isSupported as xlsxSupported } from '../../lib/xlsxReader'
@@ -90,6 +90,11 @@ export default function CatalogImport({
   // A commercial invoice is imported per order block, and the supplier it names
   // decides every block's reference -- so it is confirmed before anything runs.
   const [supplierId, setSupplierId] = useState('')
+  // Whether this order has an air shipment. Deliberately three-valued: null is
+  // "nobody has been asked yet", and the import waits for an answer, because a
+  // line the invoice bills and the packing list omits is either flying or a
+  // document contradicting itself and only a person can say which.
+  const [airSection, setAirSection] = useState(null)
 
   /**
    * Plan a commercial invoice: one plan per order the file carries.
@@ -195,6 +200,7 @@ export default function CatalogImport({
     setError('')
     setAlreadyImported(null)
     setState(null)
+    setAirSection(null)
     setBusy(true)
 
     try {
@@ -317,6 +323,11 @@ export default function CatalogImport({
 
   const validationFailed = state?.validation && !state.validation.ok
 
+  /** Lines that are flying, or that the container is not carrying. */
+  const flying = state?.parsed?.flying ?? []
+  // An unanswered question is a blocked import, which is the point of asking.
+  const awaitingAir = flying.length > 0 && airSection === null
+
   /**
    * The partidas arancelarias the document carried, and how many lines each
    * classified.
@@ -412,6 +423,66 @@ export default function CatalogImport({
               )}
             </p>
           </div>
+
+          {/* Lines the container is not carrying, or that the supplier marked
+              as flying. Nothing imports until this is answered: a line the
+              invoice bills and the packing list omits is either an air
+              shipment or a document that disagrees with itself. */}
+          {flying.length > 0 && (
+            <div
+              className={`mt-3 rounded-xl border px-3.5 py-3 ${
+                airSection === null ? 'border-warning/40 bg-warning/5' : 'border-line'
+              }`}
+            >
+              <div className="flex gap-2.5">
+                <Plane size={16} className="mt-0.5 flex-shrink-0 text-muted" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium text-ink">
+                    {tCount('catalog.import.airQuestion', flying.length)}
+                  </p>
+                  <p className="hint mt-0.5">{t('catalog.import.airQuestionHint')}</p>
+
+                  <ul className="mt-2 space-y-1">
+                    {flying.map((line) => (
+                      <li key={`${line.orderNumber}-${line.product_code}`} className="text-[12px]">
+                        <span className="font-medium text-ink">{line.product_code}</span>
+                        <span className="ml-1.5 text-muted">
+                          {line.onPackingList === false
+                            ? t('catalog.import.airNotPacked')
+                            : t('catalog.import.airNoted')}
+                          {line.note && <> · “{line.note}”</>}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAirSection(true)}
+                      className={airSection === true ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+                    >
+                      {t('catalog.import.airYes')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAirSection(false)}
+                      className={airSection === false ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+                    >
+                      {t('catalog.import.airNo')}
+                    </button>
+                  </div>
+
+                  {airSection === true && (
+                    <p className="hint mt-2">{t('catalog.import.airYesHint')}</p>
+                  )}
+                  {airSection === false && (
+                    <p className="mt-2 text-[12px] text-warning">{t('catalog.import.airNoHint')}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Which supplier, and which orders. Both are read off the document,
               and both are shown before anything is written -- the reference
@@ -598,7 +669,7 @@ export default function CatalogImport({
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={busy || validationFailed}
+              disabled={busy || validationFailed || awaitingAir}
               className="btn-primary"
             >
               <Upload size={16} strokeWidth={2} />

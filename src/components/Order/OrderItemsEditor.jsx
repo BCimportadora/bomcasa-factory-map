@@ -1,8 +1,8 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { useI18n } from '../../i18n'
-import { UNIT_SUGGESTIONS, formatMoney, itemTotal } from '../../lib/orders'
+import { SHIPMENTS, UNIT_SUGGESTIONS, formatMoney, itemTotal, shipmentKey } from '../../lib/orders'
 
-export const emptyItem = () => ({ product: '', quantity: '', unit: 'pcs', unit_price: '' })
+export const emptyItem = () => ({ product: '', quantity: '', unit: 'pcs', unit_price: '', shipment: 'sea' })
 
 /**
  * The line items of one order.
@@ -56,7 +56,7 @@ export default function OrderItemsEditor({ items, onChange, currency }) {
               </button>
             </div>
 
-            <div className="mt-2 grid grid-cols-3 gap-2">
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
               <input
                 value={item.quantity}
                 onChange={(e) => update(index, 'quantity', e.target.value)}
@@ -81,6 +81,21 @@ export default function OrderItemsEditor({ items, onChange, currency }) {
                 aria-label={t('orders.items.unitPrice')}
                 className="input text-[14px]"
               />
+              {/* How this line travelled. Per line rather than per order,
+                  because that is what actually differs when a container sails
+                  and a few thousand pieces fly. */}
+              <select
+                value={item.shipment ?? 'sea'}
+                onChange={(e) => update(index, 'shipment', e.target.value)}
+                aria-label={t('orders.items.shipment')}
+                className="select text-[14px]"
+              >
+                {SHIPMENTS.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {t(shipmentKey(mode))}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {itemTotal(item) > 0 && (

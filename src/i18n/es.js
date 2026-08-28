@@ -325,6 +325,15 @@ export default {
     readyDate: 'Listo en fábrica',
     etd: 'ETD',
     eta: 'ETA',
+    airSection: 'Tramo aéreo',
+    airSectionHint: 'Cuando parte del pedido voló en vez de navegar. Déjalo vacío si todo vino en el contenedor.',
+    airAwb: 'Guía aérea (AWB)',
+    airEtd: 'ETD aéreo',
+    airEta: 'ETA aéreo',
+    shipments: {
+      sea: 'Marítimo',
+      air: 'Aéreo',
+    },
     containerNo: 'Contenedor',
     blNumber: 'Conocimiento de embarque',
     notes: 'Notas',
@@ -373,6 +382,9 @@ export default {
       quantity: 'Cantidad',
       unit: 'Unidad',
       unitPrice: 'Precio unitario',
+      shipment: 'Cómo viajó',
+      countOne: '1 línea',
+      countOther: '{{count}} líneas',
       add: 'Añadir línea',
       remove: 'Eliminar esta linea',
     },
@@ -489,6 +501,17 @@ export default {
 
     import: {
       action: 'Importar documento',
+      airQuestionOne: '1 artículo no viaja en el contenedor',
+      airQuestionOther: '{{count}} artículos no viajan en el contenedor',
+      airQuestionHint: '¿Este pedido tiene un tramo aéreo?',
+      airNotPacked: 'facturado pero no está en la packing list',
+      airNoted: 'marcado como aéreo en el documento',
+      airYes: 'Sí, una parte voló',
+      airNo: 'No, debería ir todo en el contenedor',
+      airYesHint:
+        'Entran sin CBM ni cantidad por caja, que es lo correcto: la packing list no los cubre. Marca sus líneas como aéreas en el pedido y pon allí la guía aérea y sus fechas.',
+      airNoHint:
+        'Entonces a la packing list le faltan líneas que la factura sí cobra. Conviene confirmarlo con el proveedor antes de importar; los productos entrarán sin cifras de empaque en cualquier caso.',
       supplier: 'Proveedor',
       supplierUnknown: 'No identificado: elige uno',
       supplierFrom: 'El documento dice {{name}}',

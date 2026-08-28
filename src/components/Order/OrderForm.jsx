@@ -17,6 +17,9 @@ const emptyOrder = {
   eta: '',
   container_no: '',
   bl_number: '',
+  air_awb: '',
+  air_etd: '',
+  air_eta: '',
   notes: '',
 }
 
@@ -38,6 +41,9 @@ export default function OrderForm({ initialValues, factories, onSubmit, onCancel
       eta: asDateInput(merged.eta),
       container_no: merged.container_no ?? '',
       bl_number: merged.bl_number ?? '',
+      air_awb: merged.air_awb ?? '',
+      air_etd: asDateInput(merged.air_etd),
+      air_eta: asDateInput(merged.air_eta),
       notes: merged.notes ?? '',
     }
   })
@@ -71,6 +77,10 @@ export default function OrderForm({ initialValues, factories, onSubmit, onCancel
     // Dates are compared as ISO strings, which sort correctly without parsing.
     if (values.order_date && values.ready_date && values.ready_date < values.order_date) {
       setFormError(t('orders.readyBeforeOrder'))
+      return
+    }
+    if (values.air_etd && values.air_eta && values.air_eta < values.air_etd) {
+      setFormError(t('orders.etaBeforeEtd'))
       return
     }
     if (values.etd && values.eta && values.eta < values.etd) {
@@ -195,6 +205,19 @@ export default function OrderForm({ initialValues, factories, onSubmit, onCancel
           <div className="grid gap-4 sm:grid-cols-2">
             {field('container_no', 'orders.containerNo')}
             {field('bl_number', 'orders.blNumber')}
+          </div>
+
+          {/* The air part, if the order has one. Shown always rather than
+              behind a toggle: an empty AWB is its own answer, and hiding the
+              fields would mean somebody has to know they exist. */}
+          <div className="mt-5 border-t border-line pt-4">
+            <p className="label mb-0">{t('orders.airSection')}</p>
+            <p className="hint mb-3">{t('orders.airSectionHint')}</p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {field('air_awb', 'orders.airAwb')}
+              {field('air_etd', 'orders.airEtd', { type: 'date' })}
+              {field('air_eta', 'orders.airEta', { type: 'date' })}
+            </div>
           </div>
         </div>
       </div>

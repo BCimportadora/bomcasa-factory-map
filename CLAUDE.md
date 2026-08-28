@@ -211,6 +211,27 @@ The part that catches people out: a build run while the fixture is still in
 **not** remove it from `dist/` — the next deploy ships it. Search the whole tree,
 not just `public/`, and rebuild after deleting.
 
+**An order can arrive in two parts and is still ONE order.** A container sails
+while a few thousand pieces fly, because they were needed sooner or missed the
+sailing; the supplier invoices both together and notes the flown quantity in the
+margin. So the mode lives on `order_items.shipment` — that is what differs, line
+by line — and the air leg's own paperwork sits beside the sea leg's as
+`orders.air_awb` / `air_etd` / `air_eta`. Splitting it into two orders would
+break the numbering that decides whose pricing is current, and a shipments table
+would model N legs nobody has at the cost of a join, a second set of RLS policies
+and a rewrite of `replaceItems`. `shipment` defaults to `'sea'` because every row
+that predates the column travelled in a container.
+
+**A line the invoice bills and the packing list omits is a question, not a
+fact.** It is either an air shipment or a document contradicting itself, and
+only somebody who knows the order can say which — so `CatalogImport` blocks the
+import until it is answered. The supplier writes the answer in the margin more
+often than not (`By air-2000PCS` on the invoice, `2000pcs by air` on the packing
+list), and `airNote` looks for it in EVERY cell of the row because on this
+document it sits one column past the labelled Remark, which holds the general
+terms. Those quantities are shown and never stored: they do not always agree
+with the invoiced ones — 3409-89 is invoiced 600 and noted "1080PCS BY AIR".
+
 **Orders are one table with two views, not two features.** `orders` +
 `order_items`, and a single status flow (`draft → confirmed → in_production →
 ready → shipped → arrived`, plus `cancelled`). "Orders to do" shows the first

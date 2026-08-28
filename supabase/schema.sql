@@ -302,6 +302,38 @@ create table if not exists public.order_items (
 
 create index if not exists order_items_order_id_idx on public.order_items(order_id);
 
+-- An order can arrive in two parts, and they are still one order.
+--
+-- A container of switches leaves by sea while a few thousand pieces go on a
+-- plane, because they were needed sooner or missed the sailing. The supplier
+-- invoices both together and notes the flown quantity in the margin, so the
+-- order is one thing with two deliveries -- not two orders, which would break
+-- the numbering that decides whose pricing is current.
+--
+-- The mode lives on the LINE because that is what differs: a line went by sea
+-- or it went by air. `sea` is the default because it is what almost every line
+-- does, and because every row that existed before this column did travelled in
+-- a container.
+alter table public.order_items add column if not exists shipment text not null default 'sea';
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'order_items_shipment_check') then
+    alter table public.order_items add constraint order_items_shipment_check
+      check (shipment in ('sea', 'air'));
+  end if;
+end $$;
+
+-- ...and the air part's own paperwork, beside the sea part's.
+--
+-- Three columns rather than a shipments table: an order comes in at most these
+-- two parts, and `etd`/`eta`/`bl_number`/`container_no` already describe the
+-- sea one. A table would model N parts nobody has, at the cost of a join, a
+-- second set of RLS policies and a rewrite of how order lines are saved.
+alter table public.orders add column if not exists air_awb text;
+alter table public.orders add column if not exists air_etd date;
+alter table public.orders add column if not exists air_eta date;
+
 -- Keeps updated_at honest without every caller having to remember it.
 create or replace function public.touch_updated_at()
 returns trigger as $$
