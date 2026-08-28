@@ -233,10 +233,15 @@ map popup, the measure panel) while the legal name stays visible underneath,
 because that is what a customs agent needs.
 
 The reason it earns its place is `guessFactory`: an order reference IS the
-nickname plus a number, so "KLIK 76" resolves to Ningbo Kolny — which the old
-rule, looking for the word inside the legal name, could never do. Exact
-nickname match first, substring-of-legal-name only as the fallback for
-suppliers nobody has nicknamed.
+nickname plus a number, so "KLIK 76" resolves to Wenzhou Yueqiu Bakelite
+Electric Appliances — which the old rule, looking for the word inside the legal
+name, could never do, because most of these nicknames appear nowhere in the
+company's name. Exact nickname match first, substring-of-legal-name only as the
+fallback for suppliers nobody has nicknamed.
+
+The real list lives in `supabase/set-factory-nicknames.sql`, loaded from the
+company's own `apodos.xlsx`. Of 29 suppliers, only about a third have a
+nickname their legal name contains.
 
 Two rows matching is usually ONE company with a plant and a sales office, so
 `soleOrPlant` picks the plant rather than giving up; only a genuine tie between
