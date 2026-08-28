@@ -8,7 +8,6 @@ import { useOrders } from '../hooks/useOrders'
 import { factoryLabel } from '../lib/factories'
 import {
   formatPercent,
-  formatPrice,
   formatProductCode,
   isInternalUse,
   lastSeenOrder,
@@ -42,11 +41,51 @@ const ALL_COLUMNS = [
   'precio_lista',
 ]
 
-/** The ones that read as figures, and belong right-aligned. */
-const NUMERIC = new Set(['gravamen_pct', 'fob_usd', 'unit_price_dop', 'precio_lista'])
+/** The money columns. The workbook prints these in bold; so do we. */
+const MONEY = new Set(['fob_usd', 'unit_price_dop', 'precio_lista'])
 
 /** Codes and figures must not wrap; the two descriptions are what may. */
-const NOWRAP = new Set([...NUMERIC, 'product_code', 'supplier_code', 'barcode', 'arancel'])
+const NOWRAP = new Set([...MONEY, 'gravamen_pct', 'product_code', 'supplier_code', 'barcode', 'arancel'])
+
+/**
+ * Relative column widths, taken from the workbook's own column settings --
+ * where the two description columns together hold well over half the sheet.
+ *
+ * They have to be declared rather than left to the browser. With automatic
+ * layout a column claims the width of its longest heading, so "COSTO UNITARIO
+ * (RD$)" reserved a hundred points to print "20.00" in, and the descriptions
+ * paid for it by wrapping onto three lines each. The weights are normalised
+ * over whichever columns actually render, so dropping an empty one hands its
+ * width back to the rest instead of leaving a gap.
+ */
+const WIDTH = {
+  product_code: 5,
+  supplier_code: 9,
+  description_en: 21,
+  description: 30,
+  barcode: 8,
+  arancel: 7,
+  gravamen_pct: 5,
+  fob_usd: 5,
+  unit_price_dop: 5,
+  precio_lista: 5,
+}
+
+/**
+ * Column alignment, copied from the workbook cell for cell: our code to the
+ * right, their code centred, the English description left, figures right.
+ * Anything unlisted takes the default, which is left.
+ */
+const ALIGN = {
+  product_code: 'text-right',
+  supplier_code: 'text-center',
+  barcode: 'text-center',
+  arancel: 'text-center',
+  gravamen_pct: 'text-right',
+  fob_usd: 'text-right',
+  unit_price_dop: 'text-right',
+  precio_lista: 'text-right',
+}
 
 /**
  * The catalog on paper.
@@ -155,14 +194,36 @@ export default function CatalogPrintPage() {
     [rows],
   )
 
+  /**
+   * A figure the way the workbook writes one: the bare number, to the decimals
+   * that column uses, with no currency symbol.
+   *
+   * The symbol moves up into the heading instead. Their COSTO columns are all
+   * dollars so the column itself says so; ours are not -- FOB is USD and the
+   * other two are pesos -- so the heading carries it. Repeating "US$" down
+   * three hundred rows costs the width the descriptions need, and a zero here
+   * still means no price rather than free.
+   */
+  const figure = (value, decimals) => {
+    if (value == null || value === '' || Number(value) === 0) return '—'
+    const n = Number(value)
+    if (!Number.isFinite(n)) return '—'
+    return new Intl.NumberFormat(language === 'es' ? 'es-ES' : 'en-GB', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(n)
+  }
+
+  const widthTotal = columns.reduce((sum, field) => sum + (WIDTH[field] ?? 5), 0)
+
   const cell = (product, field) => {
     if (field === 'product_code') return formatProductCode(product[field]) || '—'
     if (field === 'gravamen_pct') return formatPercent(product[field], language)
     if (field === 'precio_lista' && isInternalUse(product)) return t('catalog.fields.internal_use')
-    if (field === 'fob_usd') return formatPrice(product[field], 'USD', language)
-    if (field === 'unit_price_dop' || field === 'precio_lista') {
-      return formatPrice(product[field], 'DOP', language)
-    }
+    // Three decimals on the FOB cost, as the workbook's COSTO columns carry;
+    // two on the peso figures, which is how pesos are written.
+    if (field === 'fob_usd') return figure(product[field], 3)
+    if (field === 'unit_price_dop' || field === 'precio_lista') return figure(product[field], 2)
     return product[field] || '—'
   }
 
@@ -221,11 +282,10 @@ export default function CatalogPrintPage() {
       <style>{'@media print { @page { size: landscape; margin: 0 } }'}</style>
 
       <div className="mx-auto max-w-5xl px-8 py-8 print:max-w-none print:px-[10mm] print:py-0">
-        <header className="mb-5 print:mb-0 print:pt-[9mm]">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 print:text-[9px]">
-            {t('catalog.print.company')}
-          </p>
-          <h1 className="text-[22px] font-semibold tracking-[-0.01em] print:text-[14px]">{heading}</h1>
+        {/* Centred over the table, as the workbook's own two title rows are. */}
+        <header className="mb-4 text-center print:mb-1.5 print:pt-[9mm]">
+          <h1 className="text-[20px] font-bold print:text-[14px]">{t('catalog.print.company')}</h1>
+          <p className="text-[13px] font-bold print:text-[10px]">{heading}</p>
           <p className="mt-0.5 text-[12px] text-neutral-600 print:text-[8px]">
             {t('catalog.print.subtitle', { count: rows.length, date: printedOn })}
           </p>
@@ -236,20 +296,24 @@ export default function CatalogPrintPage() {
         ) : rows.length === 0 ? (
           <p className="py-12 text-center text-[14px] text-neutral-600">{t('catalog.noMatches')}</p>
         ) : (
-          <table className="w-full border-collapse text-[11px] print:text-[9px]">
+          <table className="w-full table-fixed border-collapse text-[11px] print:text-[9px]">
+            <colgroup>
+              {columns.map((field) => (
+                <col key={field} style={{ width: `${((WIDTH[field] ?? 5) / widthTotal) * 100}%` }} />
+              ))}
+            </colgroup>
             {/* Repeated on every sheet: a page of figures with no headings on
                 it is unreadable on its own. Its padding-top is also what gives
                 pages two onwards their top margin. */}
             <thead className="table-header-group">
-              <tr className="border-b border-neutral-400 text-left">
+              <tr>
                 {columns.map((field) => (
-                  <th
-                    key={field}
-                    className={`px-1.5 py-1.5 font-semibold print:pb-1 print:pt-[8mm] ${
-                      NUMERIC.has(field) ? 'text-right' : ''
-                    }`}
-                  >
-                    {t(`catalog.print.columns.${field}`)}
+                  // The padding-top is outside the box on purpose: it is the
+                  // page's top margin, not part of the heading cell.
+                  <th key={field} className="align-bottom print:pt-[8mm]">
+                    <div className="border border-neutral-500 px-1.5 py-1.5 text-center font-bold uppercase print:py-1">
+                      {t(`catalog.print.columns.${field}`)}
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -262,10 +326,10 @@ export default function CatalogPrintPage() {
                   <tr className="break-inside-avoid">
                     <td
                       colSpan={columns.length}
-                      className="border-b border-neutral-400 pb-1 pt-4 text-[12px] font-semibold uppercase tracking-wide print:pb-0.5 print:pt-2.5 print:text-[9px]"
+                      className="border border-neutral-500 px-1.5 py-1.5 text-center text-[13px] font-bold uppercase print:py-1 print:text-[10px]"
                     >
                       {section.label}
-                      <span className="ml-2 font-normal normal-case text-neutral-500">
+                      <span className="ml-2 text-[11px] font-normal normal-case text-neutral-600 print:text-[8px]">
                         {tCount('catalog.print.sectionCount', section.rows.length)}
                       </span>
                     </td>
@@ -273,15 +337,20 @@ export default function CatalogPrintPage() {
                 )}
                 {section.rows.map((product) => (
                   // `break-inside: avoid` so a row is never split across sheets.
-                  <tr key={product.id} className="break-inside-avoid border-b border-neutral-200">
+                  <tr key={product.id} className="break-inside-avoid">
                     {columns.map((field) => (
                       <td
                         key={field}
-                        className={`px-1.5 py-1 align-top print:py-[2px] ${
-                          field === 'product_code' ? 'font-medium' : ''
-                        } ${NOWRAP.has(field) ? 'whitespace-nowrap' : ''} ${
-                          NUMERIC.has(field) ? 'text-right' : ''
-                        }`}
+                        className={`border border-neutral-400 px-1.5 py-1 align-top print:py-[2px] ${
+                          MONEY.has(field) ? 'font-bold' : ''
+                        } ${
+                          // "Uso interno" stands where a price would, and is
+                          // wider than one: the only cell in a money column
+                          // allowed to wrap rather than run over its border.
+                          NOWRAP.has(field) && !(field === 'precio_lista' && isInternalUse(product))
+                            ? 'whitespace-nowrap'
+                            : ''
+                        } ${ALIGN[field] ?? ''}`}
                       >
                         {cell(product, field)}
                       </td>

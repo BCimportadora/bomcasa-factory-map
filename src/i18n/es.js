@@ -469,9 +469,9 @@ export default {
         barcode: 'CODIGO DE BARRAS',
         arancel: 'CODIGO ARANCEL',
         gravamen_pct: 'ARANCEL',
-        fob_usd: 'COSTO FOB',
-        unit_price_dop: 'COSTO UNITARIO',
-        precio_lista: 'PRECIO DE LISTA',
+        fob_usd: 'COSTO FOB (US$)',
+        unit_price_dop: 'COSTO UNITARIO (RD$)',
+        precio_lista: 'PRECIO DE LISTA (RD$)',
       },
 
       everything: 'Catálogo completo',
