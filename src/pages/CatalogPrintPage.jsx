@@ -18,6 +18,20 @@ import {
 /** Which supplier to print, or 'all'. Matches the filter's own value. */
 const NO_SUPPLIER = 'none'
 
+const ALL_COLUMNS = [
+  'product_code',
+  'description',
+  'barcode',
+  'arancel',
+  'gravamen_pct',
+  'fob_usd',
+  'unit_price_dop',
+  'precio_lista',
+]
+
+/** The ones that read as figures, and belong right-aligned. */
+const NUMERIC = new Set(['gravamen_pct', 'fob_usd', 'unit_price_dop', 'precio_lista'])
+
 /**
  * The catalog on paper.
  *
@@ -80,16 +94,23 @@ export default function CatalogPrintPage() {
     dateStyle: 'long',
   }).format(new Date())
 
-  const columns = [
-    'product_code',
-    'description',
-    'barcode',
-    'arancel',
-    'gravamen_pct',
-    'fob_usd',
-    'unit_price_dop',
-    'precio_lista',
-  ]
+  /**
+   * Only the columns this selection actually has something in.
+   *
+   * One supplier's sheet is often missing a whole field -- Klik's 42 articles
+   * carry no barcode at all -- and a column of 42 em dashes costs width the
+   * descriptions need, which is what pushes them onto three lines each. Nothing
+   * is hidden: a column only goes when every row of it is empty.
+   */
+  const columns = useMemo(
+    () =>
+      ALL_COLUMNS.filter((field) =>
+        rows.some((p) =>
+          field === 'precio_lista' ? isInternalUse(p) || p[field] != null : p[field] != null && p[field] !== '',
+        ),
+      ),
+    [rows],
+  )
 
   const cell = (product, field) => {
     if (field === 'product_code') return formatProductCode(product[field]) || '—'
@@ -141,10 +162,25 @@ export default function CatalogPrintPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl px-8 py-8">
-        <header className="mb-5">
-          <h1 className="text-[22px] font-semibold tracking-[-0.01em]">{heading}</h1>
-          <p className="mt-0.5 text-[12px] text-neutral-600">
+      {/*
+        Kills the browser's own header and footer -- the date, the page title,
+        the URL and "1/4" -- by leaving no page margin for them to sit in. It
+        is scoped to this component rather than put in index.css because
+        `@page` cannot be scoped by selector: the rule only exists in the
+        document while this route is mounted, so the innovations sheet keeps
+        the 14mm margin it is laid out for.
+
+        With no page margin the sheet supplies its own. Horizontal padding
+        survives a page break and so applies to all four pages; vertical
+        padding does not, which is why the top and bottom margins are carried
+        by the repeating thead and tfoot below.
+      */}
+      <style>{'@media print { @page { margin: 0 } }'}</style>
+
+      <div className="mx-auto max-w-5xl px-8 py-8 print:max-w-none print:px-[11mm] print:py-0">
+        <header className="mb-5 print:mb-0 print:pt-[10mm]">
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em] print:text-[15px]">{heading}</h1>
+          <p className="mt-0.5 text-[12px] text-neutral-600 print:text-[9px]">
             {t('catalog.print.subtitle', { count: rows.length, date: printedOn })}
           </p>
         </header>
@@ -154,18 +190,17 @@ export default function CatalogPrintPage() {
         ) : rows.length === 0 ? (
           <p className="py-12 text-center text-[14px] text-neutral-600">{t('catalog.noMatches')}</p>
         ) : (
-          <table className="w-full border-collapse text-[11px]">
+          <table className="w-full border-collapse text-[11px] print:text-[9px]">
             {/* Repeated on every sheet: a page of figures with no headings on
-                it is unreadable on its own. */}
+                it is unreadable on its own. Its padding-top is also what gives
+                pages two onwards their top margin. */}
             <thead className="table-header-group">
               <tr className="border-b border-neutral-400 text-left">
                 {columns.map((field) => (
                   <th
                     key={field}
-                    className={`px-1.5 py-1.5 font-semibold ${
-                      field === 'product_code' || field === 'description' || field === 'barcode' || field === 'arancel'
-                        ? ''
-                        : 'text-right'
+                    className={`px-1.5 py-1.5 font-semibold print:pb-1 print:pt-[8mm] ${
+                      NUMERIC.has(field) ? 'text-right' : ''
                     }`}
                   >
                     {t(`catalog.fields.${field}`)}
@@ -180,16 +215,9 @@ export default function CatalogPrintPage() {
                   {columns.map((field) => (
                     <td
                       key={field}
-                      className={`px-1.5 py-1 align-top ${
+                      className={`px-1.5 py-1 align-top print:py-[2px] ${
                         field === 'product_code' ? 'whitespace-nowrap font-medium' : ''
-                      } ${
-                        field === 'gravamen_pct' ||
-                        field === 'fob_usd' ||
-                        field === 'unit_price_dop' ||
-                        field === 'precio_lista'
-                          ? 'whitespace-nowrap text-right'
-                          : ''
-                      }`}
+                      } ${NUMERIC.has(field) ? 'whitespace-nowrap text-right' : ''}`}
                     >
                       {cell(product, field)}
                     </td>
@@ -197,6 +225,14 @@ export default function CatalogPrintPage() {
                 </tr>
               ))}
             </tbody>
+            {/* An empty band that repeats at the foot of every sheet, so the
+                last row never runs into the paper's unprintable edge now that
+                the page itself has no margin. */}
+            <tfoot className="table-footer-group">
+              <tr>
+                <td colSpan={columns.length} className="p-0 print:pt-[9mm]" />
+              </tr>
+            </tfoot>
           </table>
         )}
 

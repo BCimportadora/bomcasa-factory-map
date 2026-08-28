@@ -313,6 +313,25 @@ exception to the colours-are-tokens rule below, not an oversight. What to print
 lives in the query string (`?supplier=…`), not in state, so a link to one
 supplier's price sheet opens the same thing for whoever is sent it.
 
+**The catalog sheet's `@page` rule is injected by the component, not written in
+`index.css`.** `@page { margin: 0 }` is what removes the browser's own header
+and footer — the date, the page title, the URL and "1/4" — by leaving no margin
+for them to sit in; there is no other way to suppress them from a page. It
+cannot go in `index.css` because `@page` takes no selector and would then apply
+to the innovations sheet too, which is laid out for the global 14mm. A `<style>`
+rendered inside `CatalogPrintPage` exists in the document only while that route
+is mounted, and being later in the cascade it wins. If a print ever comes out
+with content against the paper edge, check the print dialog's Margins is on
+Default — a custom setting there overrides `@page` entirely.
+
+With no page margin the sheet supplies its own, and **the top and bottom ones
+are carried by the repeating `thead` and `tfoot`**, not by padding. Horizontal
+padding survives a page break so it applies to every sheet; vertical padding
+does not — it is drawn once at the start of the box and once at the end, so
+pages two onwards would print flush to the paper edge and lose a row to the
+printer's unprintable area. `table-header-group` and `table-footer-group` repeat
+on every page, which is what makes their padding a per-page margin.
+
 **A catalog product's supplier is derived, not stored.** There is deliberately
 no `factory_id` on `catalog`: the supplier is already recorded once, on the
 order the paperwork came from, and `doc_ref` / `cost_ref` hold that order's
