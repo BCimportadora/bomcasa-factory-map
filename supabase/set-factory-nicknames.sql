@@ -21,7 +21,16 @@
 -- src/lib/factories.js picks the plant when an order reference has to resolve
 -- to one of them.
 --
--- Run STEP 1, read it, then run STEP 2.
+-- TWO NAMES BELOW ARE NOT THE SPELLING IN apodos.xlsx, deliberately. The sheet
+-- writes "FUJIANG MINQING" and "LIANYINGANG ORIENTCRAFT"; the database has
+-- FUJIAN and LIANYUNGANG, which are the correct Chinese place names. The first
+-- run reported both as NO MATCH and a person reconciled them -- which is what
+-- the exact-match rule is for. Do not "fix" these back to the sheet.
+--
+-- Orientcraft is also the one nickname not taken from the APODO column: the
+-- sheet says DISCOS, and the supplier is called Orientcraft here.
+--
+-- Run STEP 1, read it, then run STEP 2. Re-running is safe.
 -- ---------------------------------------------------------------------------
 
 
@@ -54,7 +63,7 @@ full outer join (values
   ('WANSHIDA TAPE HUBEI CO., LTD', 'Tapes'),
   ('WENZHOU YUEQIU BAKELITE ELECTRIC APPLIANCES CO., LTD', 'Klik'),
   ('FUZHOU POWER ELECTRICAL APPLIANCES CO.,LTD', 'Power'),
-  ('FUJIANG MINQING HAOHONG PORCELAIN ELECTRONIC CO., LTD', 'Rosetas'),
+  ('FUJIAN MINQING HAOHONG PORCELAIN ELECTRONIC CO., LTD', 'Rosetas'),
   ('WENZHOU MTLC ELECTRIC APPLIANCES CO., LTD', 'MTLC'),
   ('SONGRI ELECTRIC CO., LTD', 'Songri'),
   ('YUEQING HONGJI TRADE CO., LTD', 'Hongji'),
@@ -74,7 +83,7 @@ full outer join (values
   ('Beijing Deyi Diamond Products Co., Ltd.', 'Innovaciones (Disco corta vidrio)'),
   ('DANYANG FELDA TOOLS CO., LTD', 'Innovaciones (Adaptador de taladro)'),
   ('Shenzhen Wochen Industrial Company LTD.', 'Innovaciones (Llave de grifería)'),
-  ('LIANYINGANG ORIENTCRAFT ABRASIVES CO., LTD', 'Discos')
+  ('LIANYUNGANG ORIENTCRAFT ABRASIVES CO., LTD', 'Orientcraft')
 ) as p(legal_name, nickname)
   on regexp_replace(lower(f.name), '[^a-z0-9]+', '', 'g') = regexp_replace(lower(p.legal_name), '[^a-z0-9]+', '', 'g')
 order by action, new_nickname, factory;
@@ -103,7 +112,7 @@ begin
     ('WANSHIDA TAPE HUBEI CO., LTD', 'Tapes'),
     ('WENZHOU YUEQIU BAKELITE ELECTRIC APPLIANCES CO., LTD', 'Klik'),
     ('FUZHOU POWER ELECTRICAL APPLIANCES CO.,LTD', 'Power'),
-    ('FUJIANG MINQING HAOHONG PORCELAIN ELECTRONIC CO., LTD', 'Rosetas'),
+    ('FUJIAN MINQING HAOHONG PORCELAIN ELECTRONIC CO., LTD', 'Rosetas'),
     ('WENZHOU MTLC ELECTRIC APPLIANCES CO., LTD', 'MTLC'),
     ('SONGRI ELECTRIC CO., LTD', 'Songri'),
     ('YUEQING HONGJI TRADE CO., LTD', 'Hongji'),
@@ -123,7 +132,7 @@ begin
     ('Beijing Deyi Diamond Products Co., Ltd.', 'Innovaciones (Disco corta vidrio)'),
     ('DANYANG FELDA TOOLS CO., LTD', 'Innovaciones (Adaptador de taladro)'),
     ('Shenzhen Wochen Industrial Company LTD.', 'Innovaciones (Llave de grifería)'),
-    ('LIANYINGANG ORIENTCRAFT ABRASIVES CO., LTD', 'Discos')
+    ('LIANYUNGANG ORIENTCRAFT ABRASIVES CO., LTD', 'Orientcraft')
   ),
   applied as (
     update public.factories f
