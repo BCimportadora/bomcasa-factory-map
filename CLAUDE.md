@@ -49,6 +49,21 @@ first rows of a sheet read perfectly and every later row comes back blank,
 because Excel writes the formula out once and has the rest reference it. It
 cost a debugging round here; the totals row is what gave it away.
 
+**XML attribute order carries no meaning, and the reader must not assume one.**
+`workbook.xml.rels` says the same thing either way round, but Excel writes `Id`
+before `Target` and openpyxl writes `Target` before `Id`. A pattern pinning that
+order matched nothing on the second: every relationship was lost, every sheet
+was skipped for having no target, and a perfectly good one-sheet workbook came
+back as "That file contains no worksheets" — a message pointing nowhere near the
+cause. `attribute()` reads them in any order, and `<sheet>`'s `name` and `r:id`
+go through it too, being equally free to swap. Anything not written by Excel —
+openpyxl, Google Sheets, LibreOffice — can trip this.
+
+**openpyxl writes a formula with NO cached value, and this reader reads the
+cache.** So a spreadsheet generated for the importer must carry literals in
+every column the site reads; a formula there arrives as an empty cell. Derived
+columns meant for a person are fine as formulas — Excel fills them on open.
+
 **Liquidation columns are found by heading text, not position.** These sheets
 are maintained by hand and gain a column sooner or later. Matching on position
 means the import silently reads duty as freight instead of failing. Headings

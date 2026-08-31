@@ -120,6 +120,26 @@ function unescape(text) {
   return out
 }
 
+/**
+ * One attribute out of an element's attribute text, WHATEVER THE ORDER.
+ *
+ * Not a nicety. `workbook.xml.rels` says the same thing either way round --
+ * XML attribute order carries no meaning -- but Excel writes `Id` before
+ * `Target` and openpyxl writes `Target` before `Id`. A pattern that pinned the
+ * order matched nothing on the second, so every relationship was lost, every
+ * sheet was skipped for having no target, and the file came back as "contains
+ * no worksheets": one perfectly good sheet, and a message pointing nowhere
+ * near the cause. The same trap sits on `<sheet>`, whose `name` and `r:id` are
+ * equally free to swap.
+ */
+const attribute = (attrs, name) => {
+  for (const m of attrs.matchAll(/([\w:]+)\s*=\s*"([^"]*)"/g)) {
+    if (m[1] === name) return m[2]
+  }
+  return null
+}
+
+
 /*
  * Cells are matched as whole elements rather than with a lazy `.*?` up to the
  * first `/>`. A shared formula is written `<f t="shared" si="0"/>`, and a lazy
@@ -173,18 +193,21 @@ export async function readWorkbook(file) {
   )
 
   const relsXml = (await readPart(archive, 'xl/_rels/workbook.xml.rels')) ?? ''
-  const rels = new Map(
-    [...relsXml.matchAll(/<Relationship[^>]*?Id="([^"]+)"[^>]*?Target="([^"]+)"/g)].map((m) => [
-      m[1],
-      m[2].replace(/^\//, ''),
-    ]),
-  )
+  const rels = new Map()
+  for (const m of relsXml.matchAll(/<Relationship\b([^>]*)>/g)) {
+    const id = attribute(m[1], 'Id')
+    const target = attribute(m[1], 'Target')
+    if (id && target) rels.set(id, target.replace(/^\//, ''))
+  }
 
   const workbookXml = (await readPart(archive, 'xl/workbook.xml')) ?? ''
   const sheets = []
 
-  for (const m of workbookXml.matchAll(/<sheet[^>]*?name="([^"]*)"[^>]*?r:id="([^"]*)"/g)) {
-    const target = rels.get(m[2])
+  for (const m of workbookXml.matchAll(/<sheet\b([^>]*)>/g)) {
+    const name = attribute(m[1], 'name')
+    const relId = attribute(m[1], 'r:id')
+    if (name === null || relId === null) continue
+    const target = rels.get(relId)
     // Chart sheets appear in the workbook but have no cells; skip them rather
     // than reporting an empty sheet the user then wonders about.
     if (!target || !target.includes('worksheets/')) continue
@@ -210,7 +233,7 @@ export async function readWorkbook(file) {
       if (cells.size > 0) rows.push({ number, cells })
     }
 
-    sheets.push({ name: unescape(m[1]), rows })
+    sheets.push({ name: unescape(name), rows })
   }
 
   if (sheets.length === 0) throw new Error('That file contains no worksheets.')
