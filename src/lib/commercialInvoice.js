@@ -51,34 +51,110 @@ export const normalise = (value) =>
  * reader.
  */
 const COLUMNS = [
-  ['s no', 'line_no'],
+  // The tariff code FIRST: "codigo arancelario" begins with "codigo", so listing
+  // it after the article code would hand the tariff column over as the code.
   ['codigo arancelario', 'arancel'],
+  ['partida arancelaria', 'arancel'],
+  ['arancel', 'arancel'],
+  ['hs code', 'arancel'],
+  ['h s code', 'arancel'],
+  ['hs no', 'arancel'],
+  ['tariff', 'arancel'],
+  ['hts', 'arancel'],
+
+  // OUR article code. Which heading holds it moves per supplier, and reading
+  // the wrong one files every product under a code we do not use.
   ['customer item no', 'product_code'],
+  ['customer code', 'product_code'],
   ['code for box', 'product_code'],
+  ['our code', 'product_code'],
+  ['our item', 'product_code'],
+  ['article no', 'product_code'],
+  ['article code', 'product_code'],
+  ['product code', 'product_code'],
+  ['codigo del producto', 'product_code'],
   ['codigo', 'product_code'],
+
+  // The supplier's own reference for the same goods.
   ['item no', 'supplier_code'],
+  ['supplier code', 'supplier_code'],
+  ['supplier item', 'supplier_code'],
+  ['factory code', 'supplier_code'],
+  ['ref no', 'supplier_code'],
+
   ['bar code', 'barcode'],
   ['barcode', 'barcode'],
+  ['codigo de barra', 'barcode'],
+  ['ean', 'barcode'],
+  ['upc', 'barcode'],
+
   ['description of goods', 'description_en'],
+  ['commodity description', 'description_en'],
+  ['description', 'description_en'],
   ['descripcion', 'description_es'],
-  ['quanity pcs', 'quantity'],
-  ['quantity pcs', 'quantity'],
-  ['qty', 'quantity'],
+
+  // One field, however it is spelt. Klik writes "Quanity (PCS)" with the typo,
+  // CHS writes "QTY", our own paperwork writes "Unidades".
   ['quanity', 'quantity'],
   ['quantity', 'quantity'],
+  ['q ty', 'quantity'],
+  ['qty', 'quantity'],
   ['unidades', 'quantity'],
+  ['cantidad', 'quantity'],
   ['units', 'quantity'],
+  ['pcs', 'quantity', 'exact'],
+
   ['unit price', 'unit_price'],
+  ['precio unitario', 'unit_price'],
+  ['u price', 'unit_price'],
+  ['price', 'unit_price'],
+
   ['amount', 'amount'],
+  ['importe', 'amount'],
+  ['monto', 'amount'],
+
+  // Cartons. "no of package" is tried before the bare "package", or a sheet
+  // carrying both hands over the wrong one.
   ['no of package', 'cartons'],
+  ['no of ctn', 'cartons'],
   ['package ctns', 'cartons'],
+  ['packages', 'cartons'],
+  ['cartons', 'cartons'],
+  ['ctns', 'cartons', 'exact'],
+  ['cajas', 'cartons'],
+  ['bultos', 'cartons'],
+
   ['volume cbm', 'volume_cbm'],
+  ['volume', 'volume_cbm'],
+  ['volumen', 'volume_cbm'],
+  ['cbm', 'volume_cbm'],
+  ['m3', 'volume_cbm', 'exact'],
+
   ['n w kgs', 'net_weight'],
+  ['net weight', 'net_weight'],
+  ['n w', 'net_weight'],
+  ['peso neto', 'net_weight'],
+
   ['g w kgs', 'gross_weight'],
+  ['gross weight', 'gross_weight'],
+  ['g w', 'gross_weight'],
+  ['peso bruto', 'gross_weight'],
+
+  // Last, and deliberately narrow. A bare "no" as a prefix would swallow
+  // "No. of Package (CTNS)" and take the cartons column with it, so the line
+  // number is only claimed by a heading that is exactly one of these.
+  ['s no', 'line_no'],
+  ['s n', 'line_no', 'exact'],
+  ['no', 'line_no', 'exact'],
+  ['item', 'line_no', 'exact'],
+  ['linea', 'line_no', 'exact'],
 ]
 
-/** Headings under which a supplier writes OUR article code. */
-const CODE_HEADINGS = ['code for box', 'codigo', 'customer item no']
+/**
+ * Headings under which a supplier writes OUR article code -- read off the table
+ * above rather than repeated, so adding a synonym there is the whole change.
+ */
+const CODE_HEADINGS = COLUMNS.filter(([, field]) => field === 'product_code').map(([h]) => h)
 
 /**
  * Headings that belong to OUR OWN cost sheet and to no supplier's invoice.
@@ -165,14 +241,26 @@ function findHeaderRow(rows) {
   return null
 }
 
+/**
+ * Column index -> field, by heading text.
+ *
+ * A heading matches as a PREFIX by default, which is what finds "Quanity (PCS)"
+ * and "Unit Price FOB SHANGHAI" without listing every tail a supplier appends.
+ * Patterns short enough to appear at the start of an unrelated heading are
+ * marked `exact` instead.
+ *
+ * Within a field the patterns are priority-ordered, and a column already
+ * claimed cannot be taken again.
+ */
 function mapColumns(headerRow) {
   const columns = {}
   const taken = new Set()
-  for (const [heading, field] of COLUMNS) {
+  for (const [heading, field, exact] of COLUMNS) {
     if (columns[field] !== undefined) continue
     for (const [index, raw] of headerRow.cells) {
       if (taken.has(index)) continue
-      if (normalise(raw).startsWith(heading)) {
+      const value = normalise(raw)
+      if (exact ? value === heading : value.startsWith(heading)) {
         columns[field] = index
         taken.add(index)
         break

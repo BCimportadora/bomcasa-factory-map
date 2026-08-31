@@ -164,8 +164,15 @@ both sheets carry: `PL` marks its later blocks with the S/C alone and no PO line
 at all.
 
 **No two suppliers label these columns alike, and the reader carries every
-spelling.** Quantity alone arrives as `Quanity (PCS)` (Klik, typo included),
-`QTY` (CHS) and `Unidades` — one field. Worse, WHICH column holds OUR code moves:
+spelling in both languages.** Quantity alone arrives as `Quanity (PCS)` (Klik,
+typo included), `QTY` (CHS), `Quantity`, `Q'TY`, `Unidades` and `Cantidad` — one
+field. A heading matches as a PREFIX, which is what finds `Unit Price FOB
+SHANGHAI` without listing every tail a supplier appends; patterns short enough
+to start an unrelated heading carry an `exact` flag instead. `no` is the one
+that matters: as a prefix it swallows `No. of Package (CTNS)` and takes the
+cartons column with it, so the line number is only ever claimed by an exact
+match. `CODE_HEADINGS` is derived from the same table, so adding a synonym for
+our article code is a one-line change rather than two. Worse, WHICH column holds OUR code moves:
 Klik writes ours as `Code for Box` and its own as `Item No.`; CHS writes ours as
 `Codigo` on the invoice and `Customer Item No.` on the packing list; the Milan
 proforma's `Code` is ours again. Reading them the wrong way round files every
