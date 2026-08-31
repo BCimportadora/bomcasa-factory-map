@@ -130,6 +130,15 @@ const COLUMNS = [
   ['cbm', 'volume_cbm'],
   ['m3', 'volume_cbm', 'exact'],
 
+  // The carton's own dimensions, which is how a supplier states the volume when
+  // it does not state the volume. See cartonVolume.
+  ['ctn size', 'carton_size'],
+  ['carton size', 'carton_size'],
+  ['measurement', 'carton_size'],
+  ['medidas', 'carton_size'],
+  ['dimensiones', 'carton_size'],
+  ['tamano de caja', 'carton_size'],
+
   ['n w kgs', 'net_weight'],
   ['net weight', 'net_weight'],
   ['n w', 'net_weight'],
@@ -258,6 +267,39 @@ const num = (value) => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+/** `54*32*35`, `202 x 16 x 12.5`, `40X30X27`. */
+const CARTON_SIZE =
+  /(\d+(?:[.,]\d+)?)\s*[*x×]\s*(\d+(?:[.,]\d+)?)\s*[*x×]\s*(\d+(?:[.,]\d+)?)/i
+
+/** How many of the heading's units make a cubic metre. */
+const PER_CUBIC_METRE = { mm: 1e9, cm: 1e6, m: 1 }
+
+/**
+ * The volume of one carton, from the dimensions the packing list prints.
+ *
+ * A supplier states the volume one of two ways and CHS uses the other one: Klik
+ * heads a column `Volume (CBM)`, CHS heads one `CTN SIZE (CM)` and writes
+ * `54*32*35`, leaving the cubic metres to an unlabelled formula further along
+ * the row that no heading can find. Multiplying the three and dividing by the
+ * cartons' unit reproduces that formula EXACTLY -- checked against all 31 lines
+ * of CHS 09, to the sixth decimal -- so this is the supplier's own arithmetic
+ * rather than an estimate of it.
+ *
+ * The unit comes from the heading, because it is written there and because
+ * guessing it from the magnitude is a 1000x error waiting to happen: a carton
+ * 202 cm long and one 202 mm long are both entirely ordinary. Centimetres is
+ * the default for a heading that names no unit, that being what these documents
+ * use.
+ */
+const cartonVolume = (size, heading) => {
+  const m = String(size ?? '').match(CARTON_SIZE)
+  if (!m) return null
+  const unit = normalise(heading).match(/(?:^|\s)(mm|cm|m)$/)?.[1] ?? 'cm'
+  const sides = [m[1], m[2], m[3]].map((side) => Number(side.replace(',', '.')))
+  if (sides.some((side) => !Number.isFinite(side) || side <= 0)) return null
+  return (sides[0] * sides[1] * sides[2]) / PER_CUBIC_METRE[unit]
+}
+
 /** Thirteen digits or nothing. A partial barcode is worse than no barcode. */
 const barcode = (value) => {
   const digits = (value ?? '').toString().replace(/\D/g, '')
@@ -369,6 +411,26 @@ function readSheet(sheet) {
   const get = (row, field) =>
     columns[field] === undefined ? null : (row.cells.get(columns[field]) ?? null)
 
+  // The unit the carton's dimensions are in is written in the heading, so it is
+  // read once here rather than per row.
+  const sizeHeading =
+    columns.carton_size === undefined ? null : headerRow.cells.get(columns.carton_size)
+
+  /**
+   * The cubic metres this line ships.
+   *
+   * The stated figure wins wherever there is one. Where there is not, it is the
+   * carton's volume times the number of cartons -- both of which CHS states and
+   * neither of which it multiplies out under a heading.
+   */
+  const volume = (row) => {
+    const stated = num(get(row, 'volume_cbm'))
+    if (stated !== null) return stated
+    const perCarton = cartonVolume(get(row, 'carton_size'), sizeHeading)
+    const cartons = num(get(row, 'cartons'))
+    return perCarton !== null && cartons !== null ? perCarton * cartons : null
+  }
+
   for (const row of sheet.rows) {
     if (row.number <= headerRow.number) continue
 
@@ -414,7 +476,7 @@ function readSheet(sheet) {
       quantity: num(get(row, 'quantity')),
       unit_price: num(get(row, 'unit_price')),
       cartons: num(get(row, 'cartons')),
-      volume_cbm: num(get(row, 'volume_cbm')),
+      volume_cbm: volume(row),
       // Read but never stored: the quantities in these notes do not always
       // agree with the invoiced ones -- 3409-89 is invoiced 600 and noted
       // "1080PCS BY AIR" -- so the note is shown to a person and left at that.
@@ -471,18 +533,37 @@ export function parseCommercialInvoice(workbook, { fileName } = {}) {
   // Packing figures, keyed by contract and code. Keyed on the contract too
   // because the same article appears under more than one order in this file,
   // with different quantities each time.
+  // The packing rows for each code, IN ORDER, because one code can be packed in
+  // more than one run and a Map keyed on the code alone keeps only the last.
+  //
+  // CHS 09 ships 2002-03 as 3 cartons of 1500 and again as 1 carton of 500, and
+  // both sheets list the two runs in the same order. Keeping only the last
+  // paired 1 carton with the first invoice line's 1500 pieces, which is not a
+  // packing this shipment contains: it made 2038-02 come out at 127 pieces per
+  // carton, and would have given it a CBM per unit to match.
   const packed = new Map()
   for (const block of packing?.blocks ?? []) {
     for (const line of block.lines) {
-      packed.set(`${block.contractNo ?? ''}|${line.product_code}`, line)
+      const key = `${block.contractNo ?? ''}|${line.product_code}`
+      packed.set(key, [...(packed.get(key) ?? []), line])
     }
   }
+  // Consumed in step with the invoice's own repeats, so the nth line for a code
+  // meets the nth packing run of it.
+  const taken = new Map()
 
   const blocks = invoice.blocks.map((block) => ({
     contractNo: block.contractNo,
     orderNumber: block.orderNumber,
     lines: block.lines.map((line) => {
-      const p = packed.get(`${block.contractNo ?? ''}|${line.product_code}`)
+      const key = `${block.contractNo ?? ''}|${line.product_code}`
+      const runs = packed.get(key) ?? []
+      const seen = taken.get(key) ?? 0
+      // A code invoiced more times than it is packed falls back to the last
+      // run rather than to nothing: the goods are on the packing list, and the
+      // packing of the final run is the best answer available.
+      const p = runs[Math.min(seen, runs.length - 1)]
+      if (runs.length > 0) taken.set(key, seen + 1)
       return {
         ...line,
         cartons: line.cartons ?? p?.cartons ?? null,

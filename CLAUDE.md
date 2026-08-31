@@ -249,6 +249,33 @@ an unlabelled formula. And a data row is one carrying an article code — the
 S/No. is a second opinion, used only where that column exists, because CHS's
 invoice has none.
 
+**A supplier states the volume one of two ways, and the second one is the
+carton's dimensions.** Klik heads a column `Volume (CBM)`. CHS heads one
+`CTN SIZE (CM)`, writes `54*32*35`, and multiplies it out in an unlabelled
+formula further along the row that no heading can find — so its whole shipment
+imported with no CBM at all. `cartonVolume` multiplies the three sides and
+divides by the cartons; against the supplier's own unlabelled column that
+reproduces all 31 lines of CHS 09 to the sixth decimal, which makes it their
+arithmetic rather than an estimate of it. The unit comes from the HEADING, never
+from the magnitude: a carton 202 cm long and one 202 mm long are both entirely
+ordinary, and guessing wrong is a 1000× error in a figure somebody plans a
+container with. A heading naming no unit is read as centimetres.
+
+Their proforma PDF, which is what one reaches for first, has no volume column at
+all — the packing list is the only document that states it.
+
+**One article code can appear on a packing list TWICE, and pairing it with the
+invoice by code alone silently mixes two shipments.** CHS 09 ships 2002-03 as
+3 cartons of 1500 and again as 1 carton of 500, and both sheets list the two
+runs in the same order. A `Map` keyed on the code kept only the LAST run, which
+was then paired with the FIRST invoice line — 1 carton against 1500 pieces. That
+is not a packing this shipment contains: it made 2038-02 read 127 pieces per
+carton, a figure nothing else in the file supports, and it would have given the
+same product a CBM per unit to match. The runs are kept as a list and consumed
+in step with the invoice's own repeats, so the nth line for a code meets the nth
+run of it. A code invoiced more often than it is packed falls back to the last
+run rather than to nothing — the goods ARE on the packing list.
+
 The invoice states a real unit price and the catalog deliberately ignores it:
 every figure with a currency on it still comes from our own cost sheet, which
 derives the same number after the goods landed and is the only document that
