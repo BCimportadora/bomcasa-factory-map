@@ -34,6 +34,19 @@ export const invoiceReference = (factory, orderNumber) => {
   return `${nickname.toUpperCase()} ${orderNumber}`
 }
 
+/**
+ * What identifies this order's block of the document, so a second import of the
+ * same file is recognised as one.
+ *
+ * The S/C number where the supplier writes one, its invoice number where it
+ * does not -- CHS heads its invoice `Invoice No.:CHLPI240718A` and never states
+ * an S/C. The file name is the last resort and a poor one: it is ours to
+ * change, and this document reached us as `CHS 09 detail.xlsx`, a name the
+ * supplier never wrote.
+ */
+const docKeyOf = (invoice, block, fileName) =>
+  block.contractNo ?? invoice.invoiceNo ?? fileName
+
 /** Rows the catalog can be built from, out of one parsed liquidación. */
 const liquidacionRows = (parsed) =>
   parsed.rows.map((r) => ({
@@ -95,6 +108,12 @@ export default function CatalogImport({
   // line the invoice bills and the packing list omits is either flying or a
   // document contradicting itself and only a person can say which.
   const [airSection, setAirSection] = useState(null)
+  // The order number, for an invoice that does not state one. CHS heads its
+  // invoice with an invoice number and no PO at all, and without a number there
+  // is no reference -- so the products land under no order and no supplier,
+  // which is the one thing this screen exists to prevent. Text, never a number:
+  // they write `09`, and a round trip through Number hands back `9`.
+  const [orderNo, setOrderNo] = useState('')
 
   /**
    * Plan a commercial invoice: one plan per order the file carries.
@@ -111,7 +130,7 @@ export default function CatalogImport({
     const factory = matchFactoryByName(invoice.supplierName, factories)
     setSupplierId(factory?.id ?? '')
 
-    const keys = invoice.blocks.map((b) => `invoice:${b.contractNo ?? file.name}`)
+    const keys = invoice.blocks.map((b) => `invoice:${docKeyOf(invoice, b, file.name)}`)
     for (const key of keys) {
       const seen = await onCheckImported(key)
       if (seen) {
@@ -128,19 +147,27 @@ export default function CatalogImport({
       existing,
       factory,
       validation: null,
-      ...planBlocks(invoice, factory, existing, file.name),
+      ...planBlocks(invoice, factory, existing, file.name, ''),
     }
   }
 
   /** The per-order plans, and the merged view of them the summary reads. */
-  const planBlocks = (invoice, factory, existing, fileName) => {
+  const planBlocks = (invoice, factory, existing, fileName, typedNo) => {
     let known = existing
-    const ordered = [...invoice.blocks].sort(
-      (a, b) => (b.orderNumber ?? 0) - (a.orderNumber ?? 0),
+    // A block's own number where it states one, the typed number where it does
+    // not. Only a document that names no order at all can be filled in this
+    // way, and such a file has a single block -- so one typed number is never
+    // spread across several orders.
+    const numbered = invoice.blocks.map((block) => ({
+      block,
+      number: block.orderNumber ?? (typedNo.trim() || null),
+    }))
+    const ordered = [...numbered].sort(
+      (a, b) => (Number(b.number) || 0) - (Number(a.number) || 0),
     )
 
-    const blocks = ordered.map((block) => {
-      const reference = invoiceReference(factory, block.orderNumber)
+    const blocks = ordered.map(({ block, number }) => {
+      const reference = invoiceReference(factory, number)
       const plan = planImport({
         docType: 'invoice',
         rows: block.lines,
@@ -158,9 +185,9 @@ export default function CatalogImport({
         plan,
         document: {
           doc_type: 'invoice',
-          doc_key: `invoice:${block.contractNo ?? fileName}`,
+          doc_key: `invoice:${docKeyOf(invoice, block, fileName)}`,
           file_name: fileName,
-          invoice_no: block.contractNo ?? null,
+          invoice_no: block.contractNo ?? invoice.invoiceNo ?? null,
           doc_ref: reference,
           doc_date: invoice.date,
           line_count: block.lines.length,
@@ -183,13 +210,26 @@ export default function CatalogImport({
    * not just relabel them. Planned against the same snapshot of the catalog the
    * first pass used, so switching back and forth cannot drift.
    */
-  const changeSupplier = (id) => {
-    setSupplierId(id)
+  const replan = (id, typedNo) => {
     setState((prev) => {
       if (!prev?.blocks) return prev
       const factory = factories.find((f) => f.id === id) ?? null
-      return { ...prev, factory, ...planBlocks(prev.parsed, factory, prev.existing, prev.fileName) }
+      return {
+        ...prev,
+        factory,
+        ...planBlocks(prev.parsed, factory, prev.existing, prev.fileName, typedNo),
+      }
     })
+  }
+
+  const changeSupplier = (id) => {
+    setSupplierId(id)
+    replan(id, orderNo)
+  }
+
+  const changeOrderNo = (value) => {
+    setOrderNo(value)
+    replan(supplierId, value)
   }
 
   const handleFile = async (event) => {
@@ -201,6 +241,7 @@ export default function CatalogImport({
     setAlreadyImported(null)
     setState(null)
     setAirSection(null)
+    setOrderNo('')
     setBusy(true)
 
     try {
@@ -213,6 +254,10 @@ export default function CatalogImport({
       let document
       let validation = null
       let docDate = null
+      // Which order this document speaks for. It is what files a product under
+      // its supplier -- see supplierIndex, which derives the supplier from this
+      // and from nothing else.
+      let docRef = null
 
       if (docType === 'liquidacion') {
         parsed = await readLiquidacion(file)
@@ -269,11 +314,14 @@ export default function CatalogImport({
           parsed = parseLiquidation(workbook, { fileName: file.name })
           docType = 'costo'
           rows = parsed.lines
+          // The order name written above the table -- "CHS 09", "MILAN 11".
+          docRef = parsed.reference ?? null
           document = {
             doc_type: 'costo',
             doc_key: `costo:${parsed.reference ?? file.name}`,
             file_name: file.name,
             invoice_no: parsed.reference ?? null,
+            doc_ref: docRef,
             line_count: parsed.lines.length,
           }
         }
@@ -286,7 +334,7 @@ export default function CatalogImport({
       }
 
       const existing = await onListProducts()
-      const plan = planImport({ docType, rows, existing, docDate })
+      const plan = planImport({ docType, rows, existing, docDate, docRef })
       // A row the parser itself rejected is a failure with a reason, not a
       // silent absence.
       plan.failed = [...(plan.failed ?? []), ...(parsed.failures ?? [])]
@@ -512,6 +560,27 @@ export default function CatalogImport({
               <p className="hint mt-1.5">
                 {t('catalog.import.supplierFrom', { name: state.parsed.supplierName ?? '—' })}
               </p>
+
+              {/* Asked for only when the document states no order of its own.
+                  An invoice that names its PO needs nothing typed, and a file
+                  that names none has a single block -- so this number can never
+                  be spread across two orders by mistake. */}
+              {state.blocks.some((b) => b.orderNumber == null) && (
+                <div className="mt-3">
+                  <label htmlFor="inv-order-no" className="label">
+                    {t('catalog.import.orderNo')}
+                  </label>
+                  <input
+                    id="inv-order-no"
+                    value={orderNo}
+                    onChange={(e) => changeOrderNo(e.target.value)}
+                    className="input w-24 text-[14px]"
+                    inputMode="numeric"
+                    placeholder="09"
+                  />
+                  <p className="hint mt-1.5">{t('catalog.import.orderNoHint')}</p>
+                </div>
+              )}
 
               <p className="label mb-1 mt-3">
                 {tCount('catalog.import.orderBlocks', state.blocks.length)}

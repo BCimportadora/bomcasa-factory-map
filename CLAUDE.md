@@ -179,6 +179,44 @@ The blocks are keyed on the S/C number rather than the PO, because that is what
 both sheets carry: `PL` marks its later blocks with the S/C alone and no PO line
 at all.
 
+**Not every supplier writes a PO, and without one the whole shipment lands under
+no supplier.** CHS heads its invoice `Invoice No.:CHLPI240718A` and states no PO
+and no S/C anywhere -- so `orderNumber` is null, `invoiceReference` returns null,
+and 29 products import perfectly into no section at all. The parser has always
+warned `noOrderNumber`; what was missing was somewhere to answer it, so
+`CatalogImport` asks for the number beside the supplier, exactly as `OrderForm`
+does. It is offered ONLY when a block states none: a file that names its POs
+needs nothing typed, and a file that names none has a single block, so one typed
+number can never be spread across two orders. Carried as text, like everywhere
+else -- they write `09`, and a round trip through `Number` hands back `9`.
+
+That document also dates itself `Date.:July 18th,2024` -- a full stop AND a
+colon, and a month in words. Neither got past a regex expecting `Date: 2026.03.18`,
+so the invoice came out undated, which matters wherever the order numbers cannot
+rank two documents. `readDate` takes both spellings. And the invoice number is
+what keys the import: without it the document falls back to the FILE NAME, which
+is ours to rename -- this one reached us as `CHS 09 detail.xlsx`, a name the
+supplier never wrote, so re-importing it under any other name would not be
+recognised as the same document.
+
+**Which document supplied a field is recorded like the field itself: filled when
+blank, replaced only by a newer document.** Writing `doc_ref`/`cost_ref` only on
+`newer` left a hole that is invisible until you import two documents for the SAME
+order. A cost sheet and an invoice for CHS 09 rank as 'same', not 'newer' -- so
+importing the invoice first and the cost sheet second filled every priced column
+and then recorded no `cost_ref` at all, because there was nothing older to beat.
+The same two files in the other order produced a row that DID carry it. Identical
+documents, different result, and a blank reference is precisely what puts a
+product in no supplier's section. The fill is applied with the same
+`.is(field, null)` guard as any other, so it still cannot clobber.
+
+**A cost sheet states its own order and the catalog importer used to drop it.**
+`parseLiquidation` returns `reference` -- "CHS 09", "MILAN 11", read from above
+the table -- and `CatalogImport` passed it to the import record but never to
+`planImport`, so `cost_ref` was null on every cost sheet ever imported. The
+column, `REF_FIELD_FOR.costo` and the supplier lookup that reads it were all
+already there; only the argument was missing.
+
 **No two suppliers label these columns alike, and the reader carries every
 spelling in both languages.** Quantity alone arrives as `Quanity (PCS)` (Klik,
 typo included), `QTY` (CHS), `Quantity`, `Q'TY`, `Unidades` and `Cantidad` — one

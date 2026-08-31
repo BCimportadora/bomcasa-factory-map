@@ -655,9 +655,20 @@ export function planImport({ docType, rows, existing, docDate = null, docRef = n
 
     const changed = Object.keys(fills).length + Object.keys(refreshes).length
     if (changed > 0) {
-      if (newer) {
-        if (docDate !== null) refreshes[dateField] = docDate
-        if (docRef !== null) refreshes[refField] = docRef
+      // Which document supplied these fields, recorded the same way the fields
+      // themselves are: filled when blank, replaced only by a newer document.
+      //
+      // Writing it only on `newer` left a real hole. A cost sheet and an
+      // invoice for the SAME order rank as 'same', not 'newer' -- so importing
+      // CHS 09's invoice first and its cost sheet second filled every priced
+      // column and then recorded no `cost_ref` at all, because there was
+      // nothing older to beat. Reversing the two files gave a different row
+      // from identical documents, and a blank reference is what decides that a
+      // product belongs to no supplier.
+      for (const [field, value] of [[dateField, docDate], [refField, docRef]]) {
+        if (value === null) continue
+        if (isBlank(current[field])) fills[field] = value
+        else if (newer) refreshes[field] = value
       }
       updated.push({
         where,

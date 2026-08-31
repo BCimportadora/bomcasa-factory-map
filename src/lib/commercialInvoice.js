@@ -182,8 +182,52 @@ const PO_LINE = /^\s*p\s*o\s*\.?\s*\d{6}\s*-\s*(\d+)\s*$/i
 /** `S/C NO.YQ-BQ-2603034` -> `YQ-BQ-2603034`. */
 const CONTRACT = /s\s*\/?\s*c\s*no\.?\s*([A-Za-z0-9][A-Za-z0-9-]*)/i
 
-/** `Date: 2026.03.18` -> `2026-03-18`, which sorts and compares as text. */
-const DATE_LINE = /date\s*:?\s*(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/i
+/**
+ * `Invoice No.:CHLPI240718A` -> `CHLPI240718A`.
+ *
+ * Not every supplier writes an S/C. CHS heads its invoice with this instead,
+ * and it is what keeps the import from being re-run twice: without it the
+ * document is keyed on the FILE NAME, which is ours to change -- this one
+ * arrived as `CHS 09 detail.xlsx`, a name the supplier never wrote.
+ */
+const INVOICE_LINE = /invoice\s*no\.?\s*:?\s*([A-Za-z0-9][A-Za-z0-9-]*)/i
+
+/**
+ * `Date: 2026.03.18` -> `2026-03-18`, which sorts and compares as text.
+ *
+ * The separator after the word is `[.:]*` because CHS writes `Date.:` -- a full
+ * stop AND a colon.
+ */
+const DATE_LINE = /date\s*[.:]*\s*(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/i
+
+/**
+ * The same date written out: `Date.:July 18th,2024`.
+ *
+ * A month in words is not decoration here. Where two documents cannot be ranked
+ * by their order numbers -- which is every document that states no order at all
+ * -- the date is the only thing left that can, and an unread one leaves the
+ * invoice undated and outranked by anything that carries a date.
+ */
+const DATE_WORDS =
+  /date\s*[.:]*\s*([a-z]{3,9})\.?\s*(\d{1,2})(?:st|nd|rd|th)?\s*,?\s*(\d{4})/i
+
+const MONTHS = [
+  'jan', 'feb', 'mar', 'apr', 'may', 'jun',
+  'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
+]
+
+/** A `Date:` line in either spelling, as `yyyy-mm-dd`. Null if it is neither. */
+const readDate = (raw) => {
+  const numeric = raw.match(DATE_LINE)
+  if (numeric) {
+    return `${numeric[1]}-${numeric[2].padStart(2, '0')}-${numeric[3].padStart(2, '0')}`
+  }
+  const words = raw.match(DATE_WORDS)
+  if (!words) return null
+  const month = MONTHS.indexOf(words[1].slice(0, 3).toLowerCase())
+  if (month < 0) return null
+  return `${words[3]}-${String(month + 1).padStart(2, '0')}-${words[2].padStart(2, '0')}`
+}
 
 /**
  * The note a supplier writes beside a line that is not travelling by sea.
@@ -288,7 +332,13 @@ function readSheet(sheet) {
   if (!headerRow) return null
   const columns = mapColumns(headerRow)
 
-  const identity = { supplierName: null, contractNo: null, orderNumber: null, date: null }
+  const identity = {
+    supplierName: null,
+    contractNo: null,
+    invoiceNo: null,
+    orderNumber: null,
+    date: null,
+  }
   for (const row of sheet.rows) {
     if (row.number >= headerRow.number) break
     for (const value of row.cells.values()) {
@@ -300,12 +350,11 @@ function readSheet(sheet) {
       if (!identity.supplierName && /[A-Za-z]{4}/.test(raw)) identity.supplierName = raw
       const contract = raw.match(CONTRACT)
       if (contract && !identity.contractNo) identity.contractNo = contract[1]
+      const invoiceNo = raw.match(INVOICE_LINE)
+      if (invoiceNo && !identity.invoiceNo) identity.invoiceNo = invoiceNo[1]
       const po = raw.match(PO_LINE)
       if (po && identity.orderNumber === null) identity.orderNumber = Number(po[1])
-      const date = raw.match(DATE_LINE)
-      if (date && !identity.date) {
-        identity.date = `${date[1]}-${date[2].padStart(2, '0')}-${date[3].padStart(2, '0')}`
-      }
+      if (!identity.date) identity.date = readDate(raw)
     }
   }
 
@@ -479,6 +528,7 @@ export function parseCommercialInvoice(workbook, { fileName } = {}) {
     packingSheet: packingSheet?.name ?? null,
     supplierName: invoice.identity.supplierName,
     contractNo: invoice.identity.contractNo,
+    invoiceNo: invoice.identity.invoiceNo,
     date: invoice.identity.date,
     blocks,
     lineCount: blocks.reduce((sum, b) => sum + b.lines.length, 0),

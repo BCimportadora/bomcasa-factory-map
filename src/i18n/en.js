@@ -517,12 +517,15 @@ export default {
       supplier: 'Supplier',
       supplierUnknown: 'Not identified — choose one',
       supplierFrom: 'The document names {{name}}',
+      orderNo: 'Order No.',
+      orderNoHint:
+        'This invoice does not state a PO, so the order number goes here — CHS 09, Klik 78. It is what files these products under their supplier.',
       orderBlocksOne: 'This file carries 1 order',
       orderBlocksOther: 'This file carries {{count}} orders',
       blockLines: '{{count}} lines · S/C {{contract}}',
       noReference: 'No order reference',
       noReferenceHint:
-        'Without a supplier nickname there is no reference to file these products under, so they will not appear in any supplier section. Give the supplier a nickname on the factory map, or pick a different supplier.',
+        'Without a supplier nickname and an order number there is no reference to file these products under, so they will not appear in any supplier section. Fill in the number above, and give the supplier a nickname on the factory map.',
 
       title: 'Import a document into the catalog',
       intro: 'Reads a DGA liquidación (PDF), a supplier proforma or one of our cost sheets (Excel). Nothing is saved until you confirm. Prices follow the newest document, so importing an older order will not undo a newer one.',

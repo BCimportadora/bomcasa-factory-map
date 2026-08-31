@@ -518,12 +518,15 @@ export default {
       supplier: 'Proveedor',
       supplierUnknown: 'No identificado: elige uno',
       supplierFrom: 'El documento dice {{name}}',
+      orderNo: 'No. de orden',
+      orderNoHint:
+        'Esta factura no trae PO, así que el número de la orden va aquí: CHS 09, Klik 78. Es lo que archiva estos productos bajo su proveedor.',
       orderBlocksOne: 'Este archivo trae 1 orden',
       orderBlocksOther: 'Este archivo trae {{count}} órdenes',
       blockLines: '{{count}} líneas · S/C {{contract}}',
       noReference: 'Sin referencia de orden',
       noReferenceHint:
-        'Sin apodo del proveedor no hay referencia con la cual archivar estos productos, así que no aparecerán en ninguna sección de proveedor. Ponle un apodo al proveedor en el mapa de fábricas, o elige otro proveedor.',
+        'Sin apodo del proveedor y sin número de orden no hay referencia con la cual archivar estos productos, así que no aparecerán en ninguna sección de proveedor. Escribe el número arriba, y ponle un apodo al proveedor en el mapa de fábricas.',
 
       title: 'Importar un documento al catálogo',
       intro: 'Lee una liquidación de la DGA (PDF), una proforma del proveedor o una de nuestras hojas de costos (Excel). No se guarda nada hasta que confirmes. Los precios siguen el documento más reciente, así que importar un pedido antiguo no deshace uno nuevo.',
