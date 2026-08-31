@@ -308,6 +308,9 @@ export default {
     editTitle: 'Edit order',
 
     reference: 'Order reference',
+    number: 'No.',
+    numberPlaceholder: '09',
+    numberHint: 'Orders are named after the supplier and its number — CHS 09, Klik 78. The number is what decides whose pricing the catalog treats as current.',
     referencePlaceholder: 'e.g. BC-2026-014',
     factory: 'Factory',
     noFactory: 'No factory selected',

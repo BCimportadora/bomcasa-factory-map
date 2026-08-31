@@ -117,6 +117,22 @@ CIF pesos * 100`. That the gravamen derived from the cost sheet matches the one
 derived from the liquidación is a useful cross-check, not a reason to take it
 from the cheaper source.
 
+**An order reference is a supplier and a number, and the form asks for them
+separately.** "CHS 09", "Klik 78", "Milan 11" — the number is what decides whose
+pricing the catalog treats as current, so typed as one free-text box it comes
+out inconsistent and the ranking silently stops working. `OrderForm` composes
+the reference from the chosen supplier's nickname and a `No.` field, and stops
+composing the moment somebody edits the reference by hand. The number is carried
+as TEXT: they write `09`, and a round trip through `Number` hands back `9`.
+
+`orderPriority` also accepts a title that runs on — our CHS cost sheet is headed
+`CHS09 CANALETAS NEGRAS`. The digits must be GLUED to the letters for that
+fallback to fire, because `ORDEN 11 MILANLUX` has a space there and its `11`
+means something else; that one stays unranked, as it always was. `supplierIndex`
+asks `orderPriority` for the series before falling back to the whole word, or
+`CHS09 CANALETAS NEGRAS` would strip to `CHS CANALETAS NEGRAS` and match no
+nickname.
+
 **Catalog pricing follows the newest ORDER, decided by its number rather than a
 date.** Milan 11 supersedes Milan 10, which supersedes Milan 9, and paperwork
 arrives out of sequence often enough that importing an old order must not undo a

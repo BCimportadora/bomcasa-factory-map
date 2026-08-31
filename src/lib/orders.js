@@ -159,3 +159,26 @@ export const byShipment = (items) => {
     { mode: 'air', items: air, only: false },
   ]
 }
+
+
+/**
+ * An order reference split into the supplier's name and its number.
+ *
+ * References here are written "<supplier> <number>" -- CHS 09, Klik 78, Milan
+ * 11 -- and that is not decoration: the number is what decides whose pricing is
+ * current, and the name is what files a product under a supplier. The form asks
+ * for the two separately so both come out well formed.
+ *
+ * The number is kept as TEXT, never parsed to a Number and back. "CHS 09" is
+ * how they write it, and round-tripping through a number would quietly return
+ * "CHS 9".
+ */
+export const splitReference = (reference) => {
+  const raw = (reference ?? '').toString().trim()
+  const m = raw.match(/^(.*?)[\s#-]*(\d+)$/)
+  return m ? { name: m[1].trim(), number: m[2] } : { name: raw, number: '' }
+}
+
+/** ...and back again. Either half alone is still a usable reference. */
+export const composeReference = (name, number) =>
+  [String(name ?? '').trim(), String(number ?? '').trim()].filter(Boolean).join(' ')

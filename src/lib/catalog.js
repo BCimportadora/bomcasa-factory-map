@@ -372,7 +372,13 @@ const isBlank = (value) => value === null || value === undefined || value === ''
  */
 export const orderPriority = (reference) => {
   const raw = (reference ?? '').toString().trim()
-  const m = raw.match(/^\s*([A-Za-zÁÉÍÓÚÑáéíóúñ\s.]+?)\s*[-#]?\s*(\d+)\s*$/)
+  // The usual shape: a name, then the number, and nothing after it.
+  // The fallback catches a title that runs on -- our CHS cost sheet is headed
+  // "CHS09 CANALETAS NEGRAS". It requires the digits to be GLUED to the letters,
+  // because that cannot be confused with a number that means something else:
+  // "ORDEN 11 MILANLUX" has a space there and is left unranked, as before.
+  const m = raw.match(/^\s*([A-Za-zÁÉÍÓÚÑáéíóúñ\s.]+?)\s*[-#]?\s*(\d+)\s*$/) ??
+    raw.match(/^([A-Za-zÁÉÍÓÚÑáéíóúñ]+)(\d+)/)
   if (!m) return null
   const series = m[1]
     .normalize('NFD')
@@ -462,8 +468,16 @@ export const supplierIndex = ({ orders, factories }) => {
   return (product) => {
     const reference = lastSeenOrder(product)
     if (!reference) return null
+    const exact = byReference.get(aliasKey(reference))
+    if (exact) return exact
+    // The reference is not always tidy. Our CHS cost sheet is headed
+    // "CHS09 CANALETAS NEGRAS", so stripping the digits leaves
+    // "CHS CANALETAS NEGRAS" and matches no nickname. orderPriority already
+    // knows how to find the series in a reference that runs on, so ask it
+    // first and fall back to the whole word only when it cannot.
+    const series = orderPriority(reference)?.series
     return (
-      byReference.get(aliasKey(reference)) ??
+      (series && matchFactoryByAlias(series, factories ?? [])) ??
       matchFactoryByAlias(reference.replace(/[0-9]+/g, '').trim(), factories ?? [])
     )
   }

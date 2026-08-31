@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useI18n } from '../../i18n'
 import { factoryLabel } from '../../lib/factories'
-import { CURRENCIES, ORDER_STATUSES, statusKey } from '../../lib/orders'
+import { CURRENCIES, ORDER_STATUSES, composeReference, splitReference, statusKey } from '../../lib/orders'
 import { FOB_PORTS } from '../../lib/ports'
 import OrderItemsEditor, { emptyItem } from './OrderItemsEditor'
 
@@ -28,6 +28,22 @@ const asDateInput = (value) => value ?? ''
 
 export default function OrderForm({ initialValues, factories, onSubmit, onCancel, submitting }) {
   const { t } = useI18n()
+
+  /**
+   * The order number, kept beside the reference rather than inside it.
+   *
+   * Orders here are named "<supplier> <number>" -- CHS 09, Klik 78 -- and the
+   * number is load-bearing: it is what decides whose pricing the catalog treats
+   * as current. Typed as part of one free-text box it comes out inconsistent,
+   * so the supplier and the number are asked for separately and the reference
+   * is composed from them.
+   *
+   * It stays TEXT, never a Number: they write 09, and a round trip through a
+   * number would hand back 9.
+   */
+  const [orderNo, setOrderNo] = useState(() => splitReference(initialValues?.reference).number)
+  // Once somebody edits the reference by hand, it is theirs and composing stops.
+  const [referenceTouched, setReferenceTouched] = useState(false)
 
   const [values, setValues] = useState(() => {
     const merged = { ...emptyOrder, ...initialValues }
@@ -63,7 +79,29 @@ export default function OrderForm({ initialValues, factories, onSubmit, onCancel
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setValues((v) => ({ ...v, [name]: value }))
+    if (name === 'reference') setReferenceTouched(true)
+    setValues((v) => {
+      const next = { ...v, [name]: value }
+      // Picking the supplier renames the order, unless somebody has already
+      // written the reference themselves.
+      if (name === 'factory_id' && !referenceTouched) {
+        next.reference = composeReference(nicknameOf(value), orderNo)
+      }
+      return next
+    })
+  }
+
+  /** What this supplier's orders are called: "CHS", "Klik", "Milan". */
+  const nicknameOf = (id) => {
+    const factory = factories.find((f) => f.id === id)
+    return factory?.nickname?.trim() ?? ''
+  }
+
+  const handleOrderNo = (e) => {
+    const value = e.target.value
+    setOrderNo(value)
+    if (referenceTouched) return
+    setValues((v) => ({ ...v, reference: composeReference(nicknameOf(v.factory_id), value) }))
   }
 
   const handleSubmit = (e) => {
@@ -133,11 +171,27 @@ export default function OrderForm({ initialValues, factories, onSubmit, onCancel
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {field('reference', 'orders.reference', {
-          required: true,
-          autoFocus: true,
-          placeholder: t('orders.referencePlaceholder'),
-        })}
+        <div className="grid grid-cols-[1fr,5rem] gap-2">
+          {field('reference', 'orders.reference', {
+            required: true,
+            autoFocus: true,
+            placeholder: t('orders.referencePlaceholder'),
+          })}
+          <div>
+            <label htmlFor="order_no" className="label">
+              {t('orders.number')}
+            </label>
+            <input
+              id="order_no"
+              name="order_no"
+              value={orderNo}
+              onChange={handleOrderNo}
+              inputMode="numeric"
+              placeholder={t('orders.numberPlaceholder')}
+              className="input text-[14px]"
+            />
+          </div>
+        </div>
         {select(
           'factory_id',
           'orders.factory',

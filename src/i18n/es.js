@@ -309,6 +309,9 @@ export default {
     editTitle: 'Editar pedido',
 
     reference: 'Referencia del pedido',
+    number: 'No.',
+    numberPlaceholder: '09',
+    numberHint: 'Los pedidos se nombran con el proveedor y su número: CHS 09, Klik 78. El número es lo que decide qué precios toma el catálogo como vigentes.',
     referencePlaceholder: 'p. ej. BC-2026-014',
     factory: 'Fábrica',
     noFactory: 'Sin fábrica seleccionada',
