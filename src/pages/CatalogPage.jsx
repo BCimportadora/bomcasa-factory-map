@@ -24,6 +24,7 @@ import {
   formatProductCode,
   formatPercent,
   isInternalUse,
+  productDescription,
   lastSeenOrder,
   orderSortKey,
   supplierIndex,
@@ -206,6 +207,8 @@ export default function CatalogPage() {
     // Formatted on the way out as well as on the way in, so rows imported
     // before the hyphen rule existed read correctly without a migration.
     if (field === 'product_code') return formatProductCode(product[field]) || '—'
+    // Whichever of the three descriptions the documents supplied.
+    if (field === 'description') return productDescription(product) || '—'
     return product[field] || '—'
   }
 

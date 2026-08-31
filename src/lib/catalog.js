@@ -126,6 +126,19 @@ export const isNotSold = (row) => {
  * exactly 0, which can only have come from a cost sheet's zero — so they read
  * correctly without a migration. A real product never has a list price of 0.
  */
+/**
+ * The description to show, out of the three a product can carry.
+ *
+ * `description` is our own cost sheet's wording and leads where we have it.
+ * But a supplier document is often the FIRST thing imported for an order, and
+ * CHS and Klik each state their description in one language only -- so a
+ * catalog built from invoices alone had a dash in every Descripcion cell while
+ * the text sat one column away. The search has always looked at all three;
+ * the table now agrees with it.
+ */
+export const productDescription = (product) =>
+  product?.description || product?.description_es || product?.description_en || null
+
 export const isInternalUse = (product) =>
   product?.internal_use === true ||
   (product?.internal_use == null && !isBlank(product?.precio_lista) && Number(product.precio_lista) === 0)

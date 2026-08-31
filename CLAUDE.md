@@ -530,6 +530,15 @@ pages two onwards would print flush to the paper edge and lose a row to the
 printer's unprintable area. `table-header-group` and `table-footer-group` repeat
 on every page, which is what makes their padding a per-page margin.
 
+**A product can carry three descriptions and the table used to show only one.**
+`description` is our own cost sheet's wording, `description_es` and
+`description_en` are the supplier's — and CHS and Klik each state theirs in one
+language only. A supplier document is often the FIRST thing imported for an
+order, so a catalog built from invoices alone had an em dash in every
+Descripción cell while the text sat one column away in the same row. The search
+had always looked at all three; `productDescription` is what makes the table
+agree with it.
+
 **A catalog product's supplier is derived, not stored.** There is deliberately
 no `factory_id` on `catalog`: the supplier is already recorded once, on the
 order the paperwork came from, and `doc_ref` / `cost_ref` hold that order's
