@@ -33,25 +33,71 @@ export const normalise = (value) =>
 /**
  * Headings we read, most specific first.
  *
- * `Code for Box` is OUR article code and `Item No.` is the supplier's own --
- * the opposite way round from the Milan proforma, where the `Code` column holds
- * ours. Reading them the other way would file every product under a code no
- * document of ours uses.
+ * Every supplier labels these differently and none of them is going to change
+ * for us, so each field lists the spellings actually seen. The quantity column
+ * alone arrives as `Quanity (PCS)` (Klik, with the typo), `QTY` (CHS) and
+ * `Unidades` -- one field, and they must all read the same.
+ *
+ * ORDER MATTERS, because a field takes the first unclaimed column whose heading
+ * begins with one of its patterns. `codigo arancelario` is listed under
+ * `arancel` ABOVE `codigo` under `product_code`, or the tariff column would be
+ * swallowed as the article code.
+ *
+ * Which column holds OUR code differs per supplier and getting it wrong files
+ * every product under a code no document of ours uses: Klik writes ours as
+ * `Code for Box` and its own as `Item No.`; CHS writes ours as `Codigo` on the
+ * invoice and `Customer Item No.` on the packing list. The Milan proforma is
+ * different again -- its `Code` is ours -- which is why that one has its own
+ * reader.
  */
 const COLUMNS = [
   ['s no', 'line_no'],
+  ['codigo arancelario', 'arancel'],
+  ['customer item no', 'product_code'],
+  ['code for box', 'product_code'],
+  ['codigo', 'product_code'],
   ['item no', 'supplier_code'],
   ['bar code', 'barcode'],
-  ['code for box', 'product_code'],
+  ['barcode', 'barcode'],
   ['description of goods', 'description_en'],
+  ['descripcion', 'description_es'],
   ['quanity pcs', 'quantity'],
   ['quantity pcs', 'quantity'],
+  ['qty', 'quantity'],
+  ['quanity', 'quantity'],
+  ['quantity', 'quantity'],
+  ['unidades', 'quantity'],
+  ['units', 'quantity'],
   ['unit price', 'unit_price'],
   ['amount', 'amount'],
+  ['no of package', 'cartons'],
   ['package ctns', 'cartons'],
   ['volume cbm', 'volume_cbm'],
   ['n w kgs', 'net_weight'],
   ['g w kgs', 'gross_weight'],
+]
+
+/** Headings under which a supplier writes OUR article code. */
+const CODE_HEADINGS = ['code for box', 'codigo', 'customer item no']
+
+/**
+ * Headings that belong to OUR OWN cost sheet and to no supplier's invoice.
+ *
+ * The guard exists because a supplier invoice and our landed-cost workbook can
+ * both head a column `Codigo` beside one headed `Descripcion` -- which is all
+ * the cost-sheet reader looks for. Without this, CHS's commercial invoice is
+ * claimed by the invoice reader on `Codigo`... and, worse, our own cost sheets
+ * would be too. Its FOB dollars would then land in the catalog's peso columns.
+ * No supplier writes CIF PESOS or COSTO UNITARIO on an invoice to us.
+ */
+const OUR_COST_SHEET = [
+  'costo total',
+  'cif dolares',
+  'cif pesos',
+  'gravamen',
+  'costo unitario',
+  'total puesto en almacen',
+  'precio venta',
 ]
 
 /** `PO.202603-77` -> 77. The middle six digits are the year and month. */
@@ -103,11 +149,18 @@ const text = (value) => {
   return s ? s.replace(/\s+/g, ' ') : null
 }
 
-/** The row that labels the columns: the one naming the box code. */
+/**
+ * The row that labels the columns: the one naming our article code.
+ *
+ * A row carrying one of OUR_COST_SHEET's headings is refused outright, however
+ * well the rest of it matches -- that is our own workbook, and it has its own
+ * reader. See the note on OUR_COST_SHEET.
+ */
 function findHeaderRow(rows) {
   for (const row of rows) {
     const values = [...row.cells.values()].map(normalise)
-    if (values.some((v) => v === 'code for box')) return row
+    if (values.some((v) => OUR_COST_SHEET.some((own) => v.startsWith(own)))) continue
+    if (values.some((v) => CODE_HEADINGS.some((code) => v.startsWith(code)))) return row
   }
   return null
 }
@@ -153,7 +206,10 @@ function readSheet(sheet) {
     for (const value of row.cells.values()) {
       const raw = text(value)
       if (!raw) continue
-      if (!identity.supplierName && row.number === 1) identity.supplierName = raw
+      // La primera línea en letras latinas, no la primera línea a secas: CHS
+      // encabeza con su razón social en chino y pone la occidental debajo, y es
+      // ésta la que se puede cotejar con la lista de fábricas.
+      if (!identity.supplierName && /[A-Za-z]{4}/.test(raw)) identity.supplierName = raw
       const contract = raw.match(CONTRACT)
       if (contract && !identity.contractNo) identity.contractNo = contract[1]
       const po = raw.match(PO_LINE)
@@ -198,18 +254,26 @@ function readSheet(sheet) {
       continue
     }
 
-    const lineNo = get(row, 'line_no')
-    if (lineNo === null || !/^\d+$/.test(String(lineNo).trim())) continue
+    // Carrying an article code is what makes a row a product. The line number
+    // is only a second opinion, and only when the sheet has that column at all
+    // -- CHS's invoice has no S/No. column, so requiring one rejected every
+    // line of it.
     const productCode = text(get(row, 'product_code'))
     if (!productCode) continue
+    const lineNo = get(row, 'line_no')
+    const numbered = columns.line_no === undefined || lineNo === null
+    if (!numbered && !/^\d+$/.test(String(lineNo).trim())) continue
 
     current.lines.push({
       row: row.number,
-      line_no: Number(lineNo),
+      line_no: lineNo === null ? current.lines.length + 1 : Number(lineNo),
       product_code: productCode,
       supplier_code: text(get(row, 'supplier_code')),
       barcode: barcode(get(row, 'barcode')),
       description_en: text(get(row, 'description_en')),
+      // Cada proveedor describe en su idioma y alguno trae la partida.
+      description_es: text(get(row, 'description_es')),
+      arancel: text(get(row, 'arancel')),
       quantity: num(get(row, 'quantity')),
       unit_price: num(get(row, 'unit_price')),
       cartons: num(get(row, 'cartons')),
@@ -250,7 +314,12 @@ export function parseCommercialInvoice(workbook, { fileName } = {}) {
   const warnings = []
 
   const invoiceSheet = workbook.sheets.find((s) => hasField(s, 'unit_price'))
-  const packingSheet = workbook.sheets.find((s) => s !== invoiceSheet && hasField(s, 'volume_cbm'))
+  // Por los cartones o por el volumen: CHS numera los cartones bajo un
+  // encabezado claro pero deja el volumen en una columna sin etiquetar, así que
+  // exigir el volumen dejaba su packing list sin encontrar.
+  const packingSheet = workbook.sheets.find(
+    (s) => s !== invoiceSheet && (hasField(s, 'cartons') || hasField(s, 'volume_cbm')),
+  )
   // Whichever is present leads. Both anchor on a `Code for Box` heading, which
   // is what tells this supplier's paperwork apart from a proforma or one of our
   // own cost sheets.

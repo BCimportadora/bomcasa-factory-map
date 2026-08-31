@@ -161,10 +161,32 @@ insert twice and the second collides on the unique `code_key`.
 
 The blocks are keyed on the S/C number rather than the PO, because that is what
 both sheets carry: `PL` marks its later blocks with the S/C alone and no PO line
-at all. And on this document `Code for Box` is OUR article code while `Item No.`
-is the supplier's — the opposite way round from the Milan proforma, where `Code`
-is ours. Reading them the other way files every product under a code no document
-of ours uses.
+at all.
+
+**No two suppliers label these columns alike, and the reader carries every
+spelling.** Quantity alone arrives as `Quanity (PCS)` (Klik, typo included),
+`QTY` (CHS) and `Unidades` — one field. Worse, WHICH column holds OUR code moves:
+Klik writes ours as `Code for Box` and its own as `Item No.`; CHS writes ours as
+`Codigo` on the invoice and `Customer Item No.` on the packing list; the Milan
+proforma's `Code` is ours again. Reading them the wrong way round files every
+product under a code no document of ours uses. `codigo arancelario` is listed
+under `arancel` ABOVE `codigo` under `product_code` in `COLUMNS`, because a field
+takes the first unclaimed column whose heading begins with one of its patterns —
+the tariff column would otherwise be swallowed as the article code.
+
+**`OUR_COST_SHEET` is what stops the invoice reader eating our own workbooks.** A
+supplier invoice and our landed-cost sheet can both head a column `Codigo` beside
+one headed `Descripcion`, which is all either reader looks for. Without the
+guard, CHS's invoice is claimed on `Codigo` — and so are our own cost sheets,
+whose FOB dollars would then land in the catalog's peso columns. No supplier
+writes `CIF PESOS` or `COSTO UNITARIO` on an invoice to us, so those headings
+mean the sheet is ours and the invoice reader must decline it.
+
+A packing list is found by its CARTONS column or its volume column, not the
+volume alone: CHS numbers cartons under a clear heading and leaves the volume in
+an unlabelled formula. And a data row is one carrying an article code — the
+S/No. is a second opinion, used only where that column exists, because CHS's
+invoice has none.
 
 The invoice states a real unit price and the catalog deliberately ignores it:
 every figure with a currency on it still comes from our own cost sheet, which

@@ -288,6 +288,12 @@ const fromInvoiceRow = (row) => ({
   barcode: row.barcode,
   supplier_code: row.supplier_code,
   description_en: row.description_en,
+  // Cada proveedor describe en un idioma: Klik en inglés, CHS en español. Se
+  // guarda el que venga.
+  description_es: row.description_es,
+  // Y alguno trae la partida arancelaria, que la liquidación de aduanas también
+  // da pero suele llegar meses después.
+  arancel: row.arancel,
   units_per_box: wholeNumber(
     row.quantity && row.cartons ? Number(row.quantity) / Number(row.cartons) : null,
   ),
