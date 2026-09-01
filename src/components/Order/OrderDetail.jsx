@@ -185,7 +185,10 @@ export default function OrderDetail({ order, factory, onClose }) {
             {section.items.map((item) => {
               const open = expanded === item.id
               return (
-                <tr key={item.id} className="border-b border-line last:border-0 align-top">
+                <tr
+                  key={item.id}
+                  className="border-b border-line align-top transition-colors last:border-0 hover:bg-canvas"
+                >
                   <td className="whitespace-nowrap px-3 py-2 text-ink">{item.product_code ?? '—'}</td>
                   <td className="px-3 py-2">
                     <p className="text-ink">{item.product}</p>

@@ -5,6 +5,9 @@ export default {
     save: 'Guardar',
     saving: 'Guardando…',
     cancel: 'Cancelar',
+    copy: 'Copiar',
+    copyField: 'Copiar {{field}}',
+    copied: 'Copiado',
     close: 'Cerrar',
     edit: 'Editar',
     delete: 'Eliminar',
@@ -441,6 +444,7 @@ export default {
 
     fields: {
       docType: 'Tipo de documento',
+      updated_at: 'Actualizado',
       lastSeen: 'Último pedido',
       product_code: 'Código',
       description: 'Descripción',

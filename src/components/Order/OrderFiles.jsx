@@ -171,9 +171,9 @@ export default function OrderFiles({
           <p className="mt-1 text-[13px] text-muted">{t('files.noFilesHint')}</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line">
+        <div className="max-h-[60vh] overflow-auto rounded-xl border border-line">
           <table className="w-full min-w-[42rem] text-[12px]">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-surface">
               <tr className="border-b border-line text-left text-muted">
                 <th className="px-3 py-2 font-medium">{t('files.name')}</th>
                 <th className="px-3 py-2 font-medium">{t('files.docType')}</th>
@@ -192,7 +192,10 @@ export default function OrderFiles({
                 // anyone else offers an action the database will refuse.
                 const canDelete = file.created_by === user?.id || isAdmin
                 return (
-                  <tr key={file.id} className="border-b border-line last:border-0">
+                  <tr
+                    key={file.id}
+                    className="border-b border-line transition-colors last:border-0 hover:bg-canvas"
+                  >
                     <td className="px-3 py-2">
                       <span className="break-all font-medium text-ink">{file.file_name}</span>
                     </td>

@@ -99,7 +99,10 @@ export default function AdminCatalogPage() {
                 </thead>
                 <tbody>
                   {imports.map((doc) => (
-                    <tr key={doc.id} className="border-b border-line last:border-0">
+                    <tr
+                      key={doc.id}
+                      className="border-b border-line transition-colors last:border-0 hover:bg-canvas"
+                    >
                       <td className="px-3 py-2">
                         <span className="break-all text-ink">{doc.file_name}</span>
                       </td>

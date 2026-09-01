@@ -22,6 +22,7 @@ import {
   codeKey,
   formatPrice,
   formatProductCode,
+  formatTimestamp,
   formatPercent,
   isInternalUse,
   productDescription,
@@ -30,6 +31,7 @@ import {
   supplierIndex,
 } from '../lib/catalog'
 import { sectionDescriptionKey, sectionNameKey } from '../lib/sections'
+import CopyButton from '../components/common/CopyButton'
 import { TableSkeleton } from '../components/common/Skeleton'
 import CatalogImport from '../components/Catalog/CatalogImport'
 import ProductEditor from '../components/Catalog/ProductEditor'
@@ -50,7 +52,19 @@ const COLUMNS = [
   // and cost_ref is the later order -- see lastSeenOrder and supplierIndex.
   { field: 'supplier', align: 'left', numeric: false, derived: true },
   { field: 'lastSeen', align: 'left', numeric: false, derived: true },
+  // When the row itself last changed, which is not the same question as which
+  // order it was last seen in: correcting a price by hand moves this and
+  // leaves that alone. `updated_at` is maintained by a trigger, so it is true
+  // even for a change made outside the application.
+  { field: 'updated_at', align: 'left', numeric: false },
 ]
+
+/**
+ * The three values somebody copies out of this table to paste somewhere else:
+ * into the customs agent's form, into a supplier's email, into a spreadsheet.
+ * Nothing derived and nothing money -- a figure is read, not transcribed.
+ */
+const COPYABLE = new Set(['product_code', 'barcode', 'arancel'])
 
 /** The value the supplier filter uses for products whose supplier is unknown. */
 const NO_SUPPLIER = 'none'
@@ -79,6 +93,12 @@ export default function CatalogPage() {
   const [printOpen, setPrintOpen] = useState(false)
   const [sort, setSort] = useState({ field: 'product_code', dir: 'asc' })
   const [page, setPage] = useState(0)
+  // Printing puts the WHOLE list on paper, not the twenty-five rows that
+  // happen to be on screen. Driven by the browser's own print events rather
+  // than by rendering every row hidden behind a print: utility, which on a
+  // catalog of a few thousand would put all of them in the DOM at all times
+  // for the sake of a page nobody has asked for yet.
+  const [printing, setPrinting] = useState(false)
   const [importing, setImporting] = useState(false)
   const [editing, setEditing] = useState(null)
   const [actionError, setActionError] = useState('')
@@ -99,6 +119,32 @@ export default function CatalogPage() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [printOpen])
+
+  /**
+   * Swap to the full list around a print, and back afterwards.
+   *
+   * `beforeprint` fires before the browser lays the page out, and React's
+   * state update is flushed synchronously here because the event handler is
+   * outside React's batching -- so the extra rows are in the document by the
+   * time pagination happens. The matchMedia fallback covers Safari, which has
+   * historically fired the media change and not the event.
+   */
+  useEffect(() => {
+    const before = () => setPrinting(true)
+    const after = () => setPrinting(false)
+    window.addEventListener('beforeprint', before)
+    window.addEventListener('afterprint', after)
+
+    const query = window.matchMedia?.('print')
+    const onChange = (event) => setPrinting(event.matches)
+    query?.addEventListener?.('change', onChange)
+
+    return () => {
+      window.removeEventListener('beforeprint', before)
+      window.removeEventListener('afterprint', after)
+      query?.removeEventListener?.('change', onChange)
+    }
+  }, [])
 
   const supplierFor = useMemo(() => supplierIndex({ orders, factories }), [orders, factories])
 
@@ -188,15 +234,21 @@ export default function CatalogPage() {
 
   const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE))
   const current = Math.min(page, pageCount - 1)
-  const rows = visible.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE)
+  const rows = printing
+    ? visible
+    : visible.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE)
 
   const toggleSort = (field) => {
     setPage(0)
     setSort((s) => (s.field === field ? { field, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' }))
   }
 
+  const copyValue = (product, field) =>
+    field === 'product_code' ? formatProductCode(product.product_code) : product[field]
+
   const cell = (product, field) => {
     if (field === 'lastSeen') return lastSeenOrder(product) || '—'
+    if (field === 'updated_at') return formatTimestamp(product.updated_at, language) || '—'
     if (field === 'supplier') return supplierLabel(product) || '—'
     // Where the selling price would be, say why there isn't one. An em dash
     // here reads as "nobody has filled this in yet", which is a different
@@ -222,7 +274,7 @@ export default function CatalogPage() {
             <h1 className="page-title">{t(sectionNameKey('catalog'))}</h1>
             <p className="page-subtitle">{t(sectionDescriptionKey('catalog'))}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="print-hide flex flex-wrap items-center gap-2">
             {/* Two ways to print, because they are two different jobs: one
                 supplier's sheet to take to a meeting, or the whole book. The
                 supplier list is the same one the filter offers. */}
@@ -297,7 +349,7 @@ export default function CatalogPage() {
           </p>
         )}
 
-        <div className="mb-4 flex flex-wrap gap-3">
+        <div className="print-hide mb-4 flex flex-wrap gap-3">
           <div className="relative min-w-[16rem] flex-1">
             <Search
               size={15}
@@ -372,9 +424,9 @@ export default function CatalogPage() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto rounded-xl border border-line">
+            <div className="print-unclip max-h-[70vh] overflow-auto rounded-xl border border-line">
               <table className="w-full min-w-[64rem] text-[12px]">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-surface">
                   <tr className="border-b border-line text-left text-muted">
                     {COLUMNS.map((c) => (
                       <th
@@ -396,12 +448,15 @@ export default function CatalogPage() {
                         </button>
                       </th>
                     ))}
-                    <th className="w-10" />
+                    <th className="print-hide w-10" />
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((product) => (
-                    <tr key={product.id} className="border-b border-line last:border-0">
+                    <tr
+                      key={product.id}
+                      className="group border-b border-line transition-colors last:border-0 hover:bg-canvas"
+                    >
                       {COLUMNS.map((c) => (
                         <td
                           key={c.field}
@@ -410,13 +465,23 @@ export default function CatalogPage() {
                           }`}
                         >
                           {c.field === 'description' ? (
-                            <span className="block max-w-[22rem] truncate">{cell(product, c.field)}</span>
+                            <span className="print-full block max-w-[22rem] truncate">
+                              {cell(product, c.field)}
+                            </span>
                           ) : (
-                            cell(product, c.field)
+                            <>
+                              {cell(product, c.field)}
+                              {COPYABLE.has(c.field) && (
+                                <CopyButton
+                                  value={copyValue(product, c.field)}
+                                  label={t(`catalog.fields.${c.field}`)}
+                                />
+                              )}
+                            </>
                           )}
                         </td>
                       ))}
-                      <td className="px-3 py-2 text-right">
+                      <td className="print-hide px-3 py-2 text-right">
                         <button
                           type="button"
                           onClick={() => setEditing(product)}
@@ -433,7 +498,7 @@ export default function CatalogPage() {
               </table>
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="print-hide mt-3 flex flex-wrap items-center justify-between gap-3">
               <p className="hint">
                 {t('catalog.showing', {
                   from: current * PAGE_SIZE + 1,

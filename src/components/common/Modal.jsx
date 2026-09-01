@@ -28,7 +28,7 @@ export default function Modal({ title, onClose, size = 'default', children }) {
 
   return (
     <div
-      className="fixed inset-0 z-[4000] flex items-end justify-center scrim-strong p-0 backdrop-blur-[2px] sm:items-center sm:p-5"
+      className="print-plain fixed inset-0 z-[4000] flex items-end justify-center scrim-strong p-0 backdrop-blur-[2px] sm:items-center sm:p-5"
       onClick={onClose}
       role="presentation"
     >
@@ -37,7 +37,7 @@ export default function Modal({ title, onClose, size = 'default', children }) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`max-h-[92vh] w-full ${WIDTHS[size] ?? WIDTHS.default} overflow-y-auto rounded-t-2xl bg-surface shadow-overlay sm:rounded-2xl`}
+        className={`print-plain max-h-[92vh] w-full ${WIDTHS[size] ?? WIDTHS.default} overflow-y-auto rounded-t-2xl bg-surface shadow-overlay sm:rounded-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 flex items-center justify-between gap-3 border-b border-line bg-surface/95 px-5 py-4 backdrop-blur">
@@ -46,7 +46,7 @@ export default function Modal({ title, onClose, size = 'default', children }) {
             type="button"
             onClick={onClose}
             aria-label={t('common.close')}
-            className="rounded-lg p-1.5 text-muted transition-colors hover:bg-canvas hover:text-ink"
+            className="print-hide rounded-lg p-1.5 text-muted transition-colors hover:bg-canvas hover:text-ink"
           >
             <X size={18} />
           </button>

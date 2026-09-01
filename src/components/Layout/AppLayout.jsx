@@ -130,7 +130,9 @@ export default function AppLayout({ children }) {
       <LanguageSync />
 
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 flex-shrink-0 border-r border-line lg:block">{sidebar}</aside>
+      <aside className="print-hide hidden w-64 flex-shrink-0 border-r border-line lg:block">
+        {sidebar}
+      </aside>
 
       {/* Mobile drawer */}
       {drawerOpen && (
@@ -154,7 +156,7 @@ export default function AppLayout({ children }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar */}
-        <header className="flex h-14 flex-shrink-0 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden">
+        <header className="print-hide flex h-14 flex-shrink-0 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden">
           <button
             type="button"
             onClick={() => setDrawerOpen((o) => !o)}
@@ -171,7 +173,7 @@ export default function AppLayout({ children }) {
           </Link>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
+        <main className="print-unclip min-h-0 flex-1 overflow-hidden">{children}</main>
       </div>
     </div>
   )

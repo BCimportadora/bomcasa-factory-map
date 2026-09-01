@@ -3,7 +3,14 @@ import { Trash2 } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import Modal from '../common/Modal'
 import ConfirmDialog from '../common/ConfirmDialog'
-import { CURRENCY_OF, codeKey, isInternalUse, lastSeenOrder } from '../../lib/catalog'
+import CopyButton from '../common/CopyButton'
+import {
+  CURRENCY_OF,
+  codeKey,
+  formatTimestamp,
+  isInternalUse,
+  lastSeenOrder,
+} from '../../lib/catalog'
 
 /**
  * Correcting one product by hand.
@@ -26,6 +33,9 @@ const TEXT_FIELDS = [
   'description_en',
   'description_es',
 ]
+/** Copied out of here to be pasted elsewhere -- the same three as the table. */
+const COPYABLE = new Set(['product_code', 'barcode', 'arancel'])
+
 const NUMBER_FIELDS = [
   'fob_usd',
   'gravamen_pct',
@@ -36,7 +46,7 @@ const NUMBER_FIELDS = [
 ]
 
 export default function ProductEditor({ product, onSave, onDelete, canDelete = false, onClose }) {
-  const { t, tCount } = useI18n()
+  const { t, tCount, language } = useI18n()
   const [values, setValues] = useState(() => {
     const initial = {}
     for (const f of [...TEXT_FIELDS, ...NUMBER_FIELDS]) initial[f] = product[f] ?? ''
@@ -135,10 +145,13 @@ export default function ProductEditor({ product, onSave, onDelete, canDelete = f
   const field = (name, type = 'text') => {
     const problem = fieldErrors[name]
     return (
-      <div>
+      <div className="group">
         <label htmlFor={`cat-${name}`} className="label">
           {t(`catalog.fields.${name}`)}
           {CURRENCY_OF[name] && <span className="ml-1 text-muted">({CURRENCY_OF[name]})</span>}
+          {COPYABLE.has(name) && (
+            <CopyButton value={values[name]} label={t(`catalog.fields.${name}`)} />
+          )}
         </label>
         <input
           id={`cat-${name}`}
@@ -241,27 +254,29 @@ export default function ProductEditor({ product, onSave, onDelete, canDelete = f
 
         {/* Where this product's values came from. Read-only: it is a record of
             what the imports did, not something to type over. */}
-        {(product.doc_ref || product.cost_ref || product.doc_date || product.cost_date) && (
-          <div className="mt-5 rounded-xl border border-line bg-canvas px-3.5 py-3">
-            <p className="label mb-1">{t('catalog.edit.provenance')}</p>
-            <dl className="grid gap-x-4 gap-y-1 text-[12px] sm:grid-cols-2">
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted">{t('catalog.edit.lastSeen')}</dt>
-                <dd className="text-ink">{lastSeenOrder(product) || '—'}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted">{t('catalog.edit.tariffFrom')}</dt>
-                <dd className="text-ink">{product.doc_ref || '—'}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted">{t('catalog.edit.pricedFrom')}</dt>
-                <dd className="text-ink">{product.cost_ref || '—'}</dd>
-              </div>
-            </dl>
-          </div>
-        )}
+        <div className="mt-5 rounded-xl border border-line bg-canvas px-3.5 py-3">
+          <p className="label mb-1">{t('catalog.edit.provenance')}</p>
+          <dl className="grid gap-x-4 gap-y-1 text-[12px] sm:grid-cols-2">
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted">{t('catalog.fields.updated_at')}</dt>
+              <dd className="text-ink">{formatTimestamp(product.updated_at, language) || '—'}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted">{t('catalog.edit.lastSeen')}</dt>
+              <dd className="text-ink">{lastSeenOrder(product) || '—'}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted">{t('catalog.edit.tariffFrom')}</dt>
+              <dd className="text-ink">{product.doc_ref || '—'}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted">{t('catalog.edit.pricedFrom')}</dt>
+              <dd className="text-ink">{product.cost_ref || '—'}</dd>
+            </div>
+          </dl>
+        </div>
 
-        <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+        <div className="print-hide mt-5 flex flex-wrap items-center justify-end gap-2">
           {canDelete && (
             <button
               type="button"

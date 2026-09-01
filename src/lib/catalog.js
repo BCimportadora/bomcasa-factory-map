@@ -741,6 +741,23 @@ export const formatMoney = (amount, currency, language = 'en') => {
 export const formatPrice = (amount, currency, language = 'en') =>
   isBlank(amount) || Number(amount) === 0 ? '—' : formatMoney(amount, currency, language)
 
+/**
+ * A timestamptz as a date and time.
+ *
+ * Not `formatDate` from lib/orders: that one takes a `date` column and builds
+ * `${value}T00:00:00`, which on a timestamptz appends a second time to one
+ * that is already there and yields an Invalid Date -- silently, as a null.
+ */
+export const formatTimestamp = (value, language = 'en') => {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return new Intl.DateTimeFormat(localeFor(language), {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)
+}
+
 export const formatPercent = (value, language = 'en') => {
   if (isBlank(value)) return '—'
   const n = Number(value)

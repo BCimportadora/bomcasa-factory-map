@@ -531,4 +531,59 @@
   @page {
     margin: 14mm;
   }
+
+  /* ---------------------------------------------------------------------
+     The catalog list and one product's detail, printed from the screen they
+     are on. `/catalog/print` remains the deliberate, landscape price sheet;
+     this is Ctrl+P on the page in front of you.
+     --------------------------------------------------------------------- */
+
+  /* Chrome, buttons and controls: none of it means anything on paper, and a
+     disabled pagination arrow printed in grey reads as a mistake. */
+  .print-hide {
+    display: none !important;
+  }
+
+  /* The table body scrolls on screen inside a capped box. On paper there is
+     nothing to scroll, and a max-height would simply cut the list off at the
+     first page. */
+  .print-unclip {
+    max-height: none !important;
+    overflow: visible !important;
+    border: 0 !important;
+  }
+
+  /* `position: sticky` and `table-header-group` are mutually exclusive: a
+     sticky thead stops repeating across pages, which is exactly the thing
+     that has to happen here. */
+  thead {
+    position: static !important;
+    display: table-header-group;
+  }
+
+  tr,
+  td,
+  th {
+    break-inside: avoid;
+  }
+
+  /* Truncation is for a column that has to share a screen. On paper the
+     description gets its width. */
+  .print-full {
+    max-width: none !important;
+    overflow: visible !important;
+    white-space: normal !important;
+    text-overflow: clip !important;
+  }
+
+  /* A modal is fixed and scrimmed on screen. Printed, it is the document. */
+  .print-plain {
+    position: static !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+  }
 }
