@@ -130,6 +130,22 @@
   body,
   #root {
     height: 100%;
+    /*
+     * The document itself must never scroll. Every page is its own scroll
+     * container -- `h-full overflow-y-auto` on each page root, plus whatever
+     * the page puts inside it -- so a scrollbar on the document is always a
+     * leak, never a feature.
+     *
+     * And a leak is exactly what happened: with the catalog's table in a
+     * scroll box, `body` measured 698 tall with 698 of content while `html`
+     * measured 698 with 1656, so the window scrolled 958px into nothing below
+     * the application. Every element from the table up to `body` was
+     * contained; the excess appeared between `body` and `html`, where there is
+     * nothing to contain. Clipping here is what stops it.
+     *
+     * `@media print` lifts this again, or the page would print one sheet.
+     */
+    overflow: hidden;
   }
 
   body {
@@ -518,6 +534,8 @@
   body,
   #root {
     height: auto;
+    /* Lifts the screen rule above: on paper the document IS the scroll. */
+    overflow: visible !important;
     background: #fff !important;
     color: #000 !important;
   }

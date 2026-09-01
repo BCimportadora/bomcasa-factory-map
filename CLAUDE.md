@@ -498,6 +498,26 @@ quotes with a temporary `key` and `saveDetails` translates those to real ids
 after the variations come back — joined on `line_no`, since the order rows are
 returned in is not guaranteed.
 
+**The document itself must never scroll, and `html`/`body` carry
+`overflow: hidden` to guarantee it.** Every page is its own scroll container —
+`h-full overflow-y-auto` on each page root — so a scrollbar on the window is
+always a leak. One appeared: with the catalog's table in a scroll box, `body`
+measured 698 tall with 698 of content, and `html` measured 698 with **1656**.
+Every element from the table up to `body` was contained; the excess showed up
+between `body` and `html`, where there is nothing to contain it. The window
+scrolled 958px into blank space below the application, which is what "I can
+scroll past the limit" meant.
+
+Setting `overflow: hidden` there does not change what `scrollHeight` reports —
+it still says 1656 — but it stops the wheel and the scrollbar, which is the
+whole of the symptom, and nothing is made unreachable because every ancestor
+already contained its content. `@media print` lifts it with
+`overflow: visible !important`, or the catalog would print one sheet and stop.
+
+If a page ever appears to lose content off the bottom, this rule is the first
+place to look — but the fix is to give that page its own scroll container,
+not to remove this.
+
 **A `max-h-[Nvh]` inside a container that is already the viewport's height
 overflows it.** The catalog table was capped at `70vh` so its header could be
 sticky — but the table sits below ~250px of page header and filters, inside a
