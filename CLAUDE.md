@@ -509,15 +509,21 @@ min-h-0` — the remainder, whatever that is. `min-h-0` is not optional: without
 it a flex child refuses to shrink below its content and the overflow comes
 straight back.
 
-Only from `md`, and `md` rather than `lg` for a measured reason: Windows at
-125% turns a 1280px monitor into **982 CSS pixels**, so a real PC lands under
-the 1024 `lg` breakpoint and got the phone layout — no sticky header at all, on
-the machine most likely to need one. Below `md` the page scrolls as it always
-did and the table takes its natural height, because there the header and the
-three filters stack to most of the screen and filling the rest left four rows
-with no way to scroll the header away, which is worse than the bug.
+**Only from `lg`, and that is a decision the company made, not a default.**
+Below it the page scrolls as it always did and the table keeps its natural
+height — all twenty-five rows in one run, no sticky header. Filling the height
+was tried at `md` and rejected: on the machine that reported the bug it left
+six rows visible, and reading twenty-five at a stretch was worth more to them
+than pinned column labels. Do not "fix" this back to `md` without asking.
 
-The table also carries `md:min-h-[18rem]`, and the page is `md:overflow-auto`
+Worth knowing before touching that breakpoint: **Windows at 125% turns a
+1280px monitor into 982 CSS pixels**, so a real PC in this office sits UNDER
+the 1024px `lg` line and gets the phone layout — hamburger instead of the
+sidebar, and no sticky header. That is why the desktop branch appeared to do
+nothing when it was first shipped. Test any breakpoint change at 982×730, not
+just at 1440.
+
+The table also carries `lg:min-h-[18rem]`, and the page is `lg:overflow-auto`
 rather than `overflow-hidden`. At 768×600 the header and filters take
 everything and the table collapsed to 136px — two rows. The floor stops that;
 `overflow-auto` is what lets the page scroll on a window too short to honour
