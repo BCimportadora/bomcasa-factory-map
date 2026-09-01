@@ -509,11 +509,21 @@ min-h-0` — the remainder, whatever that is. `min-h-0` is not optional: without
 it a flex child refuses to shrink below its content and the overflow comes
 straight back.
 
-Only from `lg`. On a phone the header and the three filters stack to most of
-the screen, so filling the rest left the table four rows tall with no way to
-scroll the header away — worse than the bug. Below `lg` the page scrolls as it
-always did and the table takes its natural height, which costs the sticky
-header on a screen where the table is read sideways anyway.
+Only from `md`, and `md` rather than `lg` for a measured reason: Windows at
+125% turns a 1280px monitor into **982 CSS pixels**, so a real PC lands under
+the 1024 `lg` breakpoint and got the phone layout — no sticky header at all, on
+the machine most likely to need one. Below `md` the page scrolls as it always
+did and the table takes its natural height, because there the header and the
+three filters stack to most of the screen and filling the rest left four rows
+with no way to scroll the header away, which is worse than the bug.
+
+The table also carries `md:min-h-[18rem]`, and the page is `md:overflow-auto`
+rather than `overflow-hidden`. At 768×600 the header and filters take
+everything and the table collapsed to 136px — two rows. The floor stops that;
+`overflow-auto` is what lets the page scroll on a window too short to honour
+the floor, instead of clipping the list. A non-zero `min-height` still
+overrides the flex default of `auto`, so the shrink that makes all of this
+work is unaffected.
 
 `.print-flow` is what lets that column collapse back into ordinary flow on
 paper. A flex column pinned to the window's height prints one page and clips
