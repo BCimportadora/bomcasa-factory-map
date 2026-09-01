@@ -687,8 +687,8 @@ export default function CatalogImport({
           )}
 
           {state.plan.added.length > 0 && (
-            <div className="mt-4 max-h-56 overflow-y-auto rounded-xl border border-line">
-              <table className="w-full text-[12px]">
+            <div className="mt-4 max-h-56 overflow-auto rounded-xl border border-line">
+              <table className="w-full min-w-[30rem] text-[12px]">
                 <thead className="sticky top-0 bg-surface">
                   <tr className="border-b border-line text-left text-muted">
                     <th className="px-3 py-2 font-medium">{t('catalog.fields.product_code')}</th>

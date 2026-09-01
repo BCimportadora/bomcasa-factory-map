@@ -268,8 +268,8 @@ export default function LiquidationImport({ orders, factories, onImport, onClose
             </div>
           </div>
 
-          <div className="mt-4 max-h-64 overflow-y-auto rounded-xl border border-line">
-            <table className="w-full text-[12px]">
+          <div className="mt-4 max-h-64 overflow-auto rounded-xl border border-line">
+            <table className="w-full min-w-[32rem] text-[12px]">
               <thead className="sticky top-0 bg-surface">
                 <tr className="border-b border-line text-left text-muted">
                   <th className="px-3 py-2 font-medium">{t('liquidation.code')}</th>

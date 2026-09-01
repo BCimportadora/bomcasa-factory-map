@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { LayoutGrid, Library, ShieldCheck, LogOut, Menu, X, Settings } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
 import { useI18n } from '../../i18n'
 import { initials, fullName, roleKey } from '../../lib/constants'
 import { sectionGroupKey, sectionShortNameKey, sectionsByGroup } from '../../lib/sections'
@@ -23,6 +24,9 @@ export default function AppLayout({ children }) {
   const location = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const groups = sectionsByGroup()
+  // The drawer covers the page, so while it is open the Tab key belongs to it
+  // and Escape closes it. Focus returns to the button that opened it.
+  const drawerRef = useFocusTrap(drawerOpen, () => setDrawerOpen(false))
 
   // Close the mobile drawer whenever the route changes.
   useEffect(() => {
@@ -135,7 +139,14 @@ export default function AppLayout({ children }) {
             className="absolute inset-0 scrim backdrop-blur-[2px]"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 w-64 max-w-[82vw] border-r border-line shadow-overlay">
+          <div
+            ref={drawerRef}
+            id="mobile-nav"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('nav.menu')}
+            className="absolute inset-y-0 left-0 w-64 max-w-[82vw] border-r border-line shadow-overlay"
+          >
             {sidebar}
           </div>
         </div>
@@ -148,6 +159,8 @@ export default function AppLayout({ children }) {
             type="button"
             onClick={() => setDrawerOpen((o) => !o)}
             aria-label={drawerOpen ? t('nav.closeMenu') : t('nav.openMenu')}
+            aria-expanded={drawerOpen}
+            aria-controls="mobile-nav"
             className="rounded-lg p-1.5 text-muted transition-colors hover:bg-canvas hover:text-ink"
           >
             {drawerOpen ? <X size={20} /> : <Menu size={20} />}

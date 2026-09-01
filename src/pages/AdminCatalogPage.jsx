@@ -88,7 +88,7 @@ export default function AdminCatalogPage() {
 
           {imports.length > 0 && (
             <div className="mt-4 overflow-x-auto rounded-xl border border-line">
-              <table className="w-full text-[12px]">
+              <table className="w-full min-w-[34rem] text-[12px]">
                 <thead>
                   <tr className="border-b border-line text-left text-muted">
                     <th className="px-3 py-2 font-medium">{t('catalog.admin.document')}</th>

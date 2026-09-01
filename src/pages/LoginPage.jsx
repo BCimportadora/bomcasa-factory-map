@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n'
+import { PasswordInput } from '../components/Auth/PasswordFields'
 import LanguageSwitcher from '../components/Layout/LanguageSwitcher'
 import logo from '../assets/logo.png'
 
@@ -86,15 +87,13 @@ export default function LoginPage() {
             <label htmlFor="password" className="label">
               {t('auth.password')}
             </label>
-            <input
+            <PasswordInput
               id="password"
-              type="password"
               autoComplete="current-password"
               placeholder={t('auth.passwordPlaceholder')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              aria-invalid={Boolean(fieldErrors.password)}
-              className={`input ${fieldErrors.password ? 'input-error' : ''}`}
+              error={fieldErrors.password}
             />
             {fieldErrors.password && (
               <p className="mt-1.5 text-[13px] text-danger">{fieldErrors.password}</p>
