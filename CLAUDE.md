@@ -498,6 +498,27 @@ quotes with a temporary `key` and `saveDetails` translates those to real ids
 after the variations come back — joined on `line_no`, since the order rows are
 returned in is not guaranteed.
 
+**A `max-h-[Nvh]` inside a container that is already the viewport's height
+overflows it.** The catalog table was capped at `70vh` so its header could be
+sticky — but the table sits below ~250px of page header and filters, inside a
+page container that is exactly `h-full`. 250 + 630 + pagination came to 905px
+in a 900px window: five pixels of dead scroll, and two nested scrollbars where
+there had been one. A viewport unit cannot know what is above it. From `lg` the
+page is a flex column that does not scroll and the table takes `flex-1
+min-h-0` — the remainder, whatever that is. `min-h-0` is not optional: without
+it a flex child refuses to shrink below its content and the overflow comes
+straight back.
+
+Only from `lg`. On a phone the header and the three filters stack to most of
+the screen, so filling the rest left the table four rows tall with no way to
+scroll the header away — worse than the bug. Below `lg` the page scrolls as it
+always did and the table takes its natural height, which costs the sticky
+header on a screen where the table is read sideways anyway.
+
+`.print-flow` is what lets that column collapse back into ordinary flow on
+paper. A flex column pinned to the window's height prints one page and clips
+the rest.
+
 **The print sheets are the screens that ignore the theme.** `/innovations/print`
 and `/catalog/print` hard-code black on white and skip `AppLayout` entirely, and
 `@media print` in `index.css` forces `background: #fff` past the dark tokens.

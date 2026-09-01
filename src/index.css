@@ -553,6 +553,18 @@
     border: 0 !important;
   }
 
+  /* On screen the catalog is a column that fills the window exactly, so the
+     table can take whatever height is left and nothing else scrolls. Paper has
+     no window to fill: the column has to collapse back into ordinary flow, or
+     it would clip the list at one page. */
+  .print-flow {
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    flex: none !important;
+  }
+
   /* `position: sticky` and `table-header-group` are mutually exclusive: a
      sticky thead stops repeating across pages, which is exactly the thing
      that has to happen here. */

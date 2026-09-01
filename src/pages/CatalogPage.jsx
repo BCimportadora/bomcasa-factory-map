@@ -267,8 +267,8 @@ export default function CatalogPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10">
+    <div className="print-flow h-full overflow-y-auto lg:flex lg:flex-col lg:overflow-hidden">
+      <div className="print-flow mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-10 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
         <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="page-title">{t(sectionNameKey('catalog'))}</h1>
@@ -424,7 +424,7 @@ export default function CatalogPage() {
           </div>
         ) : (
           <>
-            <div className="print-unclip max-h-[70vh] overflow-auto rounded-xl border border-line">
+            <div className="print-unclip overflow-auto rounded-xl border border-line lg:min-h-0 lg:flex-1">
               <table className="w-full min-w-[64rem] text-[12px]">
                 <thead className="sticky top-0 z-10 bg-surface">
                   <tr className="border-b border-line text-left text-muted">
@@ -498,7 +498,7 @@ export default function CatalogPage() {
               </table>
             </div>
 
-            <div className="print-hide mt-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="print-hide mt-3 flex flex-wrap items-center justify-between gap-3 lg:flex-shrink-0">
               <p className="hint">
                 {t('catalog.showing', {
                   from: current * PAGE_SIZE + 1,
