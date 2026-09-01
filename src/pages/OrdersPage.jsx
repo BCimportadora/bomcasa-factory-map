@@ -9,6 +9,7 @@ import { ORDER_VIEWS, byDate, formatMoney, orderTotal, statusKey, viewEmptyKey }
 import { sectionDescriptionKey, sectionNameKey } from '../lib/sections'
 import Modal from '../components/common/Modal'
 import ConfirmDialog from '../components/common/ConfirmDialog'
+import { CardSkeleton } from '../components/common/Skeleton'
 import OrderCard from '../components/Order/OrderCard'
 import OrderForm from '../components/Order/OrderForm'
 import OrderDetail from '../components/Order/OrderDetail'
@@ -190,7 +191,7 @@ export default function OrdersPage({ view }) {
         </div>
 
         {loading ? (
-          <p className="py-12 text-center text-[15px] text-muted">{t('orders.loading')}</p>
+          <CardSkeleton count={4} label={t('orders.loading')} />
         ) : error ? (
           <p className="alert-error">{t('orders.loadError')}</p>
         ) : visible.length === 0 ? (

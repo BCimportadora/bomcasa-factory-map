@@ -301,6 +301,49 @@
   }
 }
 
+/* A placeholder standing in for a row that has not arrived yet. The pulse is
+   Tailwind's own, and the surface is the same --c-line the borders use, so a
+   loading table reads as the table it is about to become rather than as a
+   different kind of thing. */
+.skeleton {
+  @apply animate-pulse rounded bg-line;
+}
+
+/* An indeterminate bar, for work whose length cannot be known: parsing a PDF
+   or planning an import against the whole catalog. A determinate bar would
+   have to invent a percentage, and an invented percentage that sticks at 90 %
+   is worse than an honest sweep. */
+@keyframes progress-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.progress-track {
+  @apply relative h-1 overflow-hidden rounded-full bg-line;
+}
+
+.progress-track::after {
+  content: '';
+  @apply absolute inset-y-0 left-0 w-1/3 rounded-full bg-accent;
+  animation: progress-sweep 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+
+  /* Still visibly "working", but without the travel. */
+  .progress-track::after {
+    @apply w-full opacity-40;
+    animation: none;
+  }
+}
+
 /* Tiles fade up as the menu mounts. The animation sits on a wrapper rather
    than the tile itself: a filled animation keeps applying its final transform
    after it ends, which would otherwise beat the tile's hover transform. */

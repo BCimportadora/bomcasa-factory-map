@@ -178,6 +178,13 @@ export default function LiquidationImport({ orders, factories, onImport, onClose
             <span className="text-[12px]">{t('liquidation.chooseHint')}</span>
           </button>
 
+          {busy && (
+            <div className="mt-3" role="status" aria-live="polite">
+              <div className="progress-track" />
+              <p className="hint mt-1.5 text-center">{t('liquidation.reading')}</p>
+            </div>
+          )}
+
           <input
             ref={input}
             type="file"

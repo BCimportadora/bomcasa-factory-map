@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { AlertTriangle, FileSpreadsheet, Plane, Upload } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, Plane, Upload } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import Modal from '../common/Modal'
 import { readWorkbook, isSupported as xlsxSupported } from '../../lib/xlsxReader'
@@ -114,6 +114,10 @@ export default function CatalogImport({
   // which is the one thing this screen exists to prevent. Text, never a number:
   // they write `09`, and a round trip through Number hands back `9`.
   const [orderNo, setOrderNo] = useState('')
+  // What the import actually did, once it has done it. Until this session the
+  // modal simply closed on success, which left the person who had just read a
+  // 45-line declaration with no confirmation that anything had been written.
+  const [done, setDone] = useState(null)
 
   /**
    * Plan a commercial invoice: one plan per order the file carries.
@@ -364,7 +368,19 @@ export default function CatalogImport({
       } else {
         await onConfirm({ plan: state.plan, document: state.document })
       }
-      onClose()
+      // The counts are read off the plan that was just applied, not recounted:
+      // it is the same object the import consumed, so the figures cannot drift
+      // from what was actually written.
+      setDone({
+        added: state.plan.added.length,
+        updated: state.plan.updated.length,
+        skipped: state.plan.skipped.length,
+        failed: state.plan.failed.length,
+        file: state.document.file_name,
+        references: state.blocks
+          ? [...new Set(state.blocks.map((b) => b.reference).filter(Boolean))]
+          : [state.document.doc_ref].filter(Boolean),
+      })
     } catch (err) {
       setError(err.message ?? t('catalog.errors.importFailed'))
     } finally {
@@ -428,7 +444,37 @@ export default function CatalogImport({
         </div>
       )}
 
-      {!state ? (
+      {done ? (
+        <div>
+          <div className="flex gap-3 rounded-xl border border-success/30 bg-success/5 p-4">
+            <CheckCircle2 size={20} className="mt-0.5 flex-shrink-0 text-success" strokeWidth={2} />
+            <div className="min-w-0 flex-1">
+              <p className="text-[15px] font-semibold text-ink">{t('catalog.import.doneTitle')}</p>
+              <p className="hint mt-0.5">
+                {t('catalog.import.doneHint', { file: done.file })}
+                {done.references.length > 0 && <> · {done.references.join(', ')}</>}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-4 rounded-xl border border-line bg-canvas p-4 sm:grid-cols-4">
+            <Figure label={t('catalog.import.added')} value={done.added} tone="text-success" />
+            <Figure label={t('catalog.import.updated')} value={done.updated} />
+            <Figure label={t('catalog.import.skipped')} value={done.skipped} tone="text-muted" />
+            <Figure
+              label={t('catalog.import.failed')}
+              value={done.failed}
+              tone={done.failed ? 'text-danger' : 'text-muted'}
+            />
+          </div>
+
+          <div className="mt-5 flex justify-end">
+            <button type="button" onClick={onClose} className="btn-primary">
+              {t('common.close')}
+            </button>
+          </div>
+        </div>
+      ) : !state ? (
         <div>
           <p className="text-[14px] leading-relaxed text-muted">{t('catalog.import.intro')}</p>
           <button
@@ -443,6 +489,16 @@ export default function CatalogImport({
             </span>
             <span className="text-[12px]">{t('catalog.import.chooseHint')}</span>
           </button>
+          {/* Indeterminado a propósito: leer un PDF y planificar contra todo
+              el catálogo no tiene una duración que se pueda saber de antemano,
+              y un porcentaje inventado que se atasca en el 90 % es peor que un
+              barrido honesto. */}
+          {busy && (
+            <div className="mt-3" role="status" aria-live="polite">
+              <div className="progress-track" />
+              <p className="hint mt-1.5 text-center">{t('catalog.import.reading')}</p>
+            </div>
+          )}
           <input
             ref={input}
             type="file"
@@ -672,14 +728,24 @@ export default function CatalogImport({
             </div>
           )}
 
+          {/* Scannable means the row number reads as a column: a person is
+              looking for "which line do I go and fix", and a reason wrapped
+              onto a second line must not push the next number out of that
+              column. tOr, not t: a reason we have no string for is still a
+              reason, and t() would hand back its own key. */}
           {state.plan.failed.length > 0 && (
             <div className="mt-3 rounded-xl border border-danger/30 bg-danger/5 px-3.5 py-3">
               <p className="text-[13px] font-medium text-ink">{t('catalog.import.failedRows')}</p>
               <ul className="mt-2 space-y-1">
                 {state.plan.failed.map((f, i) => (
-                  <li key={i} className="text-[12px] text-danger">
-                    {t('catalog.import.rowNumber', { row: f.row ?? f.where })}: {t(`catalog.errors.${f.reason}`)}
-                    {f.detail && ` (${f.detail})`}
+                  <li key={i} className="flex gap-2.5 text-[12px]">
+                    <span className="w-16 flex-shrink-0 font-medium tabular-nums text-ink">
+                      {t('catalog.import.rowNumber', { row: f.row ?? f.where })}
+                    </span>
+                    <span className="min-w-0 text-danger">
+                      {tOr(`catalog.errors.${f.reason}`, f.reason)}
+                      {f.detail && <span className="text-muted"> ({f.detail})</span>}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -731,6 +797,13 @@ export default function CatalogImport({
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {busy && (
+            <div className="mt-5" role="status" aria-live="polite">
+              <div className="progress-track" />
+              <p className="hint mt-1.5 text-center">{t('catalog.import.saving')}</p>
             </div>
           )}
 

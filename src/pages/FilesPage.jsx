@@ -10,6 +10,7 @@ import { useOrderFiles } from '../hooks/useOrderFiles'
 import { formatDate } from '../lib/orders'
 import { locationTypeKey } from '../lib/constants'
 import { sectionDescriptionKey, sectionNameKey } from '../lib/sections'
+import { CardSkeleton, TableSkeleton } from '../components/common/Skeleton'
 import StatusBadge from '../components/Order/StatusBadge'
 import OrderFiles from '../components/Order/OrderFiles'
 
@@ -122,7 +123,7 @@ export default function FilesPage() {
     if (loading) {
       return (
         <Shell>
-          <p className="py-12 text-center text-[15px] text-muted">{t('files.loading')}</p>
+          <TableSkeleton rows={5} cols={5} label={t('files.loading')} />
         </Shell>
       )
     }
@@ -187,7 +188,7 @@ export default function FilesPage() {
     if (loading) {
       return (
         <Shell>
-          <p className="py-12 text-center text-[15px] text-muted">{t('files.loading')}</p>
+          <CardSkeleton count={4} label={t('files.loading')} />
         </Shell>
       )
     }
@@ -295,7 +296,7 @@ export default function FilesPage() {
       </header>
 
       {loading ? (
-        <p className="py-12 text-center text-[15px] text-muted">{t('files.loading')}</p>
+        <CardSkeleton count={5} label={t('files.loading')} />
       ) : rows.length === 0 ? (
         <EmptyState title={t('files.noFactories')} hint={t('files.noFactoriesHint')} />
       ) : (

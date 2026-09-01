@@ -17,6 +17,16 @@ const FOCUSABLE = [
 ].join(',')
 
 /**
+ * Every trap currently open, oldest first.
+ *
+ * Overlays nest: the product editor is a Modal, and its delete confirmation is
+ * a ConfirmDialog on top of it. Both listen on `document`, so one Escape would
+ * otherwise reach both and close the editor along with the question it had
+ * just asked. Only the last one in this stack acts.
+ */
+const stack = []
+
+/**
  * Keep the Tab key inside an open overlay, and close it on Escape.
  *
  * Returns a ref for the element that holds the overlay's own content -- the
@@ -58,7 +68,13 @@ export function useFocusTrap(active, onEscape) {
 
     focusable()[0]?.focus()
 
+    // Identity for this trap's place in the stack. Declared before the handler
+    // that closes over it.
+    const self = {}
+
     const onKey = (event) => {
+      // Only the topmost overlay responds; the ones underneath are covered.
+      if (stack[stack.length - 1] !== self) return
       if (event.key === 'Escape') {
         escape.current?.()
         return
@@ -84,9 +100,11 @@ export function useFocusTrap(active, onEscape) {
       }
     }
 
+    stack.push(self)
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
+      stack.splice(stack.indexOf(self), 1)
       if (previous instanceof HTMLElement && document.contains(previous)) previous.focus()
     }
   }, [active])

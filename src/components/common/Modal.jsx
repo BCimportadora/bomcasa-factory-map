@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
 import { useI18n } from '../../i18n'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
 
 /**
  * `size` widens the dialog for forms that genuinely need the room (the order
@@ -11,18 +12,19 @@ const WIDTHS = { default: 'max-w-lg', wide: 'max-w-2xl' }
 
 export default function Modal({ title, onClose, size = 'default', children }) {
   const { t } = useI18n()
+  // Escape and the Tab cycle. The hook keeps a stack of open overlays and only
+  // the topmost one answers, which is what stops one Escape from closing both
+  // this dialog and a confirmation opened on top of it.
+  const panel = useFocusTrap(true, onClose)
 
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
     // Prevent the page behind the modal from scrolling.
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
-      window.removeEventListener('keydown', onKey)
       document.body.style.overflow = previousOverflow
     }
-  }, [onClose])
+  }, [])
 
   return (
     <div
@@ -31,6 +33,7 @@ export default function Modal({ title, onClose, size = 'default', children }) {
       role="presentation"
     >
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-label={title}

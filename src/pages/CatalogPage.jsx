@@ -30,6 +30,7 @@ import {
   supplierIndex,
 } from '../lib/catalog'
 import { sectionDescriptionKey, sectionNameKey } from '../lib/sections'
+import { TableSkeleton } from '../components/common/Skeleton'
 import CatalogImport from '../components/Catalog/CatalogImport'
 import ProductEditor from '../components/Catalog/ProductEditor'
 
@@ -56,7 +57,7 @@ const NO_SUPPLIER = 'none'
 
 export default function CatalogPage() {
   const { t, language } = useI18n()
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   const {
     products,
     loading,
@@ -65,6 +66,7 @@ export default function CatalogPage() {
     findImport,
     applyImport,
     updateProduct,
+    deleteProduct,
   } = useCatalog()
   // A product's supplier is not stored on it -- it is the supplier of the order
   // its paperwork came from. Both lists are needed to work that out.
@@ -357,7 +359,7 @@ export default function CatalogPage() {
         </div>
 
         {loading ? (
-          <p className="py-12 text-center text-[15px] text-muted">{t('catalog.loading')}</p>
+          <TableSkeleton rows={10} cols={7} label={t('catalog.loading')} />
         ) : products.length === 0 ? (
           <div className="card card-pad text-center">
             <p className="text-[15px] font-medium text-ink">{t('catalog.empty')}</p>
@@ -491,6 +493,19 @@ export default function CatalogPage() {
               throw err
             }
           }}
+          onDelete={async (id) => {
+            setActionError('')
+            try {
+              await deleteProduct(id)
+            } catch (err) {
+              setActionError(err.message)
+              throw err
+            }
+          }}
+          // Mirrors the delete policy on `catalog`: administrators only.
+          // Offering the button to anyone else offers an action the database
+          // will refuse -- the same reasoning OrderFiles uses.
+          canDelete={isAdmin}
           onClose={() => setEditing(null)}
         />
       )}

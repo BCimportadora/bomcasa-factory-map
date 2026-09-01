@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
 import { useI18n } from '../../i18n'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
 
 /**
  * Confirmation for an action that cannot be undone.
@@ -18,12 +18,10 @@ export default function ConfirmDialog({
   destructive = true,
 }) {
   const { t } = useI18n()
-
-  useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && !busy && onCancel()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onCancel, busy])
+  // Escape and the Tab cycle both come from here. While `busy` the dialog is
+  // mid-delete and refuses to close -- cancelling then would leave a person
+  // believing they had stopped something already in flight.
+  const panel = useFocusTrap(true, () => !busy && onCancel())
 
   return (
     <div
@@ -32,6 +30,7 @@ export default function ConfirmDialog({
       role="presentation"
     >
       <div
+        ref={panel}
         role="alertdialog"
         aria-modal="true"
         aria-label={title}

@@ -200,6 +200,22 @@ export function useCatalog() {
   }
 
   /**
+   * Remove one product.
+   *
+   * Administrators only, and enforced by the delete policy in schema.sql, not
+   * by hiding the button -- the anon key is public, so PostgREST would take the
+   * request straight from anyone's browser otherwise. `catalog_sources` follows
+   * on its cascade, so the record of which documents mentioned this product
+   * goes with it; the `catalog_imports` rows stay, because a document was still
+   * read even after one of its products is removed.
+   */
+  const deleteProduct = async (id) => {
+    const { error: deleteError } = await supabase.from('catalog').delete().eq('id', id)
+    if (deleteError) throw deleteError
+    await fetchAll()
+  }
+
+  /**
    * Empty the catalog: every product and every record of a document read.
    *
    * Both, not just the products. Leaving the import records behind would mean
@@ -245,6 +261,7 @@ export function useCatalog() {
     findImport,
     applyImport,
     updateProduct,
+    deleteProduct,
     clearCatalog,
     sourcesFor,
     refetch: fetchAll,
