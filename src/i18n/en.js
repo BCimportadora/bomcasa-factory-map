@@ -86,6 +86,12 @@ export default {
       short: 'Files',
       description: 'Import paperwork filed by factory and order: liquidaciones, proformas, packing lists, B/Ls.',
     },
+    costSheet: {
+      name: 'Cost Sheet Formatter',
+      short: 'Cost sheets',
+      description: 'Convert an old cost sheet onto the current format, and say exactly what is missing.',
+    },
+
     innovationsDevelopment: {
       name: 'Innovations in development',
       short: 'In development',
@@ -615,6 +621,337 @@ export default {
       olderDocument: 'an older document — the newer price was kept',
       alreadyExists: 'already in the catalog',
       importFailed: 'We could not import that document.',
+    },
+  },
+
+  costSheet: {
+    backToSummary: 'Back to the summary',
+
+    source: {
+      missing: 'Missing: nobody has stated this',
+      typed: 'Typed by hand',
+    },
+
+    upload: {
+      title: 'Upload the documents',
+      body: 'The old cost sheet is required. The supplier invoice is not, but it carries the tariff code and the descriptions the old sheet lacks.',
+      cost: {
+        title: 'Old cost sheet',
+        hint: 'The liquidación de costo in the old layout (.xlsx).',
+      },
+      invoice: {
+        title: 'Supplier invoice',
+        hint: 'Commercial invoice and packing list (.xlsx). Optional.',
+      },
+      choose: 'Choose a file',
+      remove: 'Remove the file',
+      read: 'Read the files',
+      reading: 'Reading...',
+      invoiceMissingHint: 'Without the invoice we will report what it would have supplied.',
+    },
+
+    readiness: {
+      readTitle: 'What was read',
+      readBody: 'This is what the files answered. Check it before filling in the form.',
+      costSubtitle: 'Cost table on the "{{sheet}}" sheet',
+      invoiceSubtitle: 'Invoice "{{invoice}}", packing list "{{packing}}"',
+      shipment: 'Shipment',
+      lines: 'Lines',
+      lineCountOne: '{{count}} line',
+      lineCountOther: '{{count}} lines',
+      rates: 'Exchange rates found',
+      rateCountOne: '{{count}} rate',
+      rateCountOther: '{{count}} rates',
+      lookup: '"No tocar" sheet',
+      lookupCountOne: '{{count}} article',
+      lookupCountOther: '{{count}} articles',
+      invoiceNo: 'Invoice no.',
+      aranceles: 'Tariff codes',
+      noInvoice: 'No supplier invoice',
+      noInvoiceBody: 'The conversion still runs. The tariff code and the supplier descriptions will not be available, and the duty rate can only come from the old sheet.',
+      needsTitle: 'What the conversion still needs',
+      needsNone: 'Nothing is missing. You can continue.',
+      needsCountOne: '{{count}} point still open.',
+      needsCountOther: '{{count}} points still open.',
+      continue: 'Continue to the form',
+      back: 'Change the files',
+    },
+
+    needs: {
+      shipmentName: {
+        label: 'Shipment name',
+        found: 'Read from the sheet: "{{value}}".',
+        missing: 'The sheet does not state it. You will have to type it.',
+      },
+      exchangeRate: {
+        label: 'Exchange rate',
+        found: 'The sheet already states its own rate.',
+        choose: 'The sheet does not carry one. CUENTA T offers {{count}} different rates and none of them says which applies, so you will have to choose.',
+        missing: 'Not on the sheet and not in CUENTA T. You will have to type it.',
+      },
+      freight: {
+        label: 'Total freight (USD)',
+        found: 'Read from the sheet header, in dollars.',
+        currency: 'CUENTA T states it in PESOS, and this column is in dollars. Confirm the currency in the form.',
+        missing: 'Not in either file. You will have to type it.',
+      },
+      insurance: {
+        label: 'Total insurance (USD)',
+        found: 'Read from the sheet header, in dollars.',
+        currency: 'CUENTA T states it in PESOS, and this column is in dollars. Confirm the currency in the form.',
+        missing: 'Not in either file. You will have to type it.',
+      },
+      expenses: {
+        label: 'The seven local expenses',
+        found: 'All seven amounts were read from the old sheet.',
+        partial: '{{count}} of {{total}} were read. The rest must be typed: an expense with no amount cannot be shared out.',
+      },
+      entryNumbers: {
+        label: 'Entry numbers',
+        found: 'All seven were read from the old sheet.',
+        partial: '{{count}} of {{total}} were read.',
+      },
+      lines: {
+        label: 'Product lines',
+        found: '{{count}} lines were read, with code and quantity.',
+        missing: 'The sheet has no readable product lines.',
+      },
+      fob: {
+        label: 'FOB line amount',
+        found: 'Every line carries its FOB amount.',
+        partial: '{{missing}} lines have no FOB amount.',
+      },
+      gravamen: {
+        label: 'Duty rate per line',
+        found: 'Recovered from each line of the old sheet.',
+        partial: 'It could not be recovered on {{missing}} lines.',
+      },
+      arancel: {
+        label: 'Tariff code',
+        found: 'The supplier invoice carries it on {{count}} lines.',
+        noFile: 'Only the supplier invoice states it, and none was uploaded. Without it the duty rate can only come from the old sheet.',
+      },
+    },
+
+    form: {
+      shipmentTitle: 'Shipment details',
+      shipmentBody: 'Every field shows where it came from. Anything that could not be read is marked and required.',
+      shipmentName: 'Shipment name',
+      exchangeRate: 'Exchange rate',
+      ratePlaceholder: 'For example 58.55',
+      rateNote: 'Feeds H10 and column I (CIF PESOS).',
+      freight: 'Total freight',
+      insurance: 'Total insurance',
+      currencyTitle: 'Currency of the freight and insurance',
+      currency: {
+        USD: 'USD (dollars)',
+        DOP: 'RD$ (convert using the rate)',
+      },
+      currencyNoteUsd: 'The amounts go into F10 and G10 exactly as typed.',
+      currencyNoteDop: 'The amounts are divided by {{rate}} before being written into F10 and G10, which are always in dollars.',
+      expensesTitle: 'Local expenses',
+      expensesBody: 'Shared out across the lines by their tax-paid cost (column N), feeding columns O to U.',
+      entryNumber: 'Entry no.',
+      decisionsTitle: 'Decisions',
+      decisionsBody: 'The sample files do not settle these four. Choose, and the preview recomputes immediately.',
+      itbisTitle: 'ITBIS base',
+      itbisNote: 'This changes every tax figure on the sheet.',
+      gravamenTitle: 'Duty rate source',
+      gravamenNote: 'Where the chosen source has no value for a line, the other one is used and the line is flagged.',
+    },
+
+    rates: {
+      sheet: 'The rate stated on the sheet',
+      initial: 'Initial',
+      completive: 'Completive',
+      average: 'Average',
+      dgii: 'DGII',
+      manual: 'Type it by hand',
+    },
+
+    expenses: {
+      customs_service: 'Customs service',
+      port_storage: 'Port storage DPW',
+      port_collect: 'DPH or Portcollect',
+      customs_agent: 'Customs agent',
+      land_transport: 'Land transport',
+      inspection: 'QIMA inspection',
+      local_handling: 'Local handling',
+    },
+
+    itbis: {
+      sinSelectivo: {
+        label: 'Without Selectivo: (CIF + duty) × 0.18',
+        note: 'What the current format does.',
+      },
+      conSelectivo: {
+        label: 'With Selectivo: (CIF + duty + Selectivo) × 0.18',
+        note: 'What the old format did.',
+      },
+    },
+
+    gravamen: {
+      sheet: {
+        label: 'From the old cost sheet',
+        note: 'Recovered by dividing each line duty by its CIF.',
+      },
+      arancel: {
+        label: 'From the tariff code on the invoice',
+        note: 'The invoice states a tariff code, not a rate: the rate comes from what the Catalog already records against that code.',
+      },
+    },
+
+    preview: {
+      title: 'Preview of the converted sheet',
+      body: 'Every column, exactly as it will be written. A value that could not be computed shows as a dash, never as 0.00.',
+      rows: '{{count}} lines',
+      totals: 'TOTALS',
+      costFactor: 'Cost factor',
+      grossMargin: 'Gross margin',
+      grossProfit: 'Gross profit',
+    },
+
+    findings: {
+      title: 'Final check',
+      clean: 'Nothing outstanding.',
+      blockingCountOne: '{{count}} blocking',
+      blockingCountOther: '{{count}} blocking',
+      warningCountOne: '{{count}} warning',
+      warningCountOther: '{{count}} warnings',
+      accept: 'I accept this, and it will be recorded in the file',
+      more: 'and {{count}} more',
+      download: 'Download the .xlsx',
+      blockedHint: 'The download stays disabled until the above is resolved.',
+      acceptHintOne: '{{count}} warning still to accept.',
+      acceptHintOther: '{{count}} warnings still to accept.',
+      saveTo: 'Save into Files, against the order',
+      chooseOrder: 'Choose an order',
+      save: 'Save into Files',
+      saved: 'Saved',
+      savedHint: 'The file is attached to the order, tagged as a liquidación.',
+      noReference: 'Order with no reference',
+
+      shipmentName: {
+        title: 'The shipment name is missing',
+        consequence: 'A2 and B10 would be left blank.',
+      },
+      exchangeRate: {
+        title: 'The exchange rate is missing',
+        consequence: 'Without it column I (CIF PESOS) cannot be computed, nor anything that depends on it.',
+      },
+      freight: {
+        title: 'The total freight is missing',
+        consequence: 'Column F cannot be shared out.',
+      },
+      insurance: {
+        title: 'The total insurance is missing',
+        consequence: 'Column G cannot be shared out.',
+      },
+      expenses: {
+        title: 'Local expenses with no amount: {{count}}',
+        consequence: 'With no amount they cannot be shared out: {{fields}}.',
+      },
+      lineCode: {
+        title: 'Lines with no product code: {{count}}',
+        consequence: 'Column B would be empty and the description could not be looked up.',
+      },
+      lineUnits: {
+        title: 'Lines with no quantity: {{count}}',
+        consequence: 'The unit cost (column W) divides by the quantity and cannot be computed.',
+      },
+      lineFob: {
+        title: 'Lines with no FOB amount: {{count}}',
+        consequence: 'Freight and insurance are shared out by each line FOB share.',
+      },
+      fobTotal: {
+        title: 'Column E does not match the source FOB total',
+        consequence: 'The sheet states {{expected}} and the sum comes to {{actual}}: a difference of {{difference}}.',
+      },
+      freightTotal: {
+        title: 'Column F does not sum to the freight entered',
+        consequence: '{{expected}} was entered and the sum comes to {{actual}}: a difference of {{difference}}.',
+      },
+      insuranceTotal: {
+        title: 'Column G does not sum to the insurance entered',
+        consequence: '{{expected}} was entered and the sum comes to {{actual}}: a difference of {{difference}}.',
+      },
+      errorCell: {
+        title: 'Lines that would produce an Excel error: {{count}}',
+        consequence: 'A quantity of zero would make the unit cost come out as #DIV/0!.',
+      },
+      description: {
+        title: 'Products with no description: {{count}}',
+        consequence: 'Column D stays empty on those lines.',
+      },
+      descriptionFallback: {
+        title: 'Descriptions taken from the file and not the Catalog: {{count}}',
+        consequence: 'They came from the uploaded file "No tocar" sheet, which is a snapshot from whenever that file was last saved.',
+      },
+      listPrice: {
+        title: 'Products with no list price: {{count}}',
+        consequence: 'Columns Y, Z, AA, AB and AC stay empty on those lines: with no list price there is nothing to work the selling price back from.',
+      },
+      internalUse: {
+        title: 'Products marked internal use: {{count}}',
+        consequence: 'They are never sold, so they carry no price. The selling columns are deliberately left empty.',
+      },
+      listPriceFallback: {
+        title: 'List prices taken from the file and not the Catalog: {{count}}',
+        consequence: 'They came from the uploaded file "No tocar" sheet and may be out of date.',
+      },
+      gravamenMissing: {
+        title: 'Lines with no duty rate: {{count}}',
+        consequence: 'Column J stays at zero and ITBIS is computed with no duty.',
+      },
+      gravamenFallback: {
+        title: 'Lines that used the other duty source: {{count}}',
+        consequence: 'The chosen source had no value for those lines.',
+      },
+      gravamenUnrecognised: {
+        title: 'Lines with a rate that is none of the five: {{count}}',
+        consequence: 'It is kept exactly as recovered, but it is worth checking.',
+      },
+      excise: {
+        title: 'Lines stating no Selectivo: {{count}}',
+        consequence: 'Zero is assumed in column K.',
+      },
+      margin: {
+        title: 'Lines with no computable margin: {{count}}',
+        consequence: 'The landed cost comes to zero, and the margin would divide by zero.',
+      },
+      onlyInCostSheet: {
+        title: 'Products on the cost sheet and not on the invoice: {{count}}',
+        consequence: 'Either they flew, or the documents disagree. Only somebody who knows the order can say which.',
+      },
+      onlyInInvoice: {
+        title: 'Products on the invoice and not on the cost sheet: {{count}}',
+        consequence: 'They are not included in the converted sheet, because the cost sheet leads.',
+      },
+      singleFile: {
+        title: 'Only one file was uploaded',
+        consequence: 'With the supplier invoice you would also have the tariff code and its descriptions.',
+      },
+      cifDrift: {
+        title: 'The derived CIF PESOS does not match the original sheet',
+        consequence: 'The old sheet carried {{expected}}, pasted in from the declaration; the new format derives it and gets {{actual}}, a difference of {{difference}}. Every duty and ITBIS figure on the converted sheet moves with it. Check the freight, the insurance and the rate before accepting.',
+      },
+    },
+
+    notes: {
+      generated: 'Generated on',
+      sourceFile: 'Source cost sheet',
+      invoiceFile: 'Supplier invoice',
+      none: 'None',
+      currency: 'Currency stated for freight and insurance',
+      accepted: 'Warning accepted',
+    },
+
+    errors: {
+      notACostSheet: 'This file does not look like a cost sheet. We look for a sheet with "Codigo" and "Descripcion" columns alongside one of "CIF PESOS", "Costo unitario" or "Unidades Recibidas".',
+      alreadyTarget: 'This file is already in the current format: it carries freight, insurance and CIF in dollars. There is nothing to convert.',
+      noLines: 'The cost table has no product lines.',
+      unsupported: 'This browser cannot open .xlsx files. Try Chrome, Edge, Firefox or Safari.',
+      invoiceUnreadable: 'The supplier invoice could not be read ({{message}}). The conversion continues without it.',
     },
   },
 

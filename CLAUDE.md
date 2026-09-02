@@ -335,6 +335,55 @@ bytes and does not drag the library into the main bundle — the heavy
 `pdfjs-dist/build/pdf.mjs` stays behind its own dynamic import, and Vite emits
 the worker as a separate asset either way.
 
+**CUENTA T does not reconcile with the cost sheet beside it, and the cost-sheet
+formatter must never present it as if it did.** On Milan 11 `CUENTA T!D7`
+(FLETE MARITIMO) is 659,519.20 pesos while the sheet's own `F10` is 7,030 USD --
+at the sheet's rate of 58.55 that would be 11,264, not 7,030. Its CIF totals
+disagree too: 2,046,739 pesos against the sheet's 2,968,391 on Milan 11, and
+1,397,747 against 2,833,361 on CHS 09. CUENTA T is an ACCOUNT covering a
+different scope, not a restatement of the container. So the formatter offers its
+freight and insurance as a prefill with the cell they came from shown, expects a
+person to correct them, and warns when the derived CIF PESOS drifts from the one
+the old sheet had pasted in from the declaration. Do not "fix" that warning by
+reconciling the two.
+
+**The duty rate lives inside a formula, so it is recovered by division.** The
+old sheet writes `=G11*0.2` and this platform's reader takes cached values, not
+formulas -- so the rate is `duty / CIF`, which lands on 0.19999999999999998 as
+often as on 0.2. `snapRate` snaps to the five the header offers within 1e-6 and
+otherwise keeps the figure exactly as found and reports it. A duty rate nobody
+recognises is a question, not something to round away.
+
+**One code on the old CHS sheet is a NUMBER and its `No tocar` holds text.**
+`B22` is `2014`, not `'2014'`. A VLOOKUP across that mismatch returns `#N/A` on
+exactly one line of a thirty-one line sheet -- the worst kind of failure, since
+thirty lines look perfect. The generator writes column B and the generated
+lookup's column A both as inline strings through `formatProductCode`, which
+removes the class of failure rather than the instance.
+
+**The cost-sheet reader needs more than `Codigo` beside `Descripcion`.** CHS's
+commercial invoice heads its columns exactly that way, and reading it as one of
+ours would put FOB dollars into peso columns. `findHeaderRow` in
+`costSheetSource.js` also requires a heading no supplier writes on an invoice to
+us -- `CIF PESOS`, `CIF DOLARES`, `Costo unitario`, `Unidades Recibidas` or
+`Total puesto en almacen`. This is the same guard `OUR_COST_SHEET` applies from
+the invoice reader's side; the two must stay in agreement.
+
+**A generated .xlsx must carry `<v>` beside every `<f>`.** openpyxl writes
+formulas with no cached value, and the note above about the cost sheet's cache
+says what that costs: our own readers take the cache, so the file comes back as
+a sheet of blanks. `costSheetWriter.js` writes both. A formula returning TEXT --
+the description VLOOKUP -- additionally needs `t="str"` on the cell, or the
+cached value is parsed as a number and silently dropped.
+
+**`t()` returning a key is also a trap for a `not in` guard.** Splicing the
+cost-sheet strings in was blocked by a check for `'costSheet' not in bundle`,
+which matched the unrelated, pre-existing `catalog.…costSheet` label. Guard on
+the exact top-level shape — a newline, two spaces, then `costSheet: {` — rather
+than on a bare substring. (Writing that guard is itself the other trap on this
+page: a bash heredoc ate one backslash level and turned the escape into a real
+line break. Use the Edit tool for anything carrying escapes.)
+
 **Never leave a customer spreadsheet in `public/`.** Verifying the parser means
 serving a real workbook to the dev server, and `public/` is copied verbatim into
 `dist/` and deployed. Delete it the moment the check passes, and confirm with

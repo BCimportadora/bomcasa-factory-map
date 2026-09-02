@@ -2,6 +2,7 @@ import {
   Anchor,
   ClipboardList,
   Factory,
+  FileSpreadsheet,
   FolderOpen,
   Library,
   Lightbulb,
@@ -76,6 +77,14 @@ export const SECTIONS = [
     icon: Library,
     ready: true,
     tone: 'bg-teal-500/10 text-teal-600',
+  },
+  {
+    id: 'costSheet',
+    path: '/cost-sheet',
+    group: 'documents',
+    icon: FileSpreadsheet,
+    ready: true,
+    tone: 'bg-sky-500/10 text-sky-600',
   },
   {
     id: 'innovationsDevelopment',

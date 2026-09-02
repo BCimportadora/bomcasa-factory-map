@@ -86,6 +86,12 @@ export default {
       short: 'Archivos',
       description: 'Documentos de importación por fábrica y pedido: liquidaciones, proformas, packing lists, B/L.',
     },
+    costSheet: {
+      name: 'Formateador de hojas de costo',
+      short: 'Hojas de costo',
+      description: 'Convierte una liquidación de costo antigua al formato actual, diciéndote exactamente qué falta.',
+    },
+
     innovationsDevelopment: {
       name: 'Innovaciones en desarrollo',
       short: 'En desarrollo',
@@ -616,6 +622,337 @@ export default {
       olderDocument: 'documento más antiguo — se mantuvo el precio más reciente',
       alreadyExists: 'ya está en el catálogo',
       importFailed: 'No pudimos importar ese documento.',
+    },
+  },
+
+  costSheet: {
+    backToSummary: 'Volver al resumen',
+
+    source: {
+      missing: 'Falta: nadie lo ha indicado',
+      typed: 'Escrito a mano',
+    },
+
+    upload: {
+      title: 'Sube los documentos',
+      body: 'La hoja de costo antigua es obligatoria. La factura del proveedor no lo es, pero aporta la partida arancelaria y las descripciones que la hoja antigua no trae.',
+      cost: {
+        title: 'Hoja de costo antigua',
+        hint: 'La liquidación de costo en formato viejo (.xlsx).',
+      },
+      invoice: {
+        title: 'Factura del proveedor',
+        hint: 'Factura comercial y packing list (.xlsx). Opcional.',
+      },
+      choose: 'Elegir archivo',
+      remove: 'Quitar el archivo',
+      read: 'Leer los archivos',
+      reading: 'Leyendo...',
+      invoiceMissingHint: 'Sin la factura te diremos qué habría aportado.',
+    },
+
+    readiness: {
+      readTitle: 'Lo que se leyó',
+      readBody: 'Esto es lo que los archivos respondieron. Revísalo antes de llenar el formulario.',
+      costSubtitle: 'Tabla de costo en la hoja «{{sheet}}»',
+      invoiceSubtitle: 'Factura «{{invoice}}», packing list «{{packing}}»',
+      shipment: 'Embarque',
+      lines: 'Líneas',
+      lineCountOne: '{{count}} línea',
+      lineCountOther: '{{count}} líneas',
+      rates: 'Tasas de cambio encontradas',
+      rateCountOne: '{{count}} tasa',
+      rateCountOther: '{{count}} tasas',
+      lookup: 'Hoja «No tocar»',
+      lookupCountOne: '{{count}} artículo',
+      lookupCountOther: '{{count}} artículos',
+      invoiceNo: 'No. de factura',
+      aranceles: 'Partidas arancelarias',
+      noInvoice: 'Sin factura del proveedor',
+      noInvoiceBody: 'La conversión se hará igual. La partida arancelaria y las descripciones del proveedor no estarán disponibles, y el gravamen solo podrá salir de la hoja antigua.',
+      needsTitle: 'Lo que falta para convertir',
+      needsNone: 'No falta nada. Puedes continuar.',
+      needsCountOne: 'Queda {{count}} punto por resolver.',
+      needsCountOther: 'Quedan {{count}} puntos por resolver.',
+      continue: 'Continuar al formulario',
+      back: 'Cambiar los archivos',
+    },
+
+    needs: {
+      shipmentName: {
+        label: 'Nombre del embarque',
+        found: 'Leído de la hoja: «{{value}}».',
+        missing: 'La hoja no lo indica. Tendrás que escribirlo.',
+      },
+      exchangeRate: {
+        label: 'Tasa de cambio',
+        found: 'La hoja ya indica su propia tasa.',
+        choose: 'La hoja no la trae. CUENTA T ofrece {{count}} tasas distintas y ninguna dice cuál corresponde: tendrás que elegir.',
+        missing: 'No está en la hoja ni en CUENTA T. Tendrás que escribirla.',
+      },
+      freight: {
+        label: 'Flete total (USD)',
+        found: 'Leído del encabezado de la hoja, en dólares.',
+        currency: 'CUENTA T lo indica en PESOS, y esta columna va en dólares. Confirma la moneda en el formulario.',
+        missing: 'No aparece en ningún archivo. Tendrás que escribirlo.',
+      },
+      insurance: {
+        label: 'Seguro total (USD)',
+        found: 'Leído del encabezado de la hoja, en dólares.',
+        currency: 'CUENTA T lo indica en PESOS, y esta columna va en dólares. Confirma la moneda en el formulario.',
+        missing: 'No aparece en ningún archivo. Tendrás que escribirlo.',
+      },
+      expenses: {
+        label: 'Los siete gastos locales',
+        found: 'Los siete montos se leyeron de la hoja antigua.',
+        partial: 'Se leyeron {{count}} de {{total}}. Los que faltan hay que escribirlos: un gasto sin monto no puede repartirse.',
+      },
+      entryNumbers: {
+        label: 'Números de entrada',
+        found: 'Los siete se leyeron de la hoja antigua.',
+        partial: 'Se leyeron {{count}} de {{total}}.',
+      },
+      lines: {
+        label: 'Líneas de producto',
+        found: 'Se leyeron {{count}} líneas con código y cantidad.',
+        missing: 'La hoja no tiene líneas de producto legibles.',
+      },
+      fob: {
+        label: 'Costo total FOB por línea',
+        found: 'Todas las líneas traen su monto FOB.',
+        partial: 'A {{missing}} líneas les falta el monto FOB.',
+      },
+      gravamen: {
+        label: 'Tasa de gravamen por línea',
+        found: 'Se dedujo de cada línea de la hoja antigua.',
+        partial: 'No se pudo deducir en {{missing}} líneas.',
+      },
+      arancel: {
+        label: 'Partida arancelaria',
+        found: 'La factura del proveedor la trae en {{count}} líneas.',
+        noFile: 'Solo la factura del proveedor la indica, y no se subió. Sin ella el gravamen solo puede salir de la hoja antigua.',
+      },
+    },
+
+    form: {
+      shipmentTitle: 'Datos del embarque',
+      shipmentBody: 'Cada campo muestra de dónde salió. Lo que no se pudo leer aparece marcado y es obligatorio.',
+      shipmentName: 'Nombre del embarque',
+      exchangeRate: 'Tasa de cambio',
+      ratePlaceholder: 'Por ejemplo 58.55',
+      rateNote: 'Alimenta H10 y la columna I (CIF PESOS).',
+      freight: 'Flete total',
+      insurance: 'Seguro total',
+      currencyTitle: 'Moneda del flete y el seguro',
+      currency: {
+        USD: 'USD (dólares)',
+        DOP: 'RD$ (convertir con la tasa)',
+      },
+      currencyNoteUsd: 'Los montos se escribirán tal cual en F10 y G10.',
+      currencyNoteDop: 'Los montos se dividirán entre {{rate}} antes de escribirse en F10 y G10, que siempre van en dólares.',
+      expensesTitle: 'Gastos locales',
+      expensesBody: 'Se reparten entre las líneas según su costo con impuestos pagados (columna N), y alimentan las columnas O a U.',
+      entryNumber: 'No. entrada',
+      decisionsTitle: 'Decisiones',
+      decisionsBody: 'Los archivos de muestra no resuelven estos cuatro puntos. Elige y la vista previa se recalcula al instante.',
+      itbisTitle: 'Base del ITBIS',
+      itbisNote: 'Cambia todas las cifras de impuestos de la hoja.',
+      gravamenTitle: 'Origen del gravamen',
+      gravamenNote: 'Cuando el origen elegido no tiene valor para una línea, se usa el otro y se avisa.',
+    },
+
+    rates: {
+      sheet: 'La que indica la hoja',
+      initial: 'Inicial',
+      completive: 'Completivo',
+      average: 'Promedio',
+      dgii: 'DGII',
+      manual: 'Escribirla a mano',
+    },
+
+    expenses: {
+      customs_service: 'Servicio aduanero',
+      port_storage: 'Almacenaje puerto DPW',
+      port_collect: 'DPH o Portcollect',
+      customs_agent: 'Gestión aduanal',
+      land_transport: 'Transporte terrestre',
+      inspection: 'Inspección QIMA',
+      local_handling: 'Manejo local',
+    },
+
+    itbis: {
+      sinSelectivo: {
+        label: 'Sin Selectivo: (CIF + Gravamen) × 0.18',
+        note: 'Es lo que hace el formato actual.',
+      },
+      conSelectivo: {
+        label: 'Con Selectivo: (CIF + Gravamen + Selectivo) × 0.18',
+        note: 'Es lo que hacía el formato antiguo.',
+      },
+    },
+
+    gravamen: {
+      sheet: {
+        label: 'De la hoja de costo antigua',
+        note: 'Se deduce dividiendo el gravamen entre el CIF de cada línea.',
+      },
+      arancel: {
+        label: 'De la partida arancelaria de la factura',
+        note: 'La factura indica la partida, no la tasa: la tasa sale de lo que el catálogo ya tiene registrado para esa partida.',
+      },
+    },
+
+    preview: {
+      title: 'Vista previa de la hoja convertida',
+      body: 'Todas las columnas, tal como se escribirán. Un valor que no se pudo calcular sale como raya, nunca como 0.00.',
+      rows: '{{count}} líneas',
+      totals: 'TOTALES',
+      costFactor: 'Factor de costo',
+      grossMargin: 'Margen bruto',
+      grossProfit: 'Utilidad bruta',
+    },
+
+    findings: {
+      title: 'Comprobación final',
+      clean: 'No hay nada pendiente.',
+      blockingCountOne: '{{count}} bloqueante',
+      blockingCountOther: '{{count}} bloqueantes',
+      warningCountOne: '{{count}} advertencia',
+      warningCountOther: '{{count}} advertencias',
+      accept: 'Lo acepto y quedará anotado en el archivo',
+      more: 'y {{count}} más',
+      download: 'Descargar el .xlsx',
+      blockedHint: 'La descarga está bloqueada hasta resolver lo anterior.',
+      acceptHintOne: 'Falta aceptar {{count}} advertencia.',
+      acceptHintOther: 'Faltan aceptar {{count}} advertencias.',
+      saveTo: 'Guardar en Archivos, junto al pedido',
+      chooseOrder: 'Elige un pedido',
+      save: 'Guardar en Archivos',
+      saved: 'Guardado',
+      savedHint: 'El archivo quedó adjunto al pedido, marcado como liquidación.',
+      noReference: 'Pedido sin referencia',
+
+      shipmentName: {
+        title: 'Falta el nombre del embarque',
+        consequence: 'A2 y B10 quedarían en blanco.',
+      },
+      exchangeRate: {
+        title: 'Falta la tasa de cambio',
+        consequence: 'Sin ella no se puede calcular la columna I (CIF PESOS), ni nada que dependa de ella.',
+      },
+      freight: {
+        title: 'Falta el flete total',
+        consequence: 'La columna F no se puede repartir.',
+      },
+      insurance: {
+        title: 'Falta el seguro total',
+        consequence: 'La columna G no se puede repartir.',
+      },
+      expenses: {
+        title: 'Gastos locales sin monto: {{count}}',
+        consequence: 'Sin monto no se puede repartir: {{fields}}.',
+      },
+      lineCode: {
+        title: 'Líneas sin código de producto: {{count}}',
+        consequence: 'La columna B quedaría vacía y la descripción no se podría buscar.',
+      },
+      lineUnits: {
+        title: 'Líneas sin cantidad: {{count}}',
+        consequence: 'El costo unitario (columna W) divide entre la cantidad y no se puede calcular.',
+      },
+      lineFob: {
+        title: 'Líneas sin costo FOB: {{count}}',
+        consequence: 'El flete y el seguro se reparten según el FOB de cada línea.',
+      },
+      fobTotal: {
+        title: 'La columna E no cuadra con el total de la hoja original',
+        consequence: 'La hoja dice {{expected}} y la suma da {{actual}}: una diferencia de {{difference}}.',
+      },
+      freightTotal: {
+        title: 'La columna F no suma el flete indicado',
+        consequence: 'Se indicó {{expected}} y la suma da {{actual}}: una diferencia de {{difference}}.',
+      },
+      insuranceTotal: {
+        title: 'La columna G no suma el seguro indicado',
+        consequence: 'Se indicó {{expected}} y la suma da {{actual}}: una diferencia de {{difference}}.',
+      },
+      errorCell: {
+        title: 'Líneas que producirían un error de Excel: {{count}}',
+        consequence: 'Una cantidad de cero haría que el costo unitario dé #DIV/0!.',
+      },
+      description: {
+        title: 'Productos sin descripción: {{count}}',
+        consequence: 'La columna D queda vacía en esas líneas.',
+      },
+      descriptionFallback: {
+        title: 'Descripciones tomadas del archivo y no del catálogo: {{count}}',
+        consequence: 'Salieron de la hoja «No tocar» del archivo subido, que es una foto de cuando se guardó ese archivo.',
+      },
+      listPrice: {
+        title: 'Productos sin precio de lista: {{count}}',
+        consequence: 'Las columnas Y, Z, AA, AB y AC quedan vacías en esas líneas: sin precio de lista no hay de dónde calcular el precio de venta.',
+      },
+      internalUse: {
+        title: 'Productos de uso interno: {{count}}',
+        consequence: 'No se venden, así que no llevan precio. Las columnas de venta quedan vacías a propósito.',
+      },
+      listPriceFallback: {
+        title: 'Precios de lista tomados del archivo y no del catálogo: {{count}}',
+        consequence: 'Salieron de la hoja «No tocar» del archivo subido y pueden estar desactualizados.',
+      },
+      gravamenMissing: {
+        title: 'Líneas sin tasa de gravamen: {{count}}',
+        consequence: 'La columna J queda en cero y el ITBIS se calcula sin gravamen.',
+      },
+      gravamenFallback: {
+        title: 'Líneas que usaron el otro origen de gravamen: {{count}}',
+        consequence: 'El origen elegido no tenía valor para esas líneas.',
+      },
+      gravamenUnrecognised: {
+        title: 'Líneas con una tasa que no es ninguna de las cinco: {{count}}',
+        consequence: 'Se conserva tal cual se dedujo, pero conviene revisarla.',
+      },
+      excise: {
+        title: 'Líneas sin Selectivo indicado: {{count}}',
+        consequence: 'Se asume cero en la columna K.',
+      },
+      margin: {
+        title: 'Líneas sin margen calculable: {{count}}',
+        consequence: 'El costo puesto en almacén da cero, y el margen dividiría entre cero.',
+      },
+      onlyInCostSheet: {
+        title: 'Productos en la hoja de costo y no en la factura: {{count}}',
+        consequence: 'O viajaron por avión o los documentos no coinciden. Solo alguien que conozca el pedido puede decirlo.',
+      },
+      onlyInInvoice: {
+        title: 'Productos en la factura y no en la hoja de costo: {{count}}',
+        consequence: 'No se incluyen en la hoja convertida, porque la hoja de costo es la que manda.',
+      },
+      singleFile: {
+        title: 'Solo se subió un archivo',
+        consequence: 'Con la factura del proveedor tendrías la partida arancelaria y sus descripciones.',
+      },
+      cifDrift: {
+        title: 'El CIF PESOS calculado no coincide con el de la hoja original',
+        consequence: 'La hoja antigua traía {{expected}} pegado de la declaración; el formato nuevo lo calcula y da {{actual}}, una diferencia de {{difference}}. Todo el gravamen y el ITBIS de la hoja convertida cambian con ello. Revisa el flete, el seguro y la tasa antes de aceptar.',
+      },
+    },
+
+    notes: {
+      generated: 'Generada el',
+      sourceFile: 'Hoja de costo de origen',
+      invoiceFile: 'Factura del proveedor',
+      none: 'Ninguna',
+      currency: 'Moneda indicada para flete y seguro',
+      accepted: 'Advertencia aceptada',
+    },
+
+    errors: {
+      notACostSheet: 'Este archivo no parece una hoja de costo. Se busca una hoja con las columnas «Codigo» y «Descripcion» junto a alguna de «CIF PESOS», «Costo unitario» o «Unidades Recibidas».',
+      alreadyTarget: 'Este archivo ya está en el formato actual: trae flete, seguro y CIF en dólares. No hay nada que convertir.',
+      noLines: 'La tabla de costo no tiene líneas de producto.',
+      unsupported: 'Este navegador no puede abrir archivos .xlsx. Prueba con Chrome, Edge, Firefox o Safari.',
+      invoiceUnreadable: 'No se pudo leer la factura del proveedor ({{message}}). La conversión sigue sin ella.',
     },
   },
 

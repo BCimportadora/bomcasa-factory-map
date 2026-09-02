@@ -11,6 +11,7 @@ import PortsPage from './pages/PortsPage'
 import OrdersPage from './pages/OrdersPage'
 import FilesPage from './pages/FilesPage'
 import CatalogPage from './pages/CatalogPage'
+import CostSheetPage from './pages/CostSheetPage'
 import InnovationsPage from './pages/InnovationsPage'
 import InnovationsPrintPage from './pages/InnovationsPrintPage'
 import CatalogPrintPage from './pages/CatalogPrintPage'
@@ -93,6 +94,12 @@ function AppRoutes() {
 
       {/* The master product list, built from the documents in Files. */}
       <Route path="/catalog" element={protectedPage(<CatalogPage />)} />
+
+      {/*
+        Converting an old cost sheet onto the current format. Reads the Catalog
+        and writes only into an order's paperwork, and only when asked.
+      */}
+      <Route path="/cost-sheet" element={protectedPage(<CostSheetPage />)} />
 
       {/*
         Files drills down factory -> order -> documents. One page renders all
