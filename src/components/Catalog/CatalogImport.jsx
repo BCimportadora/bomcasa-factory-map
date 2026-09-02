@@ -35,17 +35,39 @@ export const invoiceReference = (factory, orderNumber) => {
 }
 
 /**
- * What identifies this order's block of the document, so a second import of the
- * same file is recognised as one.
+ * Which DOCUMENT this is: its own invoice number, or the S/C its header states.
  *
- * The S/C number where the supplier writes one, its invoice number where it
- * does not -- CHS heads its invoice `Invoice No.:CHLPI240718A` and never states
- * an S/C. The file name is the last resort and a poor one: it is ours to
- * change, and this document reached us as `CHS 09 detail.xlsx`, a name the
- * supplier never wrote.
+ * The file name is the last resort and a poor one -- it is ours to change, and
+ * CHS's invoice reached us as `CHS 09 detail.xlsx`, a name the supplier never
+ * wrote. But a PIPL states no invoice number at all, so the header's S/C is
+ * what identifies it.
  */
-const docKeyOf = (invoice, block, fileName) =>
-  block.contractNo ?? invoice.invoiceNo ?? fileName
+const documentKeyOf = (invoice, fileName) => invoice.invoiceNo ?? invoice.contractNo ?? fileName
+
+/**
+ * What identifies this order's block, so a second import of the same file is
+ * recognised as one.
+ *
+ * BOTH halves are needed, and keying on the block's S/C alone was a bug that
+ * silently lost a whole shipment. One invoice carries lines from several orders
+ * -- `#77 PIPL ORDER OF YQ-BQ-2603034.xlsx` ships 43 lines of order 77, one
+ * left-over line of 75 and one of 76, each under its own S/C. Keyed on the
+ * block's S/C, importing that file claimed `YQ-BQ-2601011` on the strength of
+ * ONE line, and `KLIK 76 PIPL.xlsx` -- the real order 76, 43 lines under that
+ * same S/C -- was then refused as already imported, telling the user that
+ * importing it "would change nothing" while 42 products never arrived.
+ *
+ * A block is identified by the document it came from AND its place in it, so
+ * two different documents mentioning the same order stay distinct. The index is
+ * a fallback for a supplier that writes no S/C on the block at all: such a file
+ * has a single block, so it is always 0, and it is taken from the ORIGINAL
+ * block order rather than the newest-first order the planner walks, or the key
+ * would change between two imports of one file.
+ */
+const docKeyOf = (invoice, block, fileName) => {
+  const within = block.contractNo ?? `#${invoice.blocks.indexOf(block)}`
+  return `${documentKeyOf(invoice, fileName)}|${within}`
+}
 
 /** Rows the catalog can be built from, out of one parsed liquidación. */
 const liquidacionRows = (parsed) =>

@@ -194,6 +194,25 @@ The blocks are keyed on the S/C number rather than the PO, because that is what
 both sheets carry: `PL` marks its later blocks with the S/C alone and no PO line
 at all.
 
+**But a block's S/C alone is NOT the import key, and using it as one silently
+lost a shipment.** The dedup key must be the DOCUMENT plus the block within it,
+because two different files legitimately mention the same order. `#77 PIPL` is
+43 lines of order 77 plus one left-over line of 75 and one of 76 — so keyed on
+the block's S/C, importing it claimed `YQ-BQ-2601011` on the strength of ONE
+line, and `KLIK 76 PIPL.xlsx` — the real order 76, 43 lines under that same S/C
+— was refused as already imported with the message "importing it again would
+change nothing", while 42 products never arrived. `docKeyOf` is now
+`<invoice no. or header S/C or file name>|<block S/C or index>`. The index half
+only ever fires for a supplier that writes no S/C on the block (CHS, which has a
+single block, so it is always 0) and is taken from the ORIGINAL block order, not
+the newest-first order the planner walks, or the key would move between two
+imports of one file.
+
+Changing that scheme orphaned the `catalog_imports` rows written under the old
+keys. They block nothing — the check looks up the new key — so a document
+imported before the fix simply offers itself again, and re-importing it is
+harmless: it ranks 'same' against itself and only fills blanks.
+
 **Not every supplier writes a PO, and without one the whole shipment lands under
 no supplier.** CHS heads its invoice `Invoice No.:CHLPI240718A` and states no PO
 and no S/C anywhere -- so `orderNumber` is null, `invoiceReference` returns null,
