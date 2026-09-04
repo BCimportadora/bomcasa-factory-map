@@ -562,6 +562,27 @@ export function planImport({ docType, rows, existing, docDate = null, docRef = n
     let key = codeKey(fields.product_code)
     const where = row.item ?? row.row ?? row.line_no
 
+    /*
+     * How this row's goods are worded, kept apart from what will be WRITTEN.
+     *
+     * `description` is our own cost sheet's wording -- what the company calls
+     * the product. A customs declaration states the same goods the way the
+     * agent has to declare them, which is not a name anybody here uses, and
+     * letting it fill the field put that wording in front of everyone. Worse,
+     * once it was there a later cost sheet could not correct it: the two write
+     * different columns (`doc_ref` against `cost_ref`), so a cost sheet
+     * arriving afterwards ranks 'unknown' against a blank `cost_ref`, and an
+     * 'unknown' relation is reported as a conflict rather than applied.
+     *
+     * The declaration still READS it -- an uncoded line is matched on it and,
+     * failing that, keyed on it, and a coded line adopts an orphan by it. So it
+     * is held here, and dropped from `fields` below. Keeping the two separate
+     * is deliberate: doing it by deleting the key at the right moment made
+     * three unrelated lookups depend on statement order, and quietly broke
+     * adoption.
+     */
+    const declared = fields.description ?? null
+
     // A line with no product code still classifies goods, and that tariff code
     // is worth keeping. Rather than dropping the line, look for a product whose
     // description matches -- the cost sheet usually has the same goods under a
@@ -572,14 +593,18 @@ export function planImport({ docType, rows, existing, docDate = null, docRef = n
         skipped.push({ where, code: fields.product_code ?? null, reason: 'noCode' })
         continue
       }
-      const match = matchByDescription(fields.description, existing ?? [])
-      key = match ? match.code_key : descriptionKey(fields.description)
+      const match = matchByDescription(declared, existing ?? [])
+      key = match ? match.code_key : descriptionKey(declared)
       if (!key) {
         skipped.push({ where, code: null, reason: 'noCode' })
         continue
       }
       uncoded.push({ where, key, matched: Boolean(match) })
     }
+
+    // Withheld for a row that HAS a code. A `desc:` row's description is the
+    // only name it will ever have, and dropping it would leave a nameless row.
+    if (docType === 'liquidacion' && !key.startsWith('desc:')) delete fields.description
 
     if (seenInFile.has(key)) {
       skipped.push({ where, code: fields.product_code, reason: 'duplicateInFile', firstSeen: seenInFile.get(key) })
@@ -595,7 +620,7 @@ export function planImport({ docType, rows, existing, docDate = null, docRef = n
     let adopts = null
     if (!current && !key.startsWith('desc:')) {
       const orphan = matchByDescription(
-        fields.description,
+        declared,
         (existing ?? []).filter((p) => (p.code_key ?? '').startsWith('desc:')),
       )
       if (orphan) {

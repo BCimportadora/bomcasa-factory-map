@@ -664,6 +664,30 @@ Descripción cell while the text sat one column away in the same row. The search
 had always looked at all three; `productDescription` is what makes the table
 agree with it.
 
+**The DGA declaration READS the description and must never WRITE it.** It words
+the same goods the way a customs agent has to declare them -- `BOMBILLO LED
+TRADICIONAL 9W 6500K 60/108MM (25/1) (50) KOLNY` against our cost sheet's
+`...60/108mm (25/1)(50) KOLNY`, all caps and spaced differently -- and that is
+not a name anybody here uses. Once it was in `description` a later cost sheet
+could not correct it either: the two write different columns (`doc_ref` against
+`cost_ref`), so a cost sheet arriving afterwards compares itself against a blank
+`cost_ref`, ranks `unknown`, and an `unknown` relation is REPORTED as a conflict
+rather than applied. So the field silently stayed wrong.
+
+The declaration still needs the text, which is why it is withheld in
+`planImport` rather than dropped from `fromLiquidacionRow`: an uncoded line is
+matched on it, failing that keyed on it, and a coded line adopts a `desc:`
+orphan by it. It is held once as `declared` and deleted from `fields` only for
+a row that HAS a code -- a `desc:` row's description is the only name it will
+ever have. Doing this by deleting the key at the right moment instead made three
+lookups depend on statement order and quietly broke adoption; the test caught
+it, which is why `declared` exists as its own variable.
+
+Rows imported before this are NOT healed by it. Their `description` still holds
+the customs wording, and re-importing the cost sheet reports a conflict rather
+than replacing it. `select count(*) from catalog where description is not null
+and cost_ref is null` counts the ones no cost sheet has ever touched.
+
 **A catalog product's supplier is derived, not stored.** There is deliberately
 no `factory_id` on `catalog`: the supplier is already recorded once, on the
 order the paperwork came from, and `doc_ref` / `cost_ref` hold that order's
