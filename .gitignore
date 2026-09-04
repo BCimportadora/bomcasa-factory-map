@@ -14,3 +14,14 @@ supabase/.branches
 # an output, not a record. It also caches the extracted contents of every file
 # it read, which is why it does not belong in the history.
 graphify-out
+
+# Real customer workbooks. Verifying a parser means putting an actual supplier
+# invoice or cost sheet where the dev server can read it, and `public/` is copied
+# verbatim into `dist/` and deployed -- so a file left behind after a check ships
+# to the internet, and a commit of one cannot be taken back. Every spreadsheet in
+# this project is somebody's pricing; none has ever been committed, and this is
+# what keeps it that way. `git add -f` if you ever genuinely need a fixture.
+# Deliberately NOT *.csv: sample-factories.csv is a real, committed fixture.
+*.xlsx
+*.xls
+*.xlsm
