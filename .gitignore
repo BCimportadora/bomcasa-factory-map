@@ -9,3 +9,8 @@ dist-ssr
 # Supabase CLI scratch files
 supabase/.temp
 supabase/.branches
+
+# graphify's knowledge graph: regenerated from the source it describes, so it is
+# an output, not a record. It also caches the extracted contents of every file
+# it read, which is why it does not belong in the history.
+graphify-out
