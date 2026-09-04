@@ -39,6 +39,11 @@ import ProductEditor from '../components/Catalog/ProductEditor'
 /** Columns, and how each one sorts. */
 const COLUMNS = [
   { field: 'product_code', align: 'left', numeric: false },
+  // The supplier's own reference for the same goods, beside ours -- the order
+  // the print sheet already uses. It is what you quote back to the factory, and
+  // it is the one field here that no document of ours assigns: it arrives on a
+  // proforma or an invoice, and a product nobody has ordered yet has none.
+  { field: 'supplier_code', align: 'left', numeric: false },
   { field: 'description', align: 'left', numeric: false },
   { field: 'barcode', align: 'left', numeric: false },
   { field: 'arancel', align: 'left', numeric: false },
