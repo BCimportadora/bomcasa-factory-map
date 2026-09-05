@@ -303,6 +303,32 @@ all three of code, description and units.
 Checked against all 59 Klik cost sheets: 57 pick exactly the sheet they picked
 before, and the two that changed went from failing to reading 13 and 8 lines.
 
+**The declaration's table starts under its OWN header row, not at y=300.** That
+constant was measured off one document and is wrong on the next. KLIK 48 heads
+its table at y=268.5 and item 1's description begins at 281.7, so the cutoff ate
+the first two of its three lines AND the anchor carrying the item number --
+leaving an orphan block reading `BLANCO (10/1)`. Blocks and anchors are paired
+by INDEX, so one orphan shifted every description on the page onto the following
+row: item 2 wore item 3's name, and on down. Every figure still summed. Only the
+CIF totals check caught it, and only because the shift also dropped a row. Four
+of thirty-eight declarations were being read that way. The header row is on the
+page in plain text, so `DESCRIPCION` is located and the body starts just under
+it; the old constant survives as the fallback for a page with no header.
+
+**A word belongs to the column its CENTRE falls in, not its left edge.**
+docs/data-sources.md says so and the reader had drifted from it. Column values
+are centred under their heading, so a long word starts further left than a short
+one: `Kilogramos` begins at x=191.1 where `Unidades` begins at 197, and the
+DESCRIPCION band ends at 191.4. Three tenths of a unit put the unit column
+inside the description, and a KLIK 66 row came out as `DOBLE Kilogramos
+KOLNY/BLANCO (10/1)`. The raw left edge is kept as `left`, because reading order
+within a line is still left to right.
+
+Together these took the corpus from 35 of 38 declarations validating to 38, with
+layout warnings from 5 to 0, truncated descriptions from 2 to 0 and column leaks
+from 1 to 0. Thirty-three documents parse identically; the five that changed all
+improved.
+
 **The `Totales` row is not always on the last page of a liquidación.** A short
 declaration puts it on page 1 with only the container and money footer overleaf.
 Reading the stated totals from `pages[pages.length - 1]` finds nothing, every

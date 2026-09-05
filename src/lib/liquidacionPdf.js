@@ -77,12 +77,12 @@ const numeric = (value) => {
 /** Group items into visual lines by their y, then left-to-right within a line. */
 const toLines = (items, tolerance = 3) => {
   const lines = []
-  for (const item of [...items].sort((a, b) => a.y - b.y || a.x - b.x)) {
+  for (const item of [...items].sort((a, b) => a.y - b.y || a.left - b.left)) {
     const last = lines[lines.length - 1]
     if (last && Math.abs(item.y - last.y) < tolerance) last.items.push(item)
     else lines.push({ y: item.y, items: [item] })
   }
-  for (const line of lines) line.items.sort((a, b) => a.x - b.x)
+  for (const line of lines) line.items.sort((a, b) => a.left - b.left)
   return lines
 }
 
@@ -93,9 +93,9 @@ const headerField = (items, label) => {
   // The header is laid out in three columns and the reading order interleaves
   // them, so take only what sits to the right of the label on the same line and
   // stop before the next column begins.
-  const sameLine = items.filter((i) => Math.abs(i.y - anchor.y) < 4 && i.x > anchor.x)
+  const sameLine = items.filter((i) => Math.abs(i.y - anchor.y) < 4 && i.left > anchor.left)
   if (sameLine.length === 0) return null
-  const nearest = sameLine.sort((a, b) => a.x - b.x)[0]
+  const nearest = sameLine.sort((a, b) => a.left - b.left)[0]
   return nearest.str.trim() || null
 }
 
@@ -125,7 +125,23 @@ export async function readLiquidacion(file) {
       content.items
         .filter((i) => i.str.trim() !== '' && (i.width ?? 0) > 0)
         .map((i) => ({
-          x: i.transform[4],
+          /*
+           * The x-CENTRE of the word, which is what docs/data-sources.md
+           * specifies and what this had drifted away from.
+           *
+           * The values in a column are centred under its heading, so a long
+           * word starts further left than a short one in the same column:
+           * `Kilogramos` begins at x=191.1 where `Unidades` begins at 197. The
+           * DESCRIPCION band ends at 191.4, so measuring from the left EDGE put
+           * `Kilogramos` inside the description -- by three tenths of a unit --
+           * and a KLIK 66 row came out reading `DOBLE Kilogramos KOLNY/BLANCO
+           * (10/1)`. A centre cannot do that: it sits where the column is,
+           * whatever the word's length.
+           */
+          x: i.transform[4] + (i.width ?? 0) / 2,
+          // Kept because the description is read left to right and the raw edge
+          // is what orders words within a line.
+          left: i.transform[4],
           // pdf.js measures from the bottom of the page; everything here reads
           // top-down, and so do the boundaries above.
           y: Number((viewport.height - i.transform[5]).toFixed(2)),
@@ -181,10 +197,30 @@ export async function readLiquidacion(file) {
   pages.forEach((items, index) => {
     if (totalesPage !== -1 && index > totalesPage) return
     const stop = totalesPage === index ? totalesItem.y : Infinity
-    // Below the ruled header on page 1; from the top of the frame after that.
-    // The bottom is the Totales row, never a fixed margin -- a row can sit at
-    // y=740 and a margin cutoff drops it without a word.
-    const top = index === 0 ? 300 : 25
+    /*
+     * The table starts under its OWN header row, not at a fixed y.
+     *
+     * `300` was measured off one declaration and is wrong on the next. KLIK 48
+     * heads its table at y=268.5 and item 1's description begins at 281.7, so
+     * the cutoff swallowed the first two of its three lines AND the anchor that
+     * carries the item number -- leaving a stray block reading `BLANCO (10/1)`
+     * with no anchor of its own. Blocks and anchors are paired by index, so
+     * that one orphan shifted every description on the page onto the following
+     * row: item 2 wore item 3's name, and so on down. Every figure still
+     * summed, which is why it took a totals check on the CIF column to notice.
+     *
+     * Four of thirty-eight declarations were being read this way. The header
+     * row is on the page in plain text, so it is read rather than guessed --
+     * the same rule the spreadsheet readers already follow. The old constant
+     * stays as the fallback for a page that has no header of its own.
+     *
+     * The bottom is the Totales row, never a fixed margin -- a row can sit at
+     * y=740 and a margin cutoff drops it without a word.
+     */
+    const heading = items.find((i) => i.str === 'DESCRIPCION' && columnOf(i.x) === DESC)
+    // Just past the header's own line: `toLines` groups within 3 units, so 4
+    // clears it without reaching the first description line under it.
+    const top = heading ? heading.y + 4 : index === 0 ? 300 : 25
     const body = items.filter((i) => i.y > top && i.y < stop - 2)
     if (body.length === 0) return
 
