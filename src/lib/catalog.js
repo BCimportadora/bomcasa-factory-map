@@ -92,6 +92,134 @@ export const matchByDescription = (description, products) => {
   return hits.length === 1 ? hits[0] : null
 }
 
+/**
+ * How alike two descriptions are, 0 to 1, by the words they share.
+ *
+ * Word overlap rather than edit distance: these are the same goods described by
+ * two people, so what differs is a word or two -- a colour spelled out, a
+ * packing suffix, the supplier's code on the end -- not letters within words.
+ * `TOMA CORRIENTE DOBLE GRIS CLARO` against `TOMA CORRIENTE DOBLE GRIS` shares
+ * four of five, which reads as "probably the same"; edit distance on the whole
+ * string would call a long description similar to another long description for
+ * no better reason than length.
+ *
+ * Weighted toward the SHORTER description on purpose, so a short one contained
+ * inside a longer one scores high -- that is exactly the customs-wording case.
+ */
+export const descriptionSimilarity = (a, b) => {
+  const words = (text) =>
+    new Set(
+      normalise(text)
+        .split(' ')
+        .filter((w) => w.length > 1),
+    )
+  const left = words(a)
+  const right = words(b)
+  if (left.size === 0 || right.size === 0) return 0
+  let shared = 0
+  for (const w of left) if (right.has(w)) shared += 1
+  // One word in common is a coincidence, not a resemblance. The customs line
+  // "GRAPA" shares its only word with "GRAPA ELECTRICA KOLNY GRIS RCC-10" and
+  // would otherwise score a perfect 1.0 against it -- and against every other
+  // clip in the catalog, which is the opposite of a useful question.
+  if (shared < 2) return 0
+  return shared / Math.min(left.size, right.size)
+}
+
+/** Below this, two descriptions are simply different goods. */
+export const SIMILAR_ENOUGH = 0.7
+
+/**
+ * Products whose description is close to this one, most alike first.
+ *
+ * For the question a person can answer and the importer cannot: two wordings
+ * turn up for what may be one article, and only somebody who knows the goods
+ * can say whether they are. So this never merges anything -- it reports.
+ */
+export const nearestDescriptions = (description, products, limit = 3) => {
+  const scored = []
+  for (const product of products ?? []) {
+    const theirs = productDescription(product)
+    if (!theirs) continue
+    const score = descriptionSimilarity(description, theirs)
+    if (score >= SIMILAR_ENOUGH) {
+      scored.push({
+        code: product.product_code ?? null,
+        code_key: product.code_key ?? null,
+        description: theirs,
+        score: Math.round(score * 100) / 100,
+      })
+    }
+  }
+  return scored.sort((a, b) => b.score - a.score).slice(0, limit)
+}
+
+/**
+ * A customs description with the supplier's own code stuck on the end.
+ *
+ * The agent types the goods and then the factory's reference, run together:
+ * `TOMA CORRIENTE DOBLE/MODULO CON TAPA GRIS CLARO R6C(GC)`. Our wording is
+ * `TOMA CORRIENTE DOBLE/MODULO CON TAPA GRIS CLARO` and `R6C(GC)` is Klik's.
+ *
+ * The only rule that holds across suppliers is ORDER: our description always
+ * comes first, so whatever is being split off is a SUFFIX. Their codes are not
+ * a single shape -- some are letters and digits, some carry a parenthesised
+ * colour, some are a measurement -- so this does not try to recognise a code.
+ * It peels the last token or two and hands back the candidates, longest first,
+ * for a caller to try in turn.
+ *
+ * Deliberately a list of candidates rather than a decision. Nothing here writes
+ * a description; the candidates are only used to FIND a product we already
+ * have, so a wrong split costs a match that was not going to happen anyway. A
+ * split that silently rewrote the stored name would be a different matter.
+ */
+export const descriptionCandidates = (description) => {
+  const text = String(description ?? '')
+    .replace(/\s*NO APLICA\s*$/i, '')
+    .trim()
+  if (!text) return []
+
+  const candidates = [text]
+  const words = text.split(/\s+/)
+  // Two at most. Three would start eating real words off descriptions that end
+  // in a size -- "CANALETA ... 3/4 (20MM) X 6" is all ours.
+  for (let drop = 1; drop <= 2 && words.length - drop >= 2; drop += 1) {
+    const head = words.slice(0, words.length - drop).join(' ')
+    const tail = words.slice(words.length - drop).join(' ')
+    // A tail that is plain words in our own vocabulary is part of the
+    // description, not a code: KOLNY, NEGRO, PAQ. A supplier's reference
+    // almost always mixes letters with digits or punctuation.
+    if (/^[A-Za-zÁÉÍÓÚÑáéíóúñ]+$/.test(tail.replace(/\s+/g, ''))) continue
+    candidates.push(head)
+  }
+  return candidates
+}
+
+/**
+ * The supplier code a customs description ends with, if it ends with one.
+ *
+ * The mirror of `descriptionCandidates`: what was peeled off. Only reported,
+ * never written -- `supplier_code` comes from the supplier's own paperwork, and
+ * a guess from a customs line is not that.
+ */
+export const trailingSupplierCode = (description, productDescription) => {
+  const full = String(description ?? '').replace(/\s*NO APLICA\s*$/i, '').trim()
+  const head = normalise(productDescription)
+  if (!full || !head) return null
+  // Walk back word by word until our own description is exactly consumed. A
+  // plain `startsWith` cannot do it: the declaration is ALL CAPS and ours is
+  // not, and the two punctuate differently -- comparing normalised, but
+  // slicing the ORIGINAL, is what keeps `R6C(GC)` spelled the way it was
+  // written.
+  const words = full.split(/\s+/)
+  for (let keep = words.length - 1; keep >= 1; keep -= 1) {
+    if (normalise(words.slice(0, keep).join(' ')) === head) {
+      return words.slice(keep).join(' ').trim() || null
+    }
+  }
+  return null
+}
+
 /** The selling prices on a cost-sheet line. Costs are deliberately not here. */
 const SELLING_PRICE_FIELDS = ['sale_price_ex_tax', 'sale_price_inc_tax', 'list_price']
 
@@ -608,13 +736,41 @@ export function planImport({ docType, rows, existing, docDate = null, docRef = n
         skipped.push({ where, code: fields.product_code ?? null, reason: 'noCode' })
         continue
       }
-      const match = matchByDescription(declared, existing ?? [])
+      // The agent runs our wording and the factory's own reference together --
+      // `...GRIS CLARO R6C(GC)`. Our description always comes first, so the
+      // whole line is tried before the line with its last token or two peeled
+      // off. Longest first, so a product whose real name happens to end in a
+      // measurement is matched whole rather than truncated.
+      let match = null
+      let matchedOn = declared
+      for (const candidate of descriptionCandidates(declared)) {
+        match = matchByDescription(candidate, existing ?? [])
+        if (match) {
+          matchedOn = candidate
+          break
+        }
+      }
+
       if (!match) {
-        failed.push({ where, row: where, reason: 'noCodeUnmatched', detail: declared })
+        // Nothing matched outright. Before reporting it as unusable, say
+        // whether anything in the catalog is CLOSE -- two wordings of the same
+        // goods is the likeliest reason a line finds no home.
+        const near = nearestDescriptions(declared, existing ?? [])
+        failed.push({
+          where,
+          row: where,
+          reason: near.length > 0 ? 'noCodeSimilar' : 'noCodeUnmatched',
+          detail: declared,
+          similar: near,
+        })
         continue
       }
+
       key = match.code_key
-      uncoded.push({ where, key, matched: true })
+      // What was peeled off, if anything. Reported so a person can confirm it
+      // really was the supplier's code; never written to `supplier_code`.
+      const trailing = trailingSupplierCode(declared, match.description)
+      uncoded.push({ where, key, matched: true, code: match.product_code, trailing })
     }
 
     // Withheld outright. Now that an unmatched line is reported rather than
@@ -645,7 +801,32 @@ export function planImport({ docType, rows, existing, docDate = null, docRef = n
     }
 
     if (!current) {
-      added.push({ where, key, fields: { ...fields, [dateField]: docDate, [refField]: docRef } })
+      /*
+       * A customs declaration classifies goods; it does not introduce them.
+       *
+       * The scope it is allowed to touch is the products tagged with the order
+       * a person picked at import -- `existing` arrives already narrowed to
+       * those. A line that finds nothing there is either goods from another
+       * shipment or a wording nobody has matched yet, and both are questions.
+       * Creating the product instead is how a declaration ends up owning a
+       * product it only ever taxed.
+       */
+      if (docType === 'liquidacion') {
+        const near = nearestDescriptions(declared, existing ?? [])
+        failed.push({
+          where,
+          row: where,
+          reason: near.length > 0 ? 'notInOrderSimilar' : 'notInOrder',
+          detail: fields.product_code || declared,
+          similar: near,
+        })
+        continue
+      }
+      added.push({
+        where,
+        key,
+        fields: { ...fields, [dateField]: docDate, [refField]: docRef, order_refs: docRef ? [docRef] : [] },
+      })
       continue
     }
 
@@ -706,7 +887,21 @@ export function planImport({ docType, rows, existing, docDate = null, docRef = n
     // was nothing there before.
     if (adopts) Object.assign(fills, adopts)
 
-    const changed = Object.keys(fills).length + Object.keys(refreshes).length
+    /*
+     * The order tag, which accumulates rather than replacing.
+     *
+     * Not a fill and not a refresh: both of those decide between an old value
+     * and a new one, and this is a set that only ever grows. A product bought
+     * in Klik 61, 62 and 77 carries all three, so asking "was this part of 61?"
+     * keeps answering yes after the 77 paperwork lands.
+     */
+    let tags = null
+    if (docRef) {
+      const current_refs = Array.isArray(current.order_refs) ? current.order_refs : []
+      if (!current_refs.includes(docRef)) tags = [...current_refs, docRef]
+    }
+
+    const changed = Object.keys(fills).length + Object.keys(refreshes).length + (tags ? 1 : 0)
     if (changed > 0) {
       // Which document supplied these fields, recorded the same way the fields
       // themselves are: filled when blank, replaced only by a newer document.
@@ -729,6 +924,7 @@ export function planImport({ docType, rows, existing, docDate = null, docRef = n
         id: current.id,
         fills,
         refreshes,
+        tags,
         refreshed: Object.keys(refreshes).filter((f) => f !== dateField && f !== refField).length,
         dateField,
         refField,

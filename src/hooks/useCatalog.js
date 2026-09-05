@@ -43,6 +43,9 @@ export async function applyCatalogImport({ plan, document, userId }) {
       cost_date: fields.cost_date ?? null,
       doc_ref: fields.doc_ref ?? null,
       cost_ref: fields.cost_ref ?? null,
+      // Every order this product has appeared in. A new row starts with the one
+      // that introduced it; the rest accumulate as later paperwork arrives.
+      order_refs: fields.order_refs ?? [],
       created_by: userId,
     }))
     const { data, error } = await supabase.from('catalog').insert(rows).select('id')
@@ -74,6 +77,18 @@ export async function applyCatalogImport({ plan, document, userId }) {
     const refreshes = row.refreshes ?? {}
     if (Object.keys(refreshes).length > 0) {
       const { error } = await supabase.from('catalog').update(refreshes).eq('id', row.id)
+      if (error) throw error
+    }
+
+    // The order tag is a set that only grows, so it is written whole rather
+    // than guarded on being blank the way a fill is -- there is no "already
+    // filled" state to protect, and the plan computed the union from the row
+    // it just read.
+    if (row.tags) {
+      const { error } = await supabase
+        .from('catalog')
+        .update({ order_refs: row.tags })
+        .eq('id', row.id)
       if (error) throw error
     }
 

@@ -12,6 +12,7 @@ import {
   detectDocType,
   docTypeKey,
   isoDate,
+  orderSortKey,
   planImport,
   validateLiquidacion,
 } from '../../lib/catalog'
@@ -110,6 +111,7 @@ function Figure({ label, value, tone = '' }) {
 
 export default function CatalogImport({
   factories = [],
+  orders = [],
   onCheckImported,
   onListProducts,
   onConfirm,
@@ -136,6 +138,12 @@ export default function CatalogImport({
   // which is the one thing this screen exists to prevent. Text, never a number:
   // they write `09`, and a round trip through Number hands back `9`.
   const [orderNo, setOrderNo] = useState('')
+  // Which order a customs declaration belongs to. The document does not say --
+  // its header carries the declaration and liquidation numbers, the dates, the
+  // consignee and the agency, and nothing that names the shipment -- so a
+  // person picks it, and that choice is the whole scope the declaration may
+  // touch.
+  const [declRef, setDeclRef] = useState('')
   // What the import actually did, once it has done it. Until this session the
   // modal simply closed on success, which left the person who had just read a
   // 45-line declaration with no confirmation that anything had been written.
@@ -258,6 +266,43 @@ export default function CatalogImport({
     replan(supplierId, value)
   }
 
+  /**
+   * The products a declaration is allowed to touch: those tagged with the
+   * chosen order.
+   *
+   * `order_refs` accumulates, so a product bought in Klik 61 and again in 77
+   * is in scope for both. Rows imported before the tags existed fall back to
+   * the two single-value columns, which is the only history they have.
+   */
+  const inOrder = (products, reference) => {
+    if (!reference) return []
+    return products.filter((p) => {
+      const tags = Array.isArray(p.order_refs) ? p.order_refs : []
+      if (tags.length > 0) return tags.includes(reference)
+      return p.doc_ref === reference || p.cost_ref === reference
+    })
+  }
+
+  const changeDeclRef = (reference) => {
+    setDeclRef(reference)
+    setState((prev) => {
+      if (!prev || prev.docType !== 'liquidacion') return prev
+      const scope = inOrder(prev.existing, reference)
+      return {
+        ...prev,
+        declRef: reference,
+        scope: scope.length,
+        plan: planImport({
+          docType: 'liquidacion',
+          rows: prev.rows,
+          existing: scope,
+          docDate: prev.docDate,
+          docRef: reference || null,
+        }),
+      }
+    })
+  }
+
   const handleFile = async (event) => {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -268,6 +313,7 @@ export default function CatalogImport({
     setState(null)
     setAirSection(null)
     setOrderNo('')
+    setDeclRef('')
     setBusy(true)
 
     try {
@@ -360,12 +406,16 @@ export default function CatalogImport({
       }
 
       const existing = await onListProducts()
-      const plan = planImport({ docType, rows, existing, docDate, docRef })
+      // A declaration may touch only the products tagged with the order a
+      // person picks, and nothing is picked yet -- so it starts with an empty
+      // scope and every line reports itself until one is chosen.
+      const scope = docType === 'liquidacion' ? [] : existing
+      const plan = planImport({ docType, rows, existing: scope, docDate, docRef })
       // A row the parser itself rejected is a failure with a reason, not a
       // silent absence.
       plan.failed = [...(plan.failed ?? []), ...(parsed.failures ?? [])]
 
-      setState({ docType, parsed, plan, document, validation })
+      setState({ docType, parsed, plan, document, validation, rows, existing, docDate, declRef: '', scope: 0 })
     } catch (err) {
       // A parser throws a short key we have a string for; anything else --
       // pdf.js failing to start its worker, say -- throws a sentence, and the
@@ -416,6 +466,9 @@ export default function CatalogImport({
   const flying = state?.parsed?.flying ?? []
   // An unanswered question is a blocked import, which is the point of asking.
   const awaitingAir = flying.length > 0 && airSection === null
+  // A declaration with no order chosen has no scope, so there is nothing it
+  // could legitimately write.
+  const awaitingDeclOrder = state?.docType === 'liquidacion' && !state?.declRef
 
   /**
    * The partidas arancelarias the document carried, and how many lines each
@@ -613,6 +666,45 @@ export default function CatalogImport({
             </div>
           )}
 
+          {/* A customs declaration names no order of its own, so it is asked
+              for -- and the answer is not a label, it is the SCOPE. The
+              declaration may only classify products already tagged with that
+              order; anything else on it is reported. Without this a
+              declaration could reach the whole catalog and put one shipment's
+              tariff codes onto another's goods. */}
+          {state.docType === 'liquidacion' && (
+            <div
+              className={`mt-3 rounded-xl border px-3.5 py-3 ${
+                state.declRef ? 'border-line' : 'border-warning/40 bg-warning/5'
+              }`}
+            >
+              <label htmlFor="decl-order" className="label">
+                {t('catalog.import.declOrder')}
+              </label>
+              <select
+                id="decl-order"
+                value={declRef}
+                onChange={(e) => changeDeclRef(e.target.value)}
+                className="select text-[14px]"
+              >
+                <option value="">{t('catalog.import.declOrderNone')}</option>
+                {[...orders]
+                  .filter((o) => o.reference)
+                  .sort((a, b) => orderSortKey(b.reference).localeCompare(orderSortKey(a.reference)))
+                  .map((order) => (
+                    <option key={order.id} value={order.reference}>
+                      {order.reference}
+                    </option>
+                  ))}
+              </select>
+              <p className="hint mt-1.5">
+                {state.declRef
+                  ? tCount('catalog.import.declScope', state.scope ?? 0)
+                  : t('catalog.import.declOrderHint')}
+              </p>
+            </div>
+          )}
+
           {/* Which supplier, and which orders. Both are read off the document,
               and both are shown before anything is written -- the reference
               built here is what files each product under its order, so a wrong
@@ -767,6 +859,50 @@ export default function CatalogImport({
                     <span className="min-w-0 text-danger">
                       {tOr(`catalog.errors.${f.reason}`, f.reason)}
                       {f.detail && <span className="text-muted"> ({f.detail})</span>}
+                      {/* A line that resembles something we already have is a
+                          question, and the only person who can answer it needs
+                          to see BOTH wordings side by side -- not a score on
+                          its own. */}
+                      {f.similar?.length > 0 && (
+                        <span className="mt-1 block text-muted">
+                          <span className="text-ink">{t('catalog.sameAsQuestion')}</span>
+                          {f.similar.map((s) => (
+                            <span key={s.code_key} className="mt-0.5 block">
+                              <span className="font-medium text-ink">{s.code ?? '—'}</span>{' '}
+                              {s.description}{' '}
+                              <span className="badge-neutral text-[11px]">
+                                {t('catalog.similarPercent', { percent: Math.round(s.score * 100) })}
+                              </span>
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Declaration lines with no code of their own that were attached to
+              a product we already had. Worth showing because the attachment is
+              a judgement the importer made on a description, and because the
+              agent often writes the factory's own reference on the end of it --
+              which confirms the match to anyone who knows the goods. */}
+          {state.plan.uncoded?.length > 0 && (
+            <div className="mt-3 rounded-xl border border-line px-3.5 py-3">
+              <p className="text-[13px] font-medium text-ink">{t('catalog.import.uncodedAttached')}</p>
+              <ul className="mt-2 space-y-1">
+                {state.plan.uncoded.map((u, i) => (
+                  <li key={`${u.key}-${i}`} className="flex gap-2.5 text-[12px]">
+                    <span className="w-16 flex-shrink-0 font-medium tabular-nums text-ink">
+                      {t('catalog.import.rowNumber', { row: u.where })}
+                    </span>
+                    <span className="min-w-0 text-muted">
+                      <span className="text-ink">{u.code ?? u.key}</span>
+                      {u.trailing && (
+                        <span> · {t('catalog.supplierCodeSeen', { code: u.trailing })}</span>
+                      )}
                     </span>
                   </li>
                 ))}
@@ -836,7 +972,7 @@ export default function CatalogImport({
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={busy || validationFailed || awaitingAir}
+              disabled={busy || validationFailed || awaitingAir || awaitingDeclOrder}
               className="btn-primary"
             >
               <Upload size={16} strokeWidth={2} />

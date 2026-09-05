@@ -16,6 +16,9 @@ import { useCatalog } from '../hooks/useCatalog'
 import { useFactories } from '../hooks/useFactories'
 import { useOrders } from '../hooks/useOrders'
 import { factoryLabel } from '../lib/factories'
+// The same flattening the importers use for headings: accents off, punctuation
+// to spaces, collapsed. One rule for "are these the same words".
+import { normalise } from '../lib/liquidation'
 import {
   CURRENCY_OF,
   PAGE_SIZE,
@@ -188,26 +191,43 @@ export default function CatalogPage() {
   }, [products, supplierFor, t])
 
   const visible = useMemo(() => {
-    const needle = query.trim().toLowerCase()
+    /*
+     * Text is compared through `normalise`, not `toLowerCase`.
+     *
+     * These descriptions carry accents and punctuation our own documents are
+     * not consistent about -- MARRÓN against MARRON, `(100 mm)` against
+     * `(100mm)`, `R6C(GC)` against `R6C (GC)`. Lowercasing alone made an
+     * EXACT description fail to find its own product, which is the search
+     * somebody actually runs: they copy the name off the sheet in front of
+     * them.
+     */
+    const needle = normalise(query)
     // A search that looks like a code is also matched against the normalised
     // key, so typing 5915-03 finds the product stored as 591503.
-    const asKey = codeKey(needle)
+    const asKey = codeKey(query)
+    // Digits only, and ONLY when the query has some. `''.includes('')` is
+    // true, so a digit-free search -- "toma corriente doble" -- used to match
+    // every product that had a barcode at all, which is to say the whole
+    // catalog. The filter silently stopped filtering.
+    const asBarcode = query.replace(/\D/g, '')
 
     const filtered = products.filter((p) => {
       if (arancel && p.arancel !== arancel) return false
       if (supplierId && (supplierFor(p)?.id ?? NO_SUPPLIER) !== supplierId) return false
-      if (!needle) return true
+      if (!needle && !asBarcode) return true
+      const has = (value) => normalise(value).includes(needle)
       return (
-        (p.product_code ?? '').toLowerCase().includes(needle) ||
+        (needle &&
+          (has(p.product_code) ||
+            has(p.description) ||
+            has(p.description_es) ||
+            has(p.description_en) ||
+            has(p.supplier_code) ||
+            has(p.model) ||
+            has(lastSeenOrder(p)) ||
+            has(supplierLabel(p)))) ||
         (asKey && (p.code_key ?? '').includes(asKey)) ||
-        (p.description ?? '').toLowerCase().includes(needle) ||
-        (p.description_es ?? '').toLowerCase().includes(needle) ||
-        (p.description_en ?? '').toLowerCase().includes(needle) ||
-        (p.barcode ?? '').includes(needle.replace(/\D/g, '')) ||
-        (p.supplier_code ?? '').toLowerCase().includes(needle) ||
-        (p.model ?? '').toLowerCase().includes(needle) ||
-        (lastSeenOrder(p) ?? '').toLowerCase().includes(needle) ||
-        supplierLabel(p).toLowerCase().includes(needle)
+        (asBarcode && (p.barcode ?? '').includes(asBarcode))
       )
     })
 
@@ -544,6 +564,7 @@ export default function CatalogPage() {
       {importing && (
         <CatalogImport
           factories={factories}
+          orders={orders}
           onCheckImported={findImport}
           onListProducts={listProducts}
           onConfirm={({ plan, document }) => applyImport({ plan, document, userId: user.id })}

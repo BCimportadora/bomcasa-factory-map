@@ -977,6 +977,40 @@ alter table public.catalog_imports add column if not exists doc_ref text;
 alter table public.catalog add column if not exists doc_date date;
 alter table public.catalog add column if not exists cost_date date;
 
+-- EVERY order a product has appeared in, not just the latest one.
+--
+-- `doc_ref` and `cost_ref` each hold ONE reference and advance to the newest,
+-- which is right for deciding whose pricing is current and wrong for asking
+-- "was this part of Klik 61?". A product bought in 61, again in 62 and again in
+-- 77 answers yes three times, and after the 77 paperwork lands both single
+-- columns say 77 and 61 has been forgotten.
+--
+-- That question is what scopes a customs declaration: the arancel document does
+-- not name its own order anywhere, so a person picks it, and the declaration is
+-- then allowed to touch only the products carrying that tag. Without the tags
+-- it could reach the whole catalog, which is how a declaration ends up
+-- classifying goods from a different shipment.
+--
+-- An array rather than a join table, for the reason the shipment column gives:
+-- a second table would mean a join on every read and its own RLS policies, to
+-- model something no query needs to filter across.
+alter table public.catalog add column if not exists order_refs text[] not null default '{}';
+
+-- Backfill from what the single-value columns already recorded. They are the
+-- only history there is, so a product's tags start as the one or two orders
+-- those two columns happen to be holding; the rest accumulate from here.
+update public.catalog
+   set order_refs = (
+     select coalesce(array_agg(distinct r), '{}')
+       from unnest(array[doc_ref, cost_ref]) as r
+      where r is not null and r <> ''
+   )
+ where order_refs = '{}'
+   and (doc_ref is not null or cost_ref is not null);
+
+-- Membership is the only way this column is ever queried.
+create index if not exists catalog_order_refs_idx on public.catalog using gin (order_refs);
+
 -- Goods we buy but never sell: spare drivers, packaging, samples.
 --
 -- They belong in the catalog -- they carry a partida arancelaria and a real

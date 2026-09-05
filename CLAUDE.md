@@ -182,6 +182,53 @@ Rows created under the old rule are still there, still keyed `desc:`, and a
 coded line still adopts them — that path is kept precisely because those rows
 exist. `select * from catalog where code_key like 'desc:%'` lists them.
 
+**A product carries EVERY order it has appeared in, and that is what scopes a
+declaration.** `doc_ref` and `cost_ref` each hold one reference and advance to
+the newest, which is right for deciding whose pricing is current and useless for
+asking "was this part of Klik 61?" -- after the 77 paperwork lands, both say 77.
+`catalog.order_refs` is a text[] that only grows: a product bought in 61, 62 and
+77 answers yes to all three. Every importer adds its own `docRef` to it, as
+`tags` on the plan, applied as a plain write rather than through the fill or
+refresh guards -- a set that only grows has no "already filled" state to protect.
+
+The arancel document names no order ANYWHERE. Its header carries the
+declaration and liquidation numbers, the dates, the consignee, the manifest and
+the agency, and nothing else -- checked against all four real declarations. So a
+person picks the order at import, and that choice IS the scope: the declaration
+may classify only products tagged with it, and it may never create one. Verified
+on the real CHS 09 declaration: chosen against CHS 09 it classifies 8 and
+reports 23; chosen against MILAN 11 it touches nothing at all.
+
+**The customs agent runs our description and the factory's code together.**
+`TOMA CORRIENTE DOBLE/MODULO CON TAPA GRIS CLARO R6C(GC)` -- ours first, then
+Klik's reference. Their codes have no single shape (letters, digits, a
+parenthesised colour, a measurement), so `descriptionCandidates` does not try to
+recognise one: it peels the last token or two and hands back candidates, longest
+first. Only ever used to FIND a product, never to rewrite a stored name, so a
+wrong split costs a match that was not going to happen. `trailingSupplierCode`
+reports what was peeled by walking back word by word until our own description
+is exactly consumed -- a plain `startsWith` cannot do it, because the
+declaration is ALL CAPS and ours is not.
+
+**Two wordings of one article are a question for a person.**
+`descriptionSimilarity` scores by shared words, not edit distance: these are the
+same goods described twice, so what differs is a word or two, not letters within
+words. Weighted toward the SHORTER description, with a floor of TWO shared
+words -- without that floor the customs line "GRAPA" scores a perfect 1.0
+against "GRAPA ELECTRICA KOLNY GRIS RCC-10", and against every other clip in the
+catalog. A near miss is reported with both wordings side by side; nothing is
+ever merged automatically.
+
+**`.includes('')` is true, and it silently switched the catalog search off.**
+The filter ended with `(p.barcode ?? '').includes(needle.replace(/\D/g, ''))`.
+A search with no digits -- "toma corriente doble", which is most of them --
+reduced to `.includes('')`, matched every product that had a barcode, and
+returned the whole catalog. It read as "search is broken, I have to scan
+everything", which is exactly what it was doing. The barcode arm is now reached
+only when the query actually has digits, and text is compared through
+`normalise` rather than `toLowerCase`, so MARRON finds MARRON and `(100 mm)`
+finds `100mm`.
+
 **The `Totales` row is not always on the last page of a liquidación.** A short
 declaration puts it on page 1 with only the container and money footer overleaf.
 Reading the stated totals from `pages[pages.length - 1]` finds nothing, every
