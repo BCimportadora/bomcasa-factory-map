@@ -242,6 +242,25 @@ only when the query actually has digits, and text is compared through
 `normalise` rather than `toLowerCase`, so MARRON finds MARRON and `(100 mm)`
 finds `100mm`.
 
+**A cost-sheet workbook can hold several tables, and the right one is not the
+first that parses.** KLIK 56 and 57 each carry six sheets: a `Precios` and a
+`LIQUIDACION ` left over from a different shipment -- cáncamos, with the code
+column empty -- and the real one under `LIQUIDACIÓN`, accent and all. Taking the
+first sheet whose header showed `Codigo` beside `Descripcion` found `Precios`,
+read no product rows and gave up with "the cost table has no product rows" while
+the data sat two sheets away.
+
+`pickSheet` now scores candidates and prefers one that yields rows, with
+CONTENEDOR still winning among those that do and the fullest sheet breaking a
+tie. Counting rows alone is not enough: `REGISTRO`, an accounting ledger in the
+same workbook, heads its columns `UNIDAD | CODIGO | DESCRIPCION` -- enough to
+look like a cost table, enough to hold four coded rows, and no quantity at all.
+It tied and won on sheet order. So `tableScore` returns 0 unless the sheet has
+all three of code, description and units.
+
+Checked against all 59 Klik cost sheets: 57 pick exactly the sheet they picked
+before, and the two that changed went from failing to reading 13 and 8 lines.
+
 **The `Totales` row is not always on the last page of a liquidación.** A short
 declaration puts it on page 1 with only the container and money footer overleaf.
 Reading the stated totals from `pages[pages.length - 1]` finds nothing, every

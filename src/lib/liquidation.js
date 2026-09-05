@@ -131,17 +131,63 @@ function mapColumns(headerRow) {
   return columns
 }
 
-/** Prefer the sheet holding the container table; fall back to any that parses. */
-function pickSheet(sheets) {
-  const candidates = [...sheets].sort((a, b) => {
-    const rank = (s) => (normalise(s.name).startsWith('contenedor') ? 0 : 1)
-    return rank(a) - rank(b)
-  })
-  for (const sheet of candidates) {
-    const header = findHeaderRow(sheet.rows)
-    if (header) return { sheet, header }
+/**
+ * How usable this sheet is as a cost table: the number of coded rows, or 0.
+ *
+ * Zero unless it carries all three columns the parser cannot do without. That
+ * matters because `REGISTRO` — an accounting ledger that lives in the same
+ * workbook — heads its columns `UNIDAD | CODIGO | DESCRIPCION`, which is enough
+ * to look like a cost table and enough to hold a few coded rows, and it has no
+ * quantity at all. Counting rows alone let it tie with the real sheet and win
+ * on sheet order.
+ */
+function tableScore(sheet, header) {
+  const columns = mapColumns(header)
+  for (const required of ['product_code', 'description', 'units']) {
+    if (columns[required] === undefined) return 0
   }
-  return { sheet: null, header: null }
+  let found = 0
+  for (const row of sheet.rows) {
+    if (row.number <= header.number) continue
+    if (text(row.cells.get(columns.product_code))) found += 1
+  }
+  return found
+}
+
+/**
+ * The sheet holding the cost table.
+ *
+ * A header of `Codigo` beside `Descripcion` is not enough to choose by, because
+ * these workbooks accumulate sheets. KLIK 56 and 57 each carry SIX: a `Precios`
+ * and a `LIQUIDACION ` left over from another shipment entirely -- cáncamos,
+ * with the code column empty -- and the real one under `LIQUIDACIÓN`, accent
+ * and all. Taking the first sheet that merely parsed found `Precios`, read no
+ * product rows from it and gave up with "the cost table has no product rows",
+ * while the data sat two sheets away.
+ *
+ * So candidates are ranked by whether they yield any product rows at all, and a
+ * sheet named CONTENEDOR still wins among those that do. The last resort is a
+ * sheet that has a header and no rows, which keeps the original error message
+ * for a workbook that genuinely has nothing in it.
+ */
+function pickSheet(sheets) {
+  const scored = []
+  for (const sheet of sheets) {
+    const header = findHeaderRow(sheet.rows)
+    if (!header) continue
+    scored.push({ sheet, header, rows: tableScore(sheet, header) })
+  }
+  if (scored.length === 0) return { sheet: null, header: null }
+
+  // Usable first, then the one named CONTENEDOR, then the fullest. The last
+  // tie-break matters: a workbook can hold a stale sheet with two leftover rows
+  // beside the real one with forty.
+  scored.sort((a, b) => {
+    const usable = (c) => (c.rows > 0 ? 0 : 1)
+    const named = (c) => (normalise(c.sheet.name).startsWith('contenedor') ? 0 : 1)
+    return usable(a) - usable(b) || named(a) - named(b) || b.rows - a.rows
+  })
+  return { sheet: scored[0].sheet, header: scored[0].header }
 }
 
 /**
