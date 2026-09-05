@@ -159,16 +159,28 @@ runs — and where two documents cannot be ranked, `compareDocuments` returns
 deliberately not 'older': keeping whichever arrived first is a decision nobody
 made.
 
-**A liquidación line with no product code still becomes a catalog row.** Spare
-drivers and the rechargeable bulbs on Milan 10 carry no code at all, but they do
-carry a partida arancelaria, and dropping them loses it. They are keyed
-`desc:<description>` instead, and a later coded row for the same goods *adopts*
-that row rather than sitting beside it as a duplicate — which is what makes the
-result the same whichever document is imported first. Adoption matches on the
-description as a prefix, because the cost sheet writes a packing suffix the
-declaration omits, and only when exactly one product matches. Two candidates
-mean the description identifies nothing, and a tariff code on the wrong product
-is worse than one left unattached.
+**A liquidación line with no product code attaches to a product we already have,
+or it is REPORTED. It does not create one.** It matches on the description as a
+prefix — the cost sheet writes a packing suffix the declaration omits — and only
+when exactly one product matches: two candidates mean the description identifies
+nothing, and a tariff code on the wrong product is worse than one left
+unattached. A line that matches nothing goes to `failed`, which is itemised on
+screen, rather than into a count nobody reads.
+
+It used to fall back to a row keyed `desc:<description>` so a declaration could
+introduce goods our paperwork had not reached. That was written for Milan, where
+ONE line of seventeen lacks a code. CHS 09's declaration carries **no codes at
+all**: all thirty-one lines took the fallback, ten of them described only as
+`GRAPA` — and because the key IS the description, those ten collapsed into a
+single row while eleven more lines were dropped as duplicates of each other.
+Twenty rows survived, every one of them named in customs wording. Measured on
+the three real declarations, the new rule creates no row carrying customs
+wording at all, and CHS 09's tariff codes still land on the products the cost
+sheet had already named.
+
+Rows created under the old rule are still there, still keyed `desc:`, and a
+coded line still adopts them — that path is kept precisely because those rows
+exist. `select * from catalog where code_key like 'desc:%'` lists them.
 
 **The `Totales` row is not always on the last page of a liquidación.** A short
 declaration puts it on page 1 with only the container and money footer overleaf.
@@ -676,12 +688,12 @@ rather than applied. So the field silently stayed wrong.
 
 The declaration still needs the text, which is why it is withheld in
 `planImport` rather than dropped from `fromLiquidacionRow`: an uncoded line is
-matched on it, failing that keyed on it, and a coded line adopts a `desc:`
-orphan by it. It is held once as `declared` and deleted from `fields` only for
-a row that HAS a code -- a `desc:` row's description is the only name it will
-ever have. Doing this by deleting the key at the right moment instead made three
-lookups depend on statement order and quietly broke adoption; the test caught
-it, which is why `declared` exists as its own variable.
+matched on it, and a coded line adopts a `desc:` orphan by it. It is held once
+as `declared` and deleted from `fields` outright -- unconditionally, since an
+unmatched line no longer becomes a row whose only name it would be. Doing this
+by deleting the key at the right moment instead made three lookups depend on
+statement order and quietly broke adoption; the test caught it, which is why
+`declared` exists as its own variable.
 
 Rows imported before this are NOT healed by it. Their `description` still holds
 the customs wording, and re-importing the cost sheet reports a conflict rather

@@ -583,28 +583,43 @@ export function planImport({ docType, rows, existing, docDate = null, docRef = n
      */
     const declared = fields.description ?? null
 
-    // A line with no product code still classifies goods, and that tariff code
-    // is worth keeping. Rather than dropping the line, look for a product whose
-    // description matches -- the cost sheet usually has the same goods under a
-    // real code -- and fall back to a description-keyed entry so nothing is
-    // lost. Whoever reviews it can give it a code later.
+    /*
+     * A line with no product code hands its tariff code to a product we ALREADY
+     * have, or it is reported. It no longer creates one.
+     *
+     * It used to fall back to an entry keyed on the description, so that a
+     * declaration could introduce goods our own paperwork had not reached yet.
+     * That was written for Milan, where one line of seventeen lacks a code. CHS
+     * 09's declaration carries NO codes at all: all thirty-one lines took the
+     * fallback, ten of them described only as "GRAPA", and because the key is
+     * the description those ten collapsed into a single row while eleven more
+     * lines were dropped as duplicates of each other. What survived was twenty
+     * rows named in customs wording -- which is the one thing `description` is
+     * not for.
+     *
+     * Matching an existing product is kept, and is where the value was all
+     * along: the partida still lands on the right row, and it lands under our
+     * own name for it. A line that matches nothing is a question for a person,
+     * so it goes to `failed` -- which is itemised on screen -- rather than into
+     * a count nobody reads.
+     */
     if (!key) {
       if (docType !== 'liquidacion') {
         skipped.push({ where, code: fields.product_code ?? null, reason: 'noCode' })
         continue
       }
       const match = matchByDescription(declared, existing ?? [])
-      key = match ? match.code_key : descriptionKey(declared)
-      if (!key) {
-        skipped.push({ where, code: null, reason: 'noCode' })
+      if (!match) {
+        failed.push({ where, row: where, reason: 'noCodeUnmatched', detail: declared })
         continue
       }
-      uncoded.push({ where, key, matched: Boolean(match) })
+      key = match.code_key
+      uncoded.push({ where, key, matched: true })
     }
 
-    // Withheld for a row that HAS a code. A `desc:` row's description is the
-    // only name it will ever have, and dropping it would leave a nameless row.
-    if (docType === 'liquidacion' && !key.startsWith('desc:')) delete fields.description
+    // Withheld outright. Now that an unmatched line is reported rather than
+    // turned into a row, there is no product left whose only name this would be.
+    if (docType === 'liquidacion') delete fields.description
 
     if (seenInFile.has(key)) {
       skipped.push({ where, code: fields.product_code, reason: 'duplicateInFile', firstSeen: seenInFile.get(key) })

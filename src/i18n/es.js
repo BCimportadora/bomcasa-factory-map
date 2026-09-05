@@ -618,6 +618,7 @@ export default {
       noProformaRows: 'Esa hoja no tiene filas de productos.',
       badBarcode: 'el código de barra no tiene 13 dígitos',
       noCode: 'esta línea no trae código de producto',
+    noCodeUnmatched: 'sin código de producto y su descripción no coincide con ningún producto del catálogo; la partida arancelaria no se pudo aplicar',
       duplicateInFile: 'el mismo código aparece antes en este archivo',
       olderDocument: 'documento más antiguo — se mantuvo el precio más reciente',
       alreadyExists: 'ya está en el catálogo',
