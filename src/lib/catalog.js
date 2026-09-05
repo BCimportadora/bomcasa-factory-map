@@ -341,8 +341,25 @@ export function validateLiquidacion(parsed) {
   const contiguous = rows.every((r, i) => r.item === i + 1)
   checks.push({ id: 'contiguous', ok: contiguous, expected: `1..${maxItem}`, actual: contiguous ? 'ok' : 'gaps' })
 
-  // The tax columns are exact sums. Five centavos of tolerance covers the
-  // document's own rounding and nothing else.
+  /*
+   * The tax columns are exact sums, give or take the document's own rounding.
+   *
+   * The tolerance has to SCALE, because the rounding does. Every line is
+   * printed to two decimals, so each can sit up to half a centavo from its true
+   * value and a declaration of N lines can drift up to N/200 pesos before
+   * anything is wrong. A flat five centavos was calibrated on Milan's
+   * seventeen-line declaration and quietly failed the long ones: KLIK 55 is 138
+   * lines and drifts 0.08, KLIK 59 is 109 lines and drifts 0.09, and both were
+   * refused outright over a rounding error of a tenth of a peso on six million.
+   *
+   * Measured across 190 checks on 36 real declarations, the drift tracks the
+   * line count and nothing else -- 0.02 at fifty lines, 0.04 at eighty, 0.09 at
+   * a hundred and nine. Loosening it costs no safety at all, because a genuine
+   * mis-parse is not near this line: the three declarations that really are
+   * read wrong are out by 470,267, 690,087 and 753,090 pesos. Six orders of
+   * magnitude separate a rounding error from a parsing error.
+   */
+  const tolerance = Math.max(0.05, rows.length * 0.005)
   for (const [id, field] of [
     ['cif', 'cif'],
     ['gravamen', 'gravamen'],
@@ -359,10 +376,11 @@ export function validateLiquidacion(parsed) {
     const diff = Math.abs(sum - Number(stated))
     checks.push({
       id,
-      ok: diff <= 0.05,
+      ok: diff <= tolerance,
       expected: Number(stated).toFixed(2),
       actual: sum.toFixed(2),
       diff: diff.toFixed(2),
+      tolerance: tolerance.toFixed(2),
     })
   }
 

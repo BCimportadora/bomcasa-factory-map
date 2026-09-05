@@ -242,6 +242,23 @@ only when the query actually has digits, and text is compared through
 `normalise` rather than `toLowerCase`, so MARRON finds MARRON and `(100 mm)`
 finds `100mm`.
 
+**The totals tolerance SCALES with the line count, because the rounding does.**
+Every line of a declaration is printed to two decimals, so each sits up to half
+a centavo from its true value and N lines can drift N/200 pesos before anything
+is wrong. A flat five centavos was calibrated on Milan's seventeen-line
+declaration and silently refused the long ones: KLIK 55 is 138 lines and drifts
+0.08, KLIK 59 is 109 and drifts 0.09, and both were rejected outright -- a tenth
+of a peso on six million.
+
+Measured over 190 checks on 36 real declarations, the drift tracks the line
+count and nothing else: 0.02 at fifty lines, 0.04 at eighty, 0.09 at a hundred
+and nine. Loosening it costs no safety, because a real mis-parse is nowhere
+near: KLIK 45, 46 and 48 are out by 753,090, 470,267 and 690,087 pesos, and they
+fail `rowCount` and `contiguous` as well. Six orders of magnitude separate a
+rounding error from a parsing error, so `Math.max(0.05, rows.length * 0.005)`
+sits comfortably between them. 35 of 38 declarations validate; the three that do
+not are genuinely read wrong.
+
 **The importer refuses to choose between two plausible products, and a person
 resolves it in the panel instead.** Measured over 36 Klik declarations: of 340
 lines that found no single match, 146 are a genuine tie -- twelve of our
