@@ -626,7 +626,7 @@ export default {
       noProformaRows: 'That spreadsheet has no product rows.',
       badBarcode: 'the barcode is not 13 digits',
       noCode: 'no product code on this line',
-    noCodeUnmatched: 'no product code, and its description matches no product in the catalog; the tariff code could not be applied',
+    noCodeUnmatched: 'no product code, and its description matches no product in this order; the tariff code could not be applied',
     notInOrder: 'not part of the chosen order; nothing was applied',
     notInOrderSimilar: 'not part of the chosen order, but it resembles a product in it',
     noCodeSimilar: 'no product code, but it resembles a product that already exists',

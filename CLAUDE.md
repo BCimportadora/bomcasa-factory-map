@@ -200,15 +200,28 @@ on the real CHS 09 declaration: chosen against CHS 09 it classifies 8 and
 reports 23; chosen against MILAN 11 it touches nothing at all.
 
 **The customs agent runs our description and the factory's code together.**
-`TOMA CORRIENTE DOBLE/MODULO CON TAPA GRIS CLARO R6C(GC)` -- ours first, then
-Klik's reference. Their codes have no single shape (letters, digits, a
-parenthesised colour, a measurement), so `descriptionCandidates` does not try to
-recognise one: it peels the last token or two and hands back candidates, longest
-first. Only ever used to FIND a product, never to rewrite a stored name, so a
-wrong split costs a match that was not going to happen. `trailingSupplierCode`
-reports what was peeled by walking back word by word until our own description
-is exactly consumed -- a plain `startsWith` cannot do it, because the
-declaration is ALL CAPS and ours is not.
+It is NOT our wording plus a code, which was the first guess and is wrong. On
+KLIK 61's declaration the agent writes `TOMA CORRIENTE DOBLE KOLNY R6C` where we
+write `TOMA CORRIENTE DOBLE KOLNY/BLANCO (10/1)`, and `TAPA CIEGA KOLNY RSBLACK`
+where we write `TAPA CIEGA, KOLNY/BLANCO (16/1)`. Neither is a prefix of the
+other, so all ten lines matched nothing.
+
+`descriptionCandidates` peels the last token or two and returns candidates,
+LONGEST FIRST. There is deliberately no test on what the tail looks like: Klik's
+codes are `R6C`, `R6CT`, `RDIMMER`, `RSBLACK` -- plain letters, the same shape as
+KOLNY or BLANCA -- so any rule that spared our own words would spare theirs too
+and match nothing. A first attempt did exactly that and matched 0 of 10. Order is
+the safeguard instead: the whole description is tried first, so a product whose
+real name ends in such a word matches before anything is peeled, and
+`matchByDescription` still demands exactly ONE hit. With the guard removed the
+same declaration matches 10 of 10.
+
+`trailingSupplierCode` reports the LAST word of what had to be dropped, not a
+suffix of our stored name -- the two wordings differ too much for that.
+`INTERRUPTOR SENCILLO KOLNY R1K` loses `KOLNY R1K` to reach `INTERRUPTOR
+SENCILLO PEQUEÑO, KOLNY/BLANCO`, and the code is the last token because our
+description always comes first. Reported only, never written to
+`supplier_code`.
 
 **Two wordings of one article are a question for a person.**
 `descriptionSimilarity` scores by shared words, not edit distance: these are the

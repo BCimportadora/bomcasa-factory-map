@@ -184,13 +184,14 @@ export const descriptionCandidates = (description) => {
   // Two at most. Three would start eating real words off descriptions that end
   // in a size -- "CANALETA ... 3/4 (20MM) X 6" is all ours.
   for (let drop = 1; drop <= 2 && words.length - drop >= 2; drop += 1) {
-    const head = words.slice(0, words.length - drop).join(' ')
-    const tail = words.slice(words.length - drop).join(' ')
-    // A tail that is plain words in our own vocabulary is part of the
-    // description, not a code: KOLNY, NEGRO, PAQ. A supplier's reference
-    // almost always mixes letters with digits or punctuation.
-    if (/^[A-Za-zÁÉÍÓÚÑáéíóúñ]+$/.test(tail.replace(/\s+/g, ''))) continue
-    candidates.push(head)
+    // No test on what the tail LOOKS like. Klik's codes are `R6C`, `R6CT`,
+    // `RDIMMER`, `RSBLACK` -- plain letters, indistinguishable in shape from
+    // KOLNY or BLANCA, so any rule that spared our own words would spare
+    // theirs too and match nothing. Order is the safeguard instead: the whole
+    // description is tried first, so a product whose real name ends in one of
+    // those words matches before anything is peeled, and matchByDescription
+    // still demands exactly one hit.
+    candidates.push(words.slice(0, words.length - drop).join(' '))
   }
   return candidates
 }
@@ -202,22 +203,18 @@ export const descriptionCandidates = (description) => {
  * never written -- `supplier_code` comes from the supplier's own paperwork, and
  * a guess from a customs line is not that.
  */
-export const trailingSupplierCode = (description, productDescription) => {
+export const trailingSupplierCode = (description, matchedOn) => {
   const full = String(description ?? '').replace(/\s*NO APLICA\s*$/i, '').trim()
-  const head = normalise(productDescription)
-  if (!full || !head) return null
-  // Walk back word by word until our own description is exactly consumed. A
-  // plain `startsWith` cannot do it: the declaration is ALL CAPS and ours is
-  // not, and the two punctuate differently -- comparing normalised, but
-  // slicing the ORIGINAL, is what keeps `R6C(GC)` spelled the way it was
-  // written.
-  const words = full.split(/\s+/)
-  for (let keep = words.length - 1; keep >= 1; keep -= 1) {
-    if (normalise(words.slice(0, keep).join(' ')) === head) {
-      return words.slice(keep).join(' ').trim() || null
-    }
-  }
-  return null
+  const head = String(matchedOn ?? '').trim()
+  if (!full || !head || full === head || !full.startsWith(head)) return null
+  const dropped = full.slice(head.length).trim()
+  if (!dropped) return null
+  // The LAST word of what was dropped. Our own wording and theirs can both be
+  // in there -- `INTERRUPTOR SENCILLO KOLNY R1K` has to lose `KOLNY R1K` before
+  // it finds `INTERRUPTOR SENCILLO PEQUENO, KOLNY/BLANCO` -- and the code is
+  // always the last token, because our description always comes first.
+  const words = dropped.split(/\s+/)
+  return words[words.length - 1] || null
 }
 
 /** The selling prices on a cost-sheet line. Costs are deliberately not here. */
@@ -769,7 +766,7 @@ export function planImport({ docType, rows, existing, docDate = null, docRef = n
       key = match.code_key
       // What was peeled off, if anything. Reported so a person can confirm it
       // really was the supplier's code; never written to `supplier_code`.
-      const trailing = trailingSupplierCode(declared, match.description)
+      const trailing = trailingSupplierCode(declared, matchedOn)
       uncoded.push({ where, key, matched: true, code: match.product_code, trailing })
     }
 
