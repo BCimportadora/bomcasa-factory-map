@@ -144,6 +144,9 @@ export default function CatalogImport({
   // person picks it, and that choice is the whole scope the declaration may
   // touch.
   const [declRef, setDeclRef] = useState('')
+  // Reported lines a person has settled by hand, as line number -> code_key.
+  // Kept outside `state` so it survives a replan when the order changes.
+  const [resolutions, setResolutions] = useState({})
   // What the import actually did, once it has done it. Until this session the
   // modal simply closed on success, which left the person who had just read a
   // 45-line declaration with no confirmation that anything had been written.
@@ -285,6 +288,29 @@ export default function CatalogImport({
 
   const changeDeclRef = (reference) => {
     setDeclRef(reference)
+    // A different order is a different set of products, so nothing answered
+    // against the old one still means anything.
+    setResolutions({})
+    replanDeclaration(reference, {})
+  }
+
+  /**
+   * Answer one reported line with the product a person picked.
+   *
+   * The whole plan is rebuilt rather than the line patched into it: an
+   * answered line becomes an ordinary update, with the same fill, refresh and
+   * conflict rules every other line goes through. Patching would have created
+   * a second path that could drift from the first.
+   */
+  const resolveLine = (where, codeKey) => {
+    const next = { ...resolutions }
+    if (codeKey) next[where] = codeKey
+    else delete next[where]
+    setResolutions(next)
+    replanDeclaration(declRef, next)
+  }
+
+  const replanDeclaration = (reference, next) => {
     setState((prev) => {
       if (!prev || prev.docType !== 'liquidacion') return prev
       const scope = inOrder(prev.existing, reference)
@@ -298,6 +324,7 @@ export default function CatalogImport({
           existing: scope,
           docDate: prev.docDate,
           docRef: reference || null,
+          resolutions: next,
         }),
       }
     })
@@ -314,6 +341,7 @@ export default function CatalogImport({
     setAirSection(null)
     setOrderNo('')
     setDeclRef('')
+    setResolutions({})
     setBusy(true)
 
     try {
@@ -863,18 +891,32 @@ export default function CatalogImport({
                           question, and the only person who can answer it needs
                           to see BOTH wordings side by side -- not a score on
                           its own. */}
+                      {/* The importer will not choose between two plausible
+                          products, and should not -- the declaration is often
+                          less specific than the catalog. But somebody who knows
+                          the goods settles it at a glance, so the candidates it
+                          found are offered as a list to pick from. Choosing
+                          replans the whole import, so an answered line becomes
+                          an ordinary update under the same rules as any other;
+                          nothing is written until Confirm. */}
                       {f.similar?.length > 0 && (
-                        <span className="mt-1 block text-muted">
-                          <span className="text-ink">{t('catalog.sameAsQuestion')}</span>
-                          {f.similar.map((s) => (
-                            <span key={s.code_key} className="mt-0.5 block">
-                              <span className="font-medium text-ink">{s.code ?? '—'}</span>{' '}
-                              {s.description}{' '}
-                              <span className="badge-neutral text-[11px]">
-                                {t('catalog.similarPercent', { percent: Math.round(s.score * 100) })}
-                              </span>
-                            </span>
-                          ))}
+                        <span className="mt-1.5 block">
+                          <label className="block text-[12px] text-ink" htmlFor={`fix-${f.where}`}>
+                            {t('catalog.sameAsQuestion')}
+                          </label>
+                          <select
+                            id={`fix-${f.where}`}
+                            className="select mt-1 text-[12px]"
+                            value={resolutions[f.where] ?? ''}
+                            onChange={(event) => resolveLine(f.where, event.target.value)}
+                          >
+                            <option value="">{t('catalog.leaveUnapplied')}</option>
+                            {f.similar.map((s) => (
+                              <option key={s.code_key} value={s.code_key}>
+                                {`${s.code ?? '—'} · ${s.description} · ${Math.round(s.score * 100)}%`}
+                              </option>
+                            ))}
+                          </select>
                         </span>
                       )}
                     </span>
@@ -903,6 +945,7 @@ export default function CatalogImport({
                       {u.trailing && (
                         <span> · {t('catalog.supplierCodeSeen', { code: u.trailing })}</span>
                       )}
+                      {u.resolved && <span className="badge-accent ml-2 text-[11px]">{t('catalog.resolvedByHand')}</span>}
                     </span>
                   </li>
                 ))}

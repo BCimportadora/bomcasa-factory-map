@@ -126,6 +126,16 @@ export const descriptionSimilarity = (a, b) => {
   return shared / Math.min(left.size, right.size)
 }
 
+/**
+ * How many candidates a reported line offers.
+ *
+ * Three was enough when this only had to say "does this look familiar?". It is
+ * not enough now that it is a list to CHOOSE from: an ambiguous line can match
+ * a dozen products that differ only by colour and tapa, and cutting that to
+ * three hides the right one as often as not.
+ */
+export const CANDIDATE_LIMIT = 10
+
 /** Below this, two descriptions are simply different goods. */
 export const SIMILAR_ENOUGH = 0.7
 
@@ -658,7 +668,25 @@ export const REF_FIELD_FOR = {
  * Undated documents are treated as older than anything dated, because a file we
  * cannot place in time must not be allowed to overwrite one we can.
  */
-export function planImport({ docType, rows, existing, docDate = null, docRef = null }) {
+export function planImport({
+  docType,
+  rows,
+  existing,
+  docDate = null,
+  docRef = null,
+  /*
+   * Lines a person has already answered, as `{ [line number]: code_key }`.
+   *
+   * The importer refuses to choose between two plausible products, and it
+   * should: the declaration is often less specific than the catalog -- twelve
+   * of our switches begin `INTERRUPTOR SENCILLO KOLNY` and differ by tecla,
+   * tapa, colour and series, none of which it states. But refusing is only half
+   * an answer, because somebody who knows the goods can settle it in a second.
+   * A resolution is that answer, and it is taken as given: no matching runs for
+   * that line, and the candidates it was offered came from this same plan.
+   */
+  resolutions = {},
+}) {
   const byKey = new Map((existing ?? []).map((p) => [p.code_key, p]))
   const extract =
     docType === 'proforma'
@@ -728,6 +756,15 @@ export function planImport({ docType, rows, existing, docDate = null, docRef = n
      * so it goes to `failed` -- which is itemised on screen -- rather than into
      * a count nobody reads.
      */
+    // Answered by a person, so nothing is guessed: the chosen product is used
+    // whether the line had a code of its own or not.
+    const resolved = resolutions[where]
+    if (resolved && byKey.has(resolved)) {
+      const product = byKey.get(resolved)
+      key = product.code_key
+      uncoded.push({ where, key, matched: true, code: product.product_code, resolved: true })
+    }
+
     if (!key) {
       if (docType !== 'liquidacion') {
         skipped.push({ where, code: fields.product_code ?? null, reason: 'noCode' })
@@ -752,7 +789,7 @@ export function planImport({ docType, rows, existing, docDate = null, docRef = n
         // Nothing matched outright. Before reporting it as unusable, say
         // whether anything in the catalog is CLOSE -- two wordings of the same
         // goods is the likeliest reason a line finds no home.
-        const near = nearestDescriptions(declared, existing ?? [])
+        const near = nearestDescriptions(declared, existing ?? [], CANDIDATE_LIMIT)
         failed.push({
           where,
           row: where,
@@ -809,7 +846,7 @@ export function planImport({ docType, rows, existing, docDate = null, docRef = n
        * product it only ever taxed.
        */
       if (docType === 'liquidacion') {
-        const near = nearestDescriptions(declared, existing ?? [])
+        const near = nearestDescriptions(declared, existing ?? [], CANDIDATE_LIMIT)
         failed.push({
           where,
           row: where,

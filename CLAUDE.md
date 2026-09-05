@@ -242,6 +242,31 @@ only when the query actually has digits, and text is compared through
 `normalise` rather than `toLowerCase`, so MARRON finds MARRON and `(100 mm)`
 finds `100mm`.
 
+**The importer refuses to choose between two plausible products, and a person
+resolves it in the panel instead.** Measured over 36 Klik declarations: of 340
+lines that found no single match, 146 are a genuine tie -- twelve of our
+switches begin `INTERRUPTOR SENCILLO KOLNY` and differ by tecla, tapa, colour
+and series, none of which the declaration states. There is nothing to deduce.
+
+A similarity tie-break was measured and rejected. It would have settled 31 of
+them, but the metric counts shared words while product identity lives in the
+words that DIFFER -- `DOBLE`, `TRIPLE`, `3 VIAS`, `PEQUEÑO`, the colour. On
+KLIK 47 it picks `TOMA CORRIENTE DOBLE KOLNY/BLANCO` for a line reading `TOMA
+CORRIENTE, CREMA/KOLNY`: wrong on two attributes at 80%. Thirty lines out of
+1159 is not worth a class of silent misassignment, and the rule that settles it
+is already written here -- a tariff code on the wrong product is worse than one
+left unattached.
+
+So `planImport` takes `resolutions` (`{ line number: code_key }`) and the panel
+offers the candidates as a list. Choosing REPLANS the whole import rather than
+patching the line in, so an answered line becomes an ordinary update under the
+same fill, refresh and conflict rules as any other; patching would have created
+a second path that could drift. Nothing is written until Confirm, and the
+answer is cleared when the order changes, because a different order is a
+different set of products. `CANDIDATE_LIMIT` is 10, not the 3 that were enough
+when this only had to ask "does this look familiar?" -- an ambiguous line can
+match a dozen products, and cutting the list to three hides the right one.
+
 **A cost-sheet workbook can hold several tables, and the right one is not the
 first that parses.** KLIK 56 and 57 each carry six sheets: a `Precios` and a
 `LIQUIDACION ` left over from a different shipment -- cáncamos, with the code
